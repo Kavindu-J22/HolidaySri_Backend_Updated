@@ -148,8 +148,88 @@ const sendWelcomeEmail = async (email, name) => {
   }
 };
 
+// Send password reset email
+const sendPasswordResetEmail = async (email, name, resetToken) => {
+  const transporter = createTransporter();
+
+  const resetUrl = `http://localhost:5173/reset-password?token=${resetToken}`;
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri Tourism',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: 'Password Reset - Holidaysri Tourism',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #2563eb; margin: 0;">Holidaysri Tourism</h1>
+            <p style="color: #666; margin: 5px 0;">Sri Lanka's Premier Tourism Platform</p>
+          </div>
+
+          <h2 style="color: #333; margin-bottom: 20px;">Password Reset Request</h2>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Dear ${name},
+          </p>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            We received a request to reset your password for your Holidaysri Tourism account. If you didn't make this request, you can safely ignore this email.
+          </p>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 30px;">
+            To reset your password, click the button below:
+          </p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" style="background-color: #2563eb; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+              Reset Password
+            </a>
+          </div>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Or copy and paste this link into your browser:
+          </p>
+
+          <div style="background-color: #f0f8ff; padding: 15px; border-radius: 8px; margin: 20px 0; word-break: break-all;">
+            <a href="${resetUrl}" style="color: #2563eb; text-decoration: none;">${resetUrl}</a>
+          </div>
+
+          <p style="color: #888; font-size: 14px; margin-bottom: 20px;">
+            This link will expire in 1 hour for security reasons.
+          </p>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            If you continue to have problems, please contact our support team.
+          </p>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri Tourism. All rights reserved.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
+              This is an automated message, please do not reply to this email.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Password reset email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   generateOTP,
   sendEmailVerificationOTP,
-  sendWelcomeEmail
+  sendWelcomeEmail,
+  sendPasswordResetEmail
 };

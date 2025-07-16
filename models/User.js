@@ -45,6 +45,12 @@ const userSchema = new mongoose.Schema({
   emailVerificationExpires: {
     type: Date
   },
+  passwordResetToken: {
+    type: String
+  },
+  passwordResetExpires: {
+    type: Date
+  },
   hscBalance: {
     type: Number,
     default: 0
@@ -92,6 +98,14 @@ userSchema.methods.generateEmailVerificationToken = function() {
   const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   this.emailVerificationToken = token;
   this.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+  return token;
+};
+
+// Generate password reset token
+userSchema.methods.generatePasswordResetToken = function() {
+  const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  this.passwordResetToken = token;
+  this.passwordResetExpires = Date.now() + 60 * 60 * 1000; // 1 hour
   return token;
 };
 
