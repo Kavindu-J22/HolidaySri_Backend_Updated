@@ -3,10 +3,13 @@ const nodemailer = require('nodemailer');
 // Create transporter
 const createTransporter = () => {
   return nodemailer.createTransport({
-    service: process.env.EMAIL_SERVICE,
+    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
     auth: {
       user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
+      pass: process.env.EMAIL_PASS.replace(/\s/g, '') // Remove any spaces from app password
     },
     tls: {
       rejectUnauthorized: false
@@ -21,14 +24,6 @@ const generateOTP = () => {
 
 // Send email verification OTP
 const sendEmailVerificationOTP = async (email, name, otp) => {
-  // For development/testing purposes, simulate email sending
-  if (process.env.NODE_ENV === 'development' || !process.env.EMAIL_USER) {
-    console.log(`📧 SIMULATED EMAIL SENT TO: ${email}`);
-    console.log(`📧 OTP CODE: ${otp}`);
-    console.log(`📧 NAME: ${name}`);
-    return { success: true };
-  }
-
   const transporter = createTransporter();
 
   const mailOptions = {
@@ -92,13 +87,6 @@ const sendEmailVerificationOTP = async (email, name, otp) => {
 
 // Send welcome email
 const sendWelcomeEmail = async (email, name) => {
-  // For development/testing purposes, simulate email sending
-  if (process.env.NODE_ENV === 'development' || !process.env.EMAIL_USER) {
-    console.log(`📧 SIMULATED WELCOME EMAIL SENT TO: ${email}`);
-    console.log(`📧 NAME: ${name}`);
-    return { success: true };
-  }
-
   const transporter = createTransporter();
   
   const mailOptions = {

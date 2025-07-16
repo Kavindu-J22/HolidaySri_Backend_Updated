@@ -245,16 +245,19 @@ router.post('/google', async (req, res) => {
     if (user) {
       // User exists, check if it's a Google user
       if (!user.googleId) {
-        return res.status(400).json({
-          message: 'An account with this email already exists. Please use regular login or reset your password.',
-          requiresRegistration: false
-        });
-      }
+        // Link Google account to existing user
+        user.googleId = googleId;
+        if (profileImage) user.profileImage = profileImage;
+        user.lastLogin = new Date();
+        await user.save();
 
-      // Update last login
-      user.lastLogin = new Date();
-      if (profileImage) user.profileImage = profileImage;
-      await user.save();
+        console.log('🔗 Linked Google account to existing user:', email);
+      } else {
+        // Update existing Google user
+        user.lastLogin = new Date();
+        if (profileImage) user.profileImage = profileImage;
+        await user.save();
+      }
 
       const token = generateToken(user._id);
 
