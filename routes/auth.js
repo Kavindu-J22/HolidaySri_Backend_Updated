@@ -21,9 +21,11 @@ const generateToken = (userId, role = 'user') => {
 // Send OTP for email verification
 router.post('/send-otp', async (req, res) => {
   try {
+    console.log('📧 Send OTP request received:', req.body);
     const { email, name } = req.body;
 
     if (!email || !name) {
+      console.log('❌ Missing email or name');
       return res.status(400).json({ message: 'Email and name are required' });
     }
 
@@ -229,9 +231,11 @@ router.post('/login', async (req, res) => {
 // Google OAuth login/register
 router.post('/google', async (req, res) => {
   try {
+    console.log('🔐 Google OAuth request received:', req.body);
     const { googleId, email, name, profileImage } = req.body;
 
     if (!googleId || !email || !name) {
+      console.log('❌ Missing Google authentication data');
       return res.status(400).json({ message: 'Google authentication data is required' });
     }
 

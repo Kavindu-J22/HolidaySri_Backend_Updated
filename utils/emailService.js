@@ -2,11 +2,14 @@ const nodemailer = require('nodemailer');
 
 // Create transporter
 const createTransporter = () => {
-  return nodemailer.createTransporter({
+  return nodemailer.createTransport({
     service: process.env.EMAIL_SERVICE,
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS
+    },
+    tls: {
+      rejectUnauthorized: false
     }
   });
 };
@@ -18,8 +21,16 @@ const generateOTP = () => {
 
 // Send email verification OTP
 const sendEmailVerificationOTP = async (email, name, otp) => {
+  // For development/testing purposes, simulate email sending
+  if (process.env.NODE_ENV === 'development' || !process.env.EMAIL_USER) {
+    console.log(`📧 SIMULATED EMAIL SENT TO: ${email}`);
+    console.log(`📧 OTP CODE: ${otp}`);
+    console.log(`📧 NAME: ${name}`);
+    return { success: true };
+  }
+
   const transporter = createTransporter();
-  
+
   const mailOptions = {
     from: {
       name: 'Holidaysri Tourism',
@@ -81,6 +92,13 @@ const sendEmailVerificationOTP = async (email, name, otp) => {
 
 // Send welcome email
 const sendWelcomeEmail = async (email, name) => {
+  // For development/testing purposes, simulate email sending
+  if (process.env.NODE_ENV === 'development' || !process.env.EMAIL_USER) {
+    console.log(`📧 SIMULATED WELCOME EMAIL SENT TO: ${email}`);
+    console.log(`📧 NAME: ${name}`);
+    return { success: true };
+  }
+
   const transporter = createTransporter();
   
   const mailOptions = {
