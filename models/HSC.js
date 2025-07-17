@@ -124,12 +124,209 @@ const hscPackageSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Promo Code Configuration Schema
+const promoCodeConfigSchema = new mongoose.Schema({
+  // Promo Code Types and their settings
+  silver: {
+    price: {
+      type: Number,
+      required: true,
+      default: 8000 // LKR
+    },
+    discountRate: {
+      type: Number,
+      default: 0 // Percentage
+    },
+    earningForPurchase: {
+      type: Number,
+      required: true,
+      default: 500 // LKR
+    },
+    earningForMonthlyAd: {
+      type: Number,
+      required: true,
+      default: 1000 // LKR
+    },
+    earningForDailyAd: {
+      type: Number,
+      required: true,
+      default: 100 // LKR
+    }
+  },
+  gold: {
+    price: {
+      type: Number,
+      required: true,
+      default: 15000 // LKR
+    },
+    discountRate: {
+      type: Number,
+      default: 0 // Percentage
+    },
+    earningForPurchase: {
+      type: Number,
+      required: true,
+      default: 1000 // LKR
+    },
+    earningForMonthlyAd: {
+      type: Number,
+      required: true,
+      default: 2000 // LKR
+    },
+    earningForDailyAd: {
+      type: Number,
+      required: true,
+      default: 200 // LKR
+    }
+  },
+  diamond: {
+    price: {
+      type: Number,
+      required: true,
+      default: 25000 // LKR
+    },
+    discountRate: {
+      type: Number,
+      default: 0 // Percentage
+    },
+    earningForPurchase: {
+      type: Number,
+      required: true,
+      default: 2000 // LKR
+    },
+    earningForMonthlyAd: {
+      type: Number,
+      required: true,
+      default: 3000 // LKR
+    },
+    earningForDailyAd: {
+      type: Number,
+      required: true,
+      default: 300 // LKR
+    }
+  },
+  free: {
+    price: {
+      type: Number,
+      required: true,
+      default: 0 // Always 0 LKR
+    },
+    discountRate: {
+      type: Number,
+      default: 0 // Percentage
+    },
+    earningForPurchase: {
+      type: Number,
+      required: true,
+      default: 0 // LKR
+    },
+    earningForMonthlyAd: {
+      type: Number,
+      required: true,
+      default: 50 // LKR
+    },
+    earningForDailyAd: {
+      type: Number,
+      required: true,
+      default: 10 // LKR
+    }
+  },
+  // Global discount settings (same for all types)
+  discounts: {
+    monthlyAdDiscount: {
+      type: Number,
+      required: true,
+      default: 500 // LKR
+    },
+    dailyAdDiscount: {
+      type: Number,
+      required: true,
+      default: 50 // LKR
+    },
+    purchaseDiscount: {
+      type: Number,
+      required: true,
+      default: 200 // LKR
+    }
+  },
+  lastUpdated: {
+    type: Date,
+    default: Date.now
+  },
+  updatedBy: {
+    type: String,
+    required: true
+  }
+}, {
+  timestamps: true
+});
+
+// Promo Code Transaction Schema (for tracking user purchases and usage)
+const promoCodeTransactionSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  promoCodeType: {
+    type: String,
+    enum: ['silver', 'gold', 'diamond', 'free', 'pre-used'],
+    required: true
+  },
+  transactionType: {
+    type: String,
+    enum: ['purchase', 'use_monthly_ad', 'use_daily_ad', 'use_purchase'],
+    required: true
+  },
+  amount: {
+    type: Number,
+    required: true // Amount in LKR
+  },
+  hscEquivalent: {
+    type: Number // HSC equivalent at time of transaction
+  },
+  description: {
+    type: String,
+    required: true
+  },
+  paymentMethod: {
+    type: String,
+    enum: ['card', 'bank_transfer', 'admin_credit', 'free'],
+    required: function() {
+      return this.transactionType === 'purchase';
+    }
+  },
+  paymentDetails: {
+    transactionId: String,
+    cardLast4: String,
+    paymentStatus: {
+      type: String,
+      enum: ['pending', 'completed', 'failed', 'refunded'],
+      default: 'pending'
+    }
+  },
+  relatedAdvertisement: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Advertisement'
+  },
+  discountApplied: {
+    type: Number,
+    default: 0 // Discount amount in LKR
+  }
+}, {
+  timestamps: true
+});
+
 const HSCConfig = mongoose.model('HSCConfig', hscConfigSchema);
 const HSCTransaction = mongoose.model('HSCTransaction', hscTransactionSchema);
 const HSCPackage = mongoose.model('HSCPackage', hscPackageSchema);
+const PromoCodeConfig = mongoose.model('PromoCodeConfig', promoCodeConfigSchema);
+const PromoCodeTransaction = mongoose.model('PromoCodeTransaction', promoCodeTransactionSchema);
 
 module.exports = {
   HSCConfig,
   HSCTransaction,
-  HSCPackage
+  HSCPackage,
+  PromoCodeConfig,
+  PromoCodeTransaction
 };

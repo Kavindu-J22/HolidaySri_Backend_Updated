@@ -37,12 +37,14 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const hscRoutes = require('./routes/hsc');
 const adminRoutes = require('./routes/admin');
+const promocodeRoutes = require('./routes/promocodes');
 
 // Use routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/hsc', hscRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/promocodes', promocodeRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
