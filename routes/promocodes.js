@@ -22,36 +22,58 @@ router.get('/config', async (req, res) => {
     const hscConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
     const hscValue = hscConfig ? hscConfig.hscValue : 100;
 
+    // Helper function to calculate discounted price
+    const calculateDiscountedPrice = (originalPrice, discountRate) => {
+      const discountAmount = (originalPrice * discountRate) / 100;
+      return originalPrice - discountAmount;
+    };
+
     // Convert prices to HSC equivalent for client display
     const promoTypes = {
       silver: {
-        priceInHSC: Math.round(promoConfig.silver.price / hscValue * 100) / 100,
-        priceInLKR: promoConfig.silver.price,
+        originalPriceInLKR: promoConfig.silver.price,
+        originalPriceInHSC: Math.round(promoConfig.silver.price / hscValue * 100) / 100,
         discountRate: promoConfig.silver.discountRate,
+        discountedPriceInLKR: calculateDiscountedPrice(promoConfig.silver.price, promoConfig.silver.discountRate),
+        discountedPriceInHSC: Math.round(calculateDiscountedPrice(promoConfig.silver.price, promoConfig.silver.discountRate) / hscValue * 100) / 100,
+        priceInHSC: Math.round(calculateDiscountedPrice(promoConfig.silver.price, promoConfig.silver.discountRate) / hscValue * 100) / 100,
+        priceInLKR: calculateDiscountedPrice(promoConfig.silver.price, promoConfig.silver.discountRate),
         earningForPurchase: promoConfig.silver.earningForPurchase,
         earningForMonthlyAd: promoConfig.silver.earningForMonthlyAd,
         earningForDailyAd: promoConfig.silver.earningForDailyAd
       },
       gold: {
-        priceInHSC: Math.round(promoConfig.gold.price / hscValue * 100) / 100,
-        priceInLKR: promoConfig.gold.price,
+        originalPriceInLKR: promoConfig.gold.price,
+        originalPriceInHSC: Math.round(promoConfig.gold.price / hscValue * 100) / 100,
         discountRate: promoConfig.gold.discountRate,
+        discountedPriceInLKR: calculateDiscountedPrice(promoConfig.gold.price, promoConfig.gold.discountRate),
+        discountedPriceInHSC: Math.round(calculateDiscountedPrice(promoConfig.gold.price, promoConfig.gold.discountRate) / hscValue * 100) / 100,
+        priceInHSC: Math.round(calculateDiscountedPrice(promoConfig.gold.price, promoConfig.gold.discountRate) / hscValue * 100) / 100,
+        priceInLKR: calculateDiscountedPrice(promoConfig.gold.price, promoConfig.gold.discountRate),
         earningForPurchase: promoConfig.gold.earningForPurchase,
         earningForMonthlyAd: promoConfig.gold.earningForMonthlyAd,
         earningForDailyAd: promoConfig.gold.earningForDailyAd
       },
       diamond: {
-        priceInHSC: Math.round(promoConfig.diamond.price / hscValue * 100) / 100,
-        priceInLKR: promoConfig.diamond.price,
+        originalPriceInLKR: promoConfig.diamond.price,
+        originalPriceInHSC: Math.round(promoConfig.diamond.price / hscValue * 100) / 100,
         discountRate: promoConfig.diamond.discountRate,
+        discountedPriceInLKR: calculateDiscountedPrice(promoConfig.diamond.price, promoConfig.diamond.discountRate),
+        discountedPriceInHSC: Math.round(calculateDiscountedPrice(promoConfig.diamond.price, promoConfig.diamond.discountRate) / hscValue * 100) / 100,
+        priceInHSC: Math.round(calculateDiscountedPrice(promoConfig.diamond.price, promoConfig.diamond.discountRate) / hscValue * 100) / 100,
+        priceInLKR: calculateDiscountedPrice(promoConfig.diamond.price, promoConfig.diamond.discountRate),
         earningForPurchase: promoConfig.diamond.earningForPurchase,
         earningForMonthlyAd: promoConfig.diamond.earningForMonthlyAd,
         earningForDailyAd: promoConfig.diamond.earningForDailyAd
       },
       free: {
+        originalPriceInLKR: 0,
+        originalPriceInHSC: 0,
+        discountRate: promoConfig.free.discountRate,
+        discountedPriceInLKR: 0,
+        discountedPriceInHSC: 0,
         priceInHSC: 0,
         priceInLKR: 0,
-        discountRate: promoConfig.free.discountRate,
         earningForPurchase: promoConfig.free.earningForPurchase,
         earningForMonthlyAd: promoConfig.free.earningForMonthlyAd,
         earningForDailyAd: promoConfig.free.earningForDailyAd
