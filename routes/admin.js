@@ -255,16 +255,25 @@ router.get('/hsc-packages', verifyAdminToken, async (req, res) => {
 // Create HSC package
 router.post('/hsc-packages', verifyAdminToken, async (req, res) => {
   try {
-    const { name, hscAmount, price, discount = 0, description, features } = req.body;
+    const { name, hscAmount, discount = 0, description, features } = req.body;
 
-    if (!name || !hscAmount || !price) {
-      return res.status(400).json({ message: 'Name, HSC amount, and price are required' });
+    if (!name || !hscAmount) {
+      return res.status(400).json({ message: 'Name and HSC amount are required' });
     }
+
+    // Get current HSC config to calculate price
+    const hscConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
+    const hscValue = hscConfig ? hscConfig.hscValue : 100;
+
+    // Calculate price based on HSC amount and discount
+    const basePrice = hscAmount * hscValue;
+    const discountAmount = (basePrice * discount) / 100;
+    const finalPrice = basePrice - discountAmount;
 
     const package = new HSCPackage({
       name,
       hscAmount,
-      price,
+      price: finalPrice,
       discount,
       description,
       features: features || []
@@ -286,14 +295,39 @@ router.post('/hsc-packages', verifyAdminToken, async (req, res) => {
 // Update HSC package
 router.put('/hsc-packages/:packageId', verifyAdminToken, async (req, res) => {
   try {
-    const { name, hscAmount, price, discount, description, features, isActive } = req.body;
+    const { name, hscAmount, discount, description, features, isActive } = req.body;
 
     const updateData = {};
     if (name) updateData.name = name;
-    if (hscAmount) updateData.hscAmount = hscAmount;
-    if (price) updateData.price = price;
-    if (discount !== undefined) updateData.discount = discount;
-    if (description) updateData.description = description;
+    if (hscAmount) {
+      updateData.hscAmount = hscAmount;
+
+      // Recalculate price based on new HSC amount and discount
+      const hscConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
+      const hscValue = hscConfig ? hscConfig.hscValue : 100;
+      const currentDiscount = discount !== undefined ? discount : 0;
+
+      const basePrice = hscAmount * hscValue;
+      const discountAmount = (basePrice * currentDiscount) / 100;
+      updateData.price = basePrice - discountAmount;
+    }
+    if (discount !== undefined) {
+      updateData.discount = discount;
+
+      // Recalculate price if discount changed
+      if (!hscAmount) {
+        const currentPackage = await HSCPackage.findById(req.params.packageId);
+        if (currentPackage) {
+          const hscConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
+          const hscValue = hscConfig ? hscConfig.hscValue : 100;
+
+          const basePrice = currentPackage.hscAmount * hscValue;
+          const discountAmount = (basePrice * discount) / 100;
+          updateData.price = basePrice - discountAmount;
+        }
+      }
+    }
+    if (description !== undefined) updateData.description = description;
     if (features) updateData.features = features;
     if (typeof isActive === 'boolean') updateData.isActive = isActive;
 
@@ -314,6 +348,25 @@ router.put('/hsc-packages/:packageId', verifyAdminToken, async (req, res) => {
 
   } catch (error) {
     console.error('Update HSC package error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete HSC package
+router.delete('/hsc-packages/:packageId', verifyAdminToken, async (req, res) => {
+  try {
+    const package = await HSCPackage.findByIdAndDelete(req.params.packageId);
+
+    if (!package) {
+      return res.status(404).json({ message: 'Package not found' });
+    }
+
+    res.json({
+      message: 'HSC package deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Delete HSC package error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
