@@ -24,6 +24,8 @@ router.get('/info', async (req, res) => {
 
     res.json({
       hscValue: hscConfig.hscValue,
+      hsgValue: hscConfig.hsgValue || 1,
+      hsdValue: hscConfig.hsdValue || 1,
       currency: hscConfig.currency,
       packages
     });

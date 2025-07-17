@@ -84,23 +84,25 @@ router.put('/change-password', verifyToken, async (req, res) => {
   }
 });
 
-// Get HSC balance and transaction history
+// Get token balances and transaction history
 router.get('/hsc', verifyToken, verifyEmailVerified, async (req, res) => {
   try {
     const { HSCTransaction } = require('../models/HSC');
-    
-    const user = await User.findById(req.user._id).select('hscBalance');
+
+    const user = await User.findById(req.user._id).select('hscBalance hsgBalance hsdBalance');
     const transactions = await HSCTransaction.find({ userId: req.user._id })
       .sort({ createdAt: -1 })
       .limit(50);
 
     res.json({
       balance: user.hscBalance,
+      hsgBalance: user.hsgBalance,
+      hsdBalance: user.hsdBalance,
       transactions
     });
 
   } catch (error) {
-    console.error('Get HSC error:', error);
+    console.error('Get token balances error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

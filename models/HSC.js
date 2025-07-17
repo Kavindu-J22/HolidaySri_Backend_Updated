@@ -6,6 +6,16 @@ const hscConfigSchema = new mongoose.Schema({
     required: true,
     default: 100 // 1 HSC = 100 LKR by default
   },
+  hsgValue: {
+    type: Number,
+    required: true,
+    default: 1 // 1 HSG = 1 LKR by default
+  },
+  hsdValue: {
+    type: Number,
+    required: true,
+    default: 1 // 1 HSD = 1 LKR by default
+  },
   currency: {
     type: String,
     default: 'LKR'
@@ -28,9 +38,15 @@ const hscTransactionSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  tokenType: {
+    type: String,
+    enum: ['HSC', 'HSG', 'HSD'],
+    required: true,
+    default: 'HSC'
+  },
   type: {
     type: String,
-    enum: ['purchase', 'spend', 'refund', 'bonus'],
+    enum: ['purchase', 'spend', 'refund', 'bonus', 'gift'],
     required: true
   },
   amount: {

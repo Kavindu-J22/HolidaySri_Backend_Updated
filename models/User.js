@@ -55,6 +55,14 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  hsgBalance: {
+    type: Number,
+    default: 100 // New user gift
+  },
+  hsdBalance: {
+    type: Number,
+    default: 0
+  },
   termsAccepted: {
     type: Boolean,
     required: true,

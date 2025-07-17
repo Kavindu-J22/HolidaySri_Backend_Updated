@@ -96,6 +96,8 @@ router.get('/hsc-config', verifyAdminToken, async (req, res) => {
     if (!hscConfig) {
       return res.json({
         hscValue: 100,
+        hsgValue: 1,
+        hsdValue: 1,
         currency: 'LKR',
         lastUpdated: null,
         updatedBy: null
@@ -110,18 +112,18 @@ router.get('/hsc-config', verifyAdminToken, async (req, res) => {
   }
 });
 
-// Update HSC value
+// Update token configuration
 router.put('/hsc-config', verifyAdminToken, async (req, res) => {
   try {
-    const { hscValue, currency = 'LKR' } = req.body;
+    const { hscValue, hsgValue, hsdValue, currency = 'LKR' } = req.body;
 
-    if (!hscValue || hscValue <= 0) {
-      return res.status(400).json({ message: 'Invalid HSC value' });
-    }
+    // Get current config to preserve existing values
+    const currentConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
 
-    // Create new HSC configuration
     const newConfig = new HSCConfig({
-      hscValue,
+      hscValue: hscValue || (currentConfig ? currentConfig.hscValue : 100),
+      hsgValue: hsgValue || (currentConfig ? currentConfig.hsgValue : 1),
+      hsdValue: hsdValue || (currentConfig ? currentConfig.hsdValue : 1),
       currency,
       updatedBy: req.admin.username
     });
@@ -129,12 +131,12 @@ router.put('/hsc-config', verifyAdminToken, async (req, res) => {
     await newConfig.save();
 
     res.json({
-      message: 'HSC value updated successfully',
+      message: 'Token configuration updated successfully',
       config: newConfig
     });
 
   } catch (error) {
-    console.error('Update HSC config error:', error);
+    console.error('Update token config error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
