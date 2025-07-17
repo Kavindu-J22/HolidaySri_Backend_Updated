@@ -84,7 +84,13 @@ router.get('/config', async (req, res) => {
       promoTypes,
       hscValue,
       currency: hscConfig ? hscConfig.currency : 'LKR',
-      lastUpdated: promoConfig.lastUpdated
+      lastUpdated: promoConfig.lastUpdated,
+      discounts: {
+        monthlyAdDiscount: promoConfig.discounts.monthlyAdDiscount,
+        dailyAdDiscount: promoConfig.discounts.dailyAdDiscount,
+        purchaseDiscount: promoConfig.discounts.purchaseDiscount,
+        purchaseDiscountInHSC: Math.round(promoConfig.discounts.purchaseDiscount / hscValue * 100) / 100
+      }
     });
 
   } catch (error) {
