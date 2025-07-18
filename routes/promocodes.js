@@ -1,5 +1,9 @@
 const express = require('express');
 const { PromoCodeConfig, PromoCodeTransaction, HSCConfig } = require('../models/HSC');
+const User = require('../models/User');
+const Agent = require('../models/Agent');
+const Earning = require('../models/Earning');
+const PaymentActivity = require('../models/PaymentActivity');
 const { verifyToken, verifyAdminToken } = require('../middleware/auth');
 
 const router = express.Router();
@@ -222,6 +226,149 @@ router.get('/admin/transactions', verifyAdminToken, async (req, res) => {
 
   } catch (error) {
     console.error('Admin get promo code transactions error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Validate promo code for discount
+router.post('/validate', verifyToken, async (req, res) => {
+  try {
+    const { promoCode } = req.body;
+
+    if (!promoCode) {
+      return res.status(400).json({ message: 'Promo code is required' });
+    }
+
+    // Check if promo code exists in agents collection and is active
+    const agent = await Agent.findOne({
+      promoCode: promoCode.toUpperCase(),
+      isActive: true,
+      expirationDate: { $gt: new Date() }
+    }).populate('userId', 'name email');
+
+    if (!agent) {
+      return res.json({ isValid: false, message: 'Promo code not found or expired' });
+    }
+
+    res.json({
+      isValid: true,
+      isActive: true,
+      agent: {
+        username: agent.userName,
+        email: agent.email
+      }
+    });
+
+  } catch (error) {
+    console.error('Validate promo code error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Process promo code payment
+router.post('/process-payment', verifyToken, async (req, res) => {
+  try {
+    const {
+      itemName,
+      itemPrice,
+      itemCategory,
+      quantity,
+      finalAmount,
+      discountAmount,
+      appliedPromoCode,
+      promoCodeAgent,
+      earnRate,
+      promoCode,
+      promoType
+    } = req.body;
+
+    // Check user's HSC balance
+    const user = await User.findById(req.user._id);
+    if (user.hscBalance < finalAmount) {
+      return res.status(400).json({ message: 'Insufficient HSC balance' });
+    }
+
+    // Start transaction-like operations
+    let promoCodeOwnerAgent = null;
+
+    // If a promo code was applied for discount, get the owner details
+    if (appliedPromoCode && promoCodeAgent) {
+      promoCodeOwnerAgent = await Agent.findOne({
+        promoCode: appliedPromoCode,
+        isActive: true
+      });
+    }
+
+    // 1. Save new agent details in agents schema
+    const newAgent = new Agent({
+      userId: user._id,
+      userName: user.name,
+      email: user.email,
+      promoCode: promoCode,
+      promoCodeType: promoType,
+      usedPromoCode: appliedPromoCode || null,
+      usedPromoCodeOwner: promoCodeAgent?.email || null
+    });
+    await newAgent.save();
+
+    // 2. Save earning record if promo code was used for discount
+    if (appliedPromoCode && promoCodeAgent && earnRate > 0) {
+      const earning = new Earning({
+        buyerEmail: user.email,
+        buyerId: user._id,
+        category: 'Promo Codes',
+        amount: earnRate,
+        usedPromoCode: appliedPromoCode,
+        usedPromoCodeOwner: promoCodeAgent.email,
+        usedPromoCodeOwnerId: promoCodeOwnerAgent?.userId,
+        item: itemName,
+        itemType: promoType,
+        status: 'pending'
+      });
+      await earning.save();
+
+      // Update the promo code owner's total earnings and referrals
+      if (promoCodeOwnerAgent) {
+        promoCodeOwnerAgent.totalEarnings += earnRate;
+        promoCodeOwnerAgent.totalReferrals += 1;
+        await promoCodeOwnerAgent.save();
+      }
+    }
+
+    // 3. Save payment activity
+    const paymentActivity = new PaymentActivity({
+      userId: user._id,
+      buyerEmail: user.email,
+      item: itemName,
+      quantity: quantity,
+      category: itemCategory,
+      originalAmount: itemPrice,
+      amount: finalAmount,
+      discountedAmount: discountAmount,
+      promoCode: appliedPromoCode || null,
+      promoCodeOwner: promoCodeAgent?.email || null,
+      promoCodeOwnerId: promoCodeOwnerAgent?.userId || null,
+      forEarns: earnRate || 0,
+      purchasedPromoCode: promoCode,
+      purchasedPromoCodeType: promoType,
+      status: 'completed'
+    });
+    await paymentActivity.save();
+
+    // 4. Update user HSC balance
+    user.hscBalance -= finalAmount;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Payment processed successfully',
+      newBalance: user.hscBalance,
+      transactionId: paymentActivity.transactionId,
+      promoCode: promoCode
+    });
+
+  } catch (error) {
+    console.error('Process payment error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
