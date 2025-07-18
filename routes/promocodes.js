@@ -230,6 +230,51 @@ router.get('/admin/transactions', verifyAdminToken, async (req, res) => {
   }
 });
 
+// Check if user already has a promo code
+router.get('/user-has-promocode', verifyToken, async (req, res) => {
+  try {
+    const agent = await Agent.findOne({
+      userId: req.user._id,
+      isActive: true,
+      expirationDate: { $gt: new Date() }
+    });
+
+    res.json({
+      hasPromoCode: !!agent,
+      promoCode: agent ? agent.promoCode : null,
+      promoCodeType: agent ? agent.promoCodeType : null
+    });
+
+  } catch (error) {
+    console.error('Check user promo code error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Check if promo code is unique
+router.post('/check-unique', verifyToken, async (req, res) => {
+  try {
+    const { promoCode } = req.body;
+
+    if (!promoCode) {
+      return res.status(400).json({ message: 'Promo code is required' });
+    }
+
+    const existingAgent = await Agent.findOne({
+      promoCode: promoCode.toUpperCase()
+    });
+
+    res.json({
+      isUnique: !existingAgent,
+      exists: !!existingAgent
+    });
+
+  } catch (error) {
+    console.error('Check promo code uniqueness error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Validate promo code for discount
 router.post('/validate', verifyToken, async (req, res) => {
   try {
