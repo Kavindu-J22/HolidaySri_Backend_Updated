@@ -1,5 +1,7 @@
 const express = require('express');
 const User = require('../models/User');
+const Agent = require('../models/Agent');
+const Earning = require('../models/Earning');
 const { verifyToken, verifyEmailVerified } = require('../middleware/auth');
 
 const router = express.Router();
@@ -18,12 +20,13 @@ router.get('/profile', verifyToken, async (req, res) => {
 // Update user profile
 router.put('/profile', verifyToken, async (req, res) => {
   try {
-    const { name, contactNumber, countryCode } = req.body;
-    
+    const { name, contactNumber, countryCode, profileImage } = req.body;
+
     const updateData = {};
     if (name) updateData.name = name;
     if (contactNumber) updateData.contactNumber = contactNumber;
     if (countryCode) updateData.countryCode = countryCode;
+    if (profileImage) updateData.profileImage = profileImage;
 
     const user = await User.findByIdAndUpdate(
       req.user._id,
@@ -164,6 +167,81 @@ router.delete('/account', verifyToken, async (req, res) => {
 
   } catch (error) {
     console.error('Delete account error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get agent dashboard data
+router.get('/agent-dashboard', verifyToken, async (req, res) => {
+  try {
+    // Check if user is an agent
+    const agent = await Agent.findOne({ userId: req.user._id, isActive: true });
+
+    if (!agent) {
+      return res.json({ isAgent: false });
+    }
+
+    // Get agent statistics
+    const totalEarnings = await Earning.aggregate([
+      { $match: { usedPromoCodeOwnerId: req.user._id } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+
+    const totalReferrals = await Earning.countDocuments({
+      usedPromoCodeOwnerId: req.user._id
+    });
+
+    res.json({
+      isAgent: true,
+      agentData: {
+        promoCode: agent.promoCode,
+        promoCodeType: agent.promoCodeType,
+        expirationDate: agent.expirationDate,
+        totalEarnings: totalEarnings[0]?.total || 0,
+        totalReferrals: agent.totalReferrals || totalReferrals,
+        usedCount: agent.usedCount || 0,
+        isActive: agent.isActive
+      }
+    });
+
+  } catch (error) {
+    console.error('Get agent dashboard error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get agent earnings records
+router.get('/agent-earnings', verifyToken, async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status } = req.query;
+
+    // Check if user is an agent
+    const agent = await Agent.findOne({ userId: req.user._id, isActive: true });
+
+    if (!agent) {
+      return res.status(403).json({ message: 'Access denied. User is not an agent.' });
+    }
+
+    const query = { usedPromoCodeOwnerId: req.user._id };
+    if (status) query.status = status;
+
+    const earnings = await Earning.find(query)
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .populate('buyerId', 'name email');
+
+    const total = await Earning.countDocuments(query);
+
+    res.json({
+      earnings,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page),
+      total
+    });
+
+  } catch (error) {
+    console.error('Get agent earnings error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
