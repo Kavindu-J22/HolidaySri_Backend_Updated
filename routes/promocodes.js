@@ -393,7 +393,7 @@ router.post('/process-payment', verifyToken, async (req, res) => {
       promoCode: appliedPromoCode || null,
       promoCodeOwner: promoCodeAgent?.email || null,
       promoCodeOwnerId: promoCodeOwnerAgent?.userId || null,
-      forEarns: earnRate || 0,
+      forEarns: (appliedPromoCode && promoCodeAgent && earnRate > 0) ? earnRate : 0, // Only store earn value if promo code was used for discount
       purchasedPromoCode: promoCode,
       purchasedPromoCodeType: promoType,
       status: 'completed'
