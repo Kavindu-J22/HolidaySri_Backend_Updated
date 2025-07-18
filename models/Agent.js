@@ -57,6 +57,35 @@ const agentSchema = new mongoose.Schema({
   usedCount: {
     type: Number,
     default: 0 // How many times this promo code has been successfully used for discounts
+  },
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  verificationStatus: {
+    type: String,
+    enum: ['pending', 'verified', 'rejected'],
+    default: 'pending'
+  },
+  verificationDocuments: {
+    nicFront: {
+      type: String // Cloudinary URL
+    },
+    nicBack: {
+      type: String // Cloudinary URL
+    },
+    passport: {
+      type: String // Cloudinary URL
+    }
+  },
+  verificationSubmittedAt: {
+    type: Date
+  },
+  verificationCompletedAt: {
+    type: Date
+  },
+  verificationNotes: {
+    type: String // Admin notes for verification
   }
 }, {
   timestamps: true

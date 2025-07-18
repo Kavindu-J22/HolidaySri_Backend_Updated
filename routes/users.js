@@ -200,7 +200,9 @@ router.get('/agent-dashboard', verifyToken, async (req, res) => {
         totalEarnings: totalEarnings[0]?.total || 0,
         totalReferrals: agent.totalReferrals || totalReferrals,
         usedCount: agent.usedCount || 0,
-        isActive: agent.isActive
+        isActive: agent.isActive,
+        isVerified: agent.isVerified || false,
+        verificationStatus: agent.verificationStatus || 'pending'
       }
     });
 
@@ -242,6 +244,94 @@ router.get('/agent-earnings', verifyToken, async (req, res) => {
 
   } catch (error) {
     console.error('Get agent earnings error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Submit agent verification documents
+router.post('/agent-verification', verifyToken, async (req, res) => {
+  try {
+    const { documentType, documentUrl } = req.body;
+
+    if (!documentType || !documentUrl) {
+      return res.status(400).json({ message: 'Document type and URL are required' });
+    }
+
+    // Check if user is an agent
+    const agent = await Agent.findOne({ userId: req.user._id, isActive: true });
+
+    if (!agent) {
+      return res.status(403).json({ message: 'Access denied. User is not an agent.' });
+    }
+
+    // Update verification documents
+    const updateData = {
+      verificationSubmittedAt: new Date(),
+      verificationStatus: 'pending'
+    };
+
+    // Add document based on type
+    if (documentType === 'NIC_FRONT') {
+      updateData['verificationDocuments.nicFront'] = documentUrl;
+    } else if (documentType === 'NIC_BACK') {
+      updateData['verificationDocuments.nicBack'] = documentUrl;
+    } else if (documentType === 'PASSPORT') {
+      updateData['verificationDocuments.passport'] = documentUrl;
+    } else {
+      return res.status(400).json({ message: 'Invalid document type' });
+    }
+
+    const updatedAgent = await Agent.findByIdAndUpdate(
+      agent._id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    // Check if agent has submitted enough documents for verification
+    const hasNIC = updatedAgent.verificationDocuments.nicFront && updatedAgent.verificationDocuments.nicBack;
+    const hasPassport = updatedAgent.verificationDocuments.passport;
+
+    if (hasNIC || hasPassport) {
+      // Auto-verify for demo purposes (in production, this would be manual admin review)
+      await Agent.findByIdAndUpdate(agent._id, {
+        isVerified: true,
+        verificationStatus: 'verified',
+        verificationCompletedAt: new Date(),
+        verificationNotes: 'Auto-verified for demo purposes'
+      });
+    }
+
+    res.json({
+      message: 'Verification document uploaded successfully',
+      verificationStatus: hasNIC || hasPassport ? 'verified' : 'pending'
+    });
+
+  } catch (error) {
+    console.error('Agent verification error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get agent verification status
+router.get('/agent-verification-status', verifyToken, async (req, res) => {
+  try {
+    // Check if user is an agent
+    const agent = await Agent.findOne({ userId: req.user._id, isActive: true });
+
+    if (!agent) {
+      return res.status(403).json({ message: 'Access denied. User is not an agent.' });
+    }
+
+    res.json({
+      isVerified: agent.isVerified,
+      verificationStatus: agent.verificationStatus,
+      verificationDocuments: agent.verificationDocuments,
+      verificationSubmittedAt: agent.verificationSubmittedAt,
+      verificationCompletedAt: agent.verificationCompletedAt
+    });
+
+  } catch (error) {
+    console.error('Get verification status error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
