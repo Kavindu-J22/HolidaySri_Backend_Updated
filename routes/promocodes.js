@@ -4,9 +4,97 @@ const User = require('../models/User');
 const Agent = require('../models/Agent');
 const Earning = require('../models/Earning');
 const PaymentActivity = require('../models/PaymentActivity');
+const Notification = require('../models/Notification');
 const { verifyToken, verifyAdminToken } = require('../middleware/auth');
+const nodemailer = require('nodemailer');
 
 const router = express.Router();
+
+// Email configuration
+const transporter = nodemailer.createTransport({
+  // Configure your email service here
+  service: 'gmail', // or your email service
+  auth: {
+    user: process.env.EMAIL_USER || 'your-email@gmail.com',
+    pass: process.env.EMAIL_PASS || 'your-app-password'
+  }
+});
+
+// Email template for promo code purchase
+const createPromoCodePurchaseEmail = (user, paymentData) => {
+  return {
+    from: process.env.EMAIL_USER || 'noreply@holidaysri.com',
+    to: user.email,
+    subject: '🎉 Welcome to Our Agent Network - Your Promo Code is Ready!',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 20px;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Congratulations!</h1>
+          <p style="color: white; margin: 10px 0 0 0; font-size: 18px;">You are now an agent with us!</p>
+        </div>
+
+        <div style="background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <h2 style="color: #374151; margin-top: 0;">Order Summary</h2>
+
+          <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #10b981; margin: 0 0 15px 0; font-size: 24px; text-align: center;">Your Promo Code</h3>
+            <div style="background: white; padding: 15px; border-radius: 8px; text-align: center; border: 2px solid #10b981;">
+              <span style="font-family: monospace; font-size: 32px; font-weight: bold; color: #059669; letter-spacing: 3px;">${paymentData.purchasedPromoCode}</span>
+            </div>
+            <p style="text-align: center; margin: 10px 0 0 0; color: #6b7280; text-transform: capitalize;">${paymentData.purchasedPromoCodeType} Agent Status</p>
+          </div>
+
+          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 10px 0; color: #6b7280;">Transaction ID:</td>
+              <td style="padding: 10px 0; font-family: monospace; color: #374151;">${paymentData.transactionId}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 10px 0; color: #6b7280;">Item:</td>
+              <td style="padding: 10px 0; color: #374151;">${paymentData.item}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 10px 0; color: #6b7280;">Amount Paid:</td>
+              <td style="padding: 10px 0; color: #374151; font-weight: bold;">${paymentData.amount} HSC</td>
+            </tr>
+            ${paymentData.discountedAmount > 0 ? `
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 10px 0; color: #6b7280;">Discount Applied:</td>
+              <td style="padding: 10px 0; color: #10b981; font-weight: bold;">-${paymentData.discountedAmount} HSC</td>
+            </tr>
+            ` : ''}
+            <tr>
+              <td style="padding: 10px 0; color: #6b7280;">Purchase Date:</td>
+              <td style="padding: 10px 0; color: #374151;">${new Date().toLocaleDateString()}</td>
+            </tr>
+          </table>
+
+          <div style="background: #eff6ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #1d4ed8; margin: 0 0 15px 0;">🚀 Start Earning Today!</h3>
+            <ul style="color: #374151; line-height: 1.6; margin: 0; padding-left: 20px;">
+              <li>Share your promo code with friends and family</li>
+              <li>Earn money for every successful referral</li>
+              <li>Get discounts on advertisements</li>
+              <li>Build your network and grow your business</li>
+            </ul>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/profile"
+               style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+              View My Profile & Start Earning
+            </a>
+          </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px;">
+          <p>Thank you for joining our agent network!</p>
+          <p>If you have any questions, please contact our support team.</p>
+        </div>
+      </div>
+    `
+  };
+};
 
 // Get current promo code configuration (for clients)
 router.get('/config', async (req, res) => {
@@ -372,10 +460,11 @@ router.post('/process-payment', verifyToken, async (req, res) => {
       });
       await earning.save();
 
-      // Update the promo code owner's total earnings and referrals
+      // Update the promo code owner's total earnings, referrals, and used count
       if (promoCodeOwnerAgent) {
         promoCodeOwnerAgent.totalEarnings += earnRate;
         promoCodeOwnerAgent.totalReferrals += 1;
+        promoCodeOwnerAgent.usedCount += 1; // Increment used count
         await promoCodeOwnerAgent.save();
       }
     }
@@ -403,6 +492,38 @@ router.post('/process-payment', verifyToken, async (req, res) => {
     // 4. Update user HSC balance
     user.hscBalance -= finalAmount;
     await user.save();
+
+    // 5. Send professional email with order summary
+    try {
+      const emailData = createPromoCodePurchaseEmail(user, {
+        purchasedPromoCode: promoCode,
+        purchasedPromoCodeType: promoType,
+        transactionId: paymentActivity.transactionId,
+        item: itemName,
+        amount: finalAmount,
+        discountedAmount: discountAmount
+      });
+
+      await transporter.sendMail(emailData);
+    } catch (emailError) {
+      console.error('Error sending email:', emailError);
+      // Don't fail the payment if email fails
+    }
+
+    // 6. Create notification for user
+    await Notification.createNotification(
+      user._id,
+      '🎉 Welcome to Our Agent Network!',
+      `Congratulations! You are now a ${promoType} agent with promo code ${promoCode}. Start sharing your code and earning money today!`,
+      'purchase',
+      {
+        promoCode: promoCode,
+        promoType: promoType,
+        transactionId: paymentActivity.transactionId,
+        amount: finalAmount
+      },
+      'high'
+    );
 
     res.json({
       success: true,

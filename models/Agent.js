@@ -53,6 +53,10 @@ const agentSchema = new mongoose.Schema({
   totalReferrals: {
     type: Number,
     default: 0
+  },
+  usedCount: {
+    type: Number,
+    default: 0 // How many times this promo code has been successfully used for discounts
   }
 }, {
   timestamps: true

@@ -1,6 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 const { verifyToken } = require('../middleware/auth');
 const { generateOTP, sendEmailVerificationOTP, sendWelcomeEmail, sendPasswordResetEmail } = require('../utils/emailService');
 
@@ -149,12 +150,22 @@ router.post('/register', async (req, res) => {
     // Send welcome email
     await sendWelcomeEmail(email, name);
 
-    // Generate token
-    const token = generateToken(user._id);
+    // Create welcome notification with new user bonus info
+    await Notification.createNotification(
+      user._id,
+      '🎉 Welcome to HolidaySri!',
+      `Welcome ${user.name}! Your account has been created successfully. Enjoy your new user bonus of 100 HSG! Start exploring our amazing travel services and promo codes.`,
+      'welcome',
+      {
+        bonusAmount: 100,
+        bonusType: 'HSG',
+        isNewUser: true
+      },
+      'high'
+    );
 
     res.status(201).json({
-      message: 'User registered successfully',
-      token,
+      message: 'User registered successfully. Please login to continue.',
       user: {
         id: user._id,
         email: user.email,
