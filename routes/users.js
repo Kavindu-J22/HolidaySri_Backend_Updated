@@ -487,9 +487,41 @@ router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
       }
     }
 
-    // Get promo config to calculate correct earning amount
-    const { PromoCodeConfig } = require('../models/HSC');
-    const promoConfig = await PromoCodeConfig.findOne();
+    // Get promo config to calculate correct earning amount (same as /promo-codes-travel-agents page)
+    const { PromoCodeConfig, HSCConfig } = require('../models/HSC');
+    const promoConfig = await PromoCodeConfig.findOne().sort({ createdAt: -1 });
+    const hscConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
+    const hscValue = hscConfig ? hscConfig.hscValue : 100;
+
+    // Helper function to calculate discounted price (same as /promocodes/config route)
+    const calculateDiscountedPrice = (originalPrice, discountRate) => {
+      const discountAmount = (originalPrice * discountRate) / 100;
+      return originalPrice - discountAmount;
+    };
+
+    // Build promoTypes structure exactly like /promocodes/config route
+    const promoTypes = {
+      silver: {
+        earningForPurchase: promoConfig.silver.earningForPurchase,
+        earningForMonthlyAd: promoConfig.silver.earningForMonthlyAd,
+        earningForDailyAd: promoConfig.silver.earningForDailyAd
+      },
+      gold: {
+        earningForPurchase: promoConfig.gold.earningForPurchase,
+        earningForMonthlyAd: promoConfig.gold.earningForMonthlyAd,
+        earningForDailyAd: promoConfig.gold.earningForDailyAd
+      },
+      diamond: {
+        earningForPurchase: promoConfig.diamond.earningForPurchase,
+        earningForMonthlyAd: promoConfig.diamond.earningForMonthlyAd,
+        earningForDailyAd: promoConfig.diamond.earningForDailyAd
+      },
+      free: {
+        earningForPurchase: promoConfig.free.earningForPurchase,
+        earningForMonthlyAd: promoConfig.free.earningForMonthlyAd,
+        earningForDailyAd: promoConfig.free.earningForDailyAd
+      }
+    };
 
     // Helper function to calculate original price
     const calculatePrice = () => {
@@ -498,17 +530,17 @@ router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
       return finalAmount + (discountAmount || 0);
     };
 
-    // Calculate correct earning amount based on promo config
+    // Calculate correct earning amount based on promo config (same as /promo-codes-travel-agents page)
     // The earning should be based on the promo code being renewed/upgraded, not the referrer's tier
     const getEarningAmount = () => {
       if (!promoConfig || !appliedPromoCode || !discountAmount) return 0;
 
       // Get the tier of the promo code being renewed/upgraded
       const renewedTier = renewalType === 'upgrade' ? newTier : agent.promoCodeType;
-      const tierConfig = promoConfig[renewedTier];
+      const promoData = promoTypes[renewedTier];
 
-      // Return the earningForPurchase for that tier (e.g., Silver renewal = Silver earningForPurchase)
-      return tierConfig ? tierConfig.earningForPurchase : 0;
+      // Return the earningForPurchase for that tier (same as promoData?.earningForPurchase in frontend)
+      return promoData ? promoData.earningForPurchase : 0;
     };
 
     // Start transaction-like operations
@@ -541,7 +573,7 @@ router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
           usedPromoCodeOwnerId: promoCodeOwnerAgent.userId,
           item: `${renewalType === 'upgrade' ? 'Upgrade & Renew' : 'Renew'} - ${agent.promoCode}`,
           itemType: renewalType === 'upgrade' ? newTier : agent.promoCodeType,
-          status: 'processed'
+          status: 'pending'
         });
         await earning.save();
 
