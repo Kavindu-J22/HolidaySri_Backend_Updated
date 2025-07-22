@@ -2,6 +2,7 @@ const express = require('express');
 const User = require('../models/User');
 const Agent = require('../models/Agent');
 const Earning = require('../models/Earning');
+const Notification = require('../models/Notification');
 const { verifyToken, verifyEmailVerified } = require('../middleware/auth');
 
 const router = express.Router();
@@ -202,7 +203,9 @@ router.get('/agent-dashboard', verifyToken, async (req, res) => {
         usedCount: agent.usedCount || 0,
         isActive: agent.isActive,
         isVerified: agent.isVerified || false,
-        verificationStatus: agent.verificationStatus || 'pending'
+        verificationStatus: agent.verificationStatus || 'pending',
+        usedPromoCode: agent.usedPromoCode || null,
+        usedPromoCodeOwner: agent.usedPromoCodeOwner || null
       }
     });
 
@@ -418,6 +421,215 @@ router.put('/agent-upgrade-tier', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Upgrade tier error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Renew or upgrade promo code
+router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
+  try {
+    const {
+      renewalType, // 'renew' or 'upgrade'
+      newTier, // Required if renewalType is 'upgrade'
+      finalAmount,
+      appliedPromoCode,
+      discountAmount
+    } = req.body;
+
+    // Check if user is an agent
+    const agent = await Agent.findOne({ userId: req.user._id });
+    if (!agent) {
+      return res.status(403).json({ message: 'Access denied. User is not an agent.' });
+    }
+
+    // Check if promo code is expired (required for renewal)
+    const now = new Date();
+    if (agent.expirationDate > now) {
+      return res.status(400).json({ message: 'Promo code is not expired yet. You can only renew expired promo codes.' });
+    }
+
+    // Get user and check HSC balance
+    const user = await User.findById(req.user._id);
+    if (user.hscBalance < finalAmount) {
+      return res.status(400).json({ message: 'Insufficient HSC balance' });
+    }
+
+    // Validate renewal type and tier
+    if (renewalType === 'upgrade') {
+      if (!newTier) {
+        return res.status(400).json({ message: 'New tier is required for upgrade' });
+      }
+
+      const validTiers = ['silver', 'gold', 'diamond'];
+      if (!validTiers.includes(newTier)) {
+        return res.status(400).json({ message: 'Invalid tier specified' });
+      }
+
+      // Check if it's a valid upgrade path
+      const currentTier = agent.promoCodeType;
+      const tierHierarchy = { free: 0, silver: 1, gold: 2, diamond: 3 };
+
+      if (tierHierarchy[newTier] <= tierHierarchy[currentTier]) {
+        return res.status(400).json({ message: 'You can only upgrade to a higher tier' });
+      }
+    }
+
+    // Process promo code discount if applied
+    let promoCodeOwnerAgent = null;
+    if (appliedPromoCode && discountAmount > 0) {
+      promoCodeOwnerAgent = await Agent.findOne({
+        promoCode: appliedPromoCode,
+        isActive: true,
+        expirationDate: { $gt: now }
+      });
+
+      if (!promoCodeOwnerAgent) {
+        return res.status(400).json({ message: 'Applied promo code is invalid or expired' });
+      }
+    }
+
+    // Get promo config to calculate correct earning amount
+    const { PromoCodeConfig } = require('../models/HSC');
+    const promoConfig = await PromoCodeConfig.findOne();
+
+    // Helper function to calculate original price
+    const calculatePrice = () => {
+      // This should match the frontend calculation logic
+      // For now, we'll use the finalAmount as the base price
+      return finalAmount + (discountAmount || 0);
+    };
+
+    // Calculate correct earning amount based on promo config
+    // The earning should be based on the promo code being renewed/upgraded, not the referrer's tier
+    const getEarningAmount = () => {
+      if (!promoConfig || !appliedPromoCode || !discountAmount) return 0;
+
+      // Get the tier of the promo code being renewed/upgraded
+      const renewedTier = renewalType === 'upgrade' ? newTier : agent.promoCodeType;
+      const tierConfig = promoConfig[renewedTier];
+
+      // Return the earningForPurchase for that tier (e.g., Silver renewal = Silver earningForPurchase)
+      return tierConfig ? tierConfig.earningForPurchase : 0;
+    };
+
+    // Start transaction-like operations
+    try {
+      // 1. Update agent promo code
+      const updateData = {
+        isActive: true,
+        expirationDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // +1 year
+        expirationWarningEmailSent: false, // Reset email flags
+        expiredNotificationEmailSent: false
+      };
+
+      if (renewalType === 'upgrade') {
+        updateData.promoCodeType = newTier;
+      }
+
+      await Agent.findByIdAndUpdate(agent._id, updateData);
+
+      // 2. Create earning record if promo code was used for discount
+      if (appliedPromoCode && promoCodeOwnerAgent && discountAmount > 0) {
+        const earningAmount = getEarningAmount();
+
+        const earning = new Earning({
+          buyerEmail: user.email,
+          buyerId: user._id,
+          category: 'Promo Code Renewal',
+          amount: earningAmount, // Use correct earning amount from promo config
+          usedPromoCode: appliedPromoCode,
+          usedPromoCodeOwner: promoCodeOwnerAgent.email,
+          usedPromoCodeOwnerId: promoCodeOwnerAgent.userId,
+          item: `${renewalType === 'upgrade' ? 'Upgrade & Renew' : 'Renew'} - ${agent.promoCode}`,
+          itemType: renewalType === 'upgrade' ? newTier : agent.promoCodeType,
+          status: 'processed'
+        });
+        await earning.save();
+
+        // Update the promo code owner's earnings and stats
+        promoCodeOwnerAgent.totalEarnings += earningAmount;
+        promoCodeOwnerAgent.totalReferrals += 1;
+        promoCodeOwnerAgent.usedCount += 1;
+        await promoCodeOwnerAgent.save();
+      }
+
+      // 3. Create payment activity record
+      const PaymentActivity = require('../models/PaymentActivity');
+      const earningAmount = getEarningAmount();
+
+      const paymentActivity = new PaymentActivity({
+        userId: user._id,
+        buyerEmail: user.email,
+        item: `${renewalType === 'upgrade' ? 'Upgrade & Renew' : 'Renew'} - ${agent.promoCode}`,
+        quantity: 1,
+        category: 'Promo Code Renewal',
+        originalAmount: calculatePrice(),
+        amount: finalAmount,
+        discountedAmount: discountAmount || 0,
+        promoCode: appliedPromoCode || null,
+        promoCodeOwner: promoCodeOwnerAgent?.email || null,
+        promoCodeOwnerId: promoCodeOwnerAgent?.userId || null,
+        forEarns: earningAmount, // Use correct earning amount from promo config
+        purchasedPromoCode: agent.promoCode,
+        purchasedPromoCodeType: renewalType === 'upgrade' ? newTier : agent.promoCodeType,
+        paymentMethod: 'HSC Wallet',
+        status: 'completed',
+        transactionId: `RNW${Date.now()}${Math.floor(Math.random() * 1000)}`
+      });
+      await paymentActivity.save();
+
+      // 4. Update user HSC balance
+      user.hscBalance -= finalAmount;
+      await user.save();
+
+      // 5. Send success email
+      try {
+        const { sendPromoCodeRenewalSuccess } = require('../utils/emailService');
+        await sendPromoCodeRenewalSuccess(
+          user.email,
+          user.name,
+          agent.promoCode,
+          renewalType === 'upgrade' ? newTier : agent.promoCodeType,
+          renewalType,
+          updateData.expirationDate
+        );
+      } catch (emailError) {
+        console.error('Error sending renewal success email:', emailError);
+        // Don't fail the renewal if email fails
+      }
+
+      // 6. Create notification
+      await Notification.createNotification(
+        user._id,
+        `🎉 Promo Code ${renewalType === 'upgrade' ? 'Upgraded & Renewed' : 'Renewed'} Successfully!`,
+        `Your promo code ${agent.promoCode} has been ${renewalType === 'upgrade' ? `upgraded to ${newTier} and` : ''} renewed for another year. Continue earning commissions!`,
+        'purchase',
+        {
+          promoCode: agent.promoCode,
+          renewalType: renewalType,
+          newTier: renewalType === 'upgrade' ? newTier : agent.promoCodeType,
+          expirationDate: updateData.expirationDate,
+          transactionId: paymentActivity.transactionId
+        },
+        'high'
+      );
+
+      res.json({
+        success: true,
+        message: `Promo code ${renewalType === 'upgrade' ? 'upgraded and renewed' : 'renewed'} successfully`,
+        newBalance: user.hscBalance,
+        transactionId: paymentActivity.transactionId,
+        expirationDate: updateData.expirationDate,
+        newTier: renewalType === 'upgrade' ? newTier : agent.promoCodeType
+      });
+
+    } catch (error) {
+      console.error('Error during renewal process:', error);
+      throw error;
+    }
+
+  } catch (error) {
+    console.error('Renew promo code error:', error);
+    res.status(500).json({ message: 'Server error during renewal process' });
   }
 });
 

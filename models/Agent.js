@@ -86,6 +86,15 @@ const agentSchema = new mongoose.Schema({
   },
   verificationNotes: {
     type: String // Admin notes for verification
+  },
+  // Email tracking fields for expiration management
+  expirationWarningEmailSent: {
+    type: Boolean,
+    default: false
+  },
+  expiredNotificationEmailSent: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

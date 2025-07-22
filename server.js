@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const { initializePromoCodeScheduler } = require('./utils/promoCodeScheduler');
 
 // Load environment variables
 dotenv.config();
@@ -30,7 +31,10 @@ const connectDB = async () => {
 };
 
 // Connect to database
-connectDB();
+connectDB().then(() => {
+  // Initialize promo code expiration scheduler after DB connection
+  initializePromoCodeScheduler();
+});
 
 // Import routes
 const authRoutes = require('./routes/auth');
