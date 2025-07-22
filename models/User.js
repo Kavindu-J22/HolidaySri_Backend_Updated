@@ -77,6 +77,32 @@ const userSchema = new mongoose.Schema({
   },
   profileImage: {
     type: String
+  },
+  bankDetails: {
+    bank: {
+      type: String,
+      trim: true
+    },
+    branch: {
+      type: String,
+      trim: true
+    },
+    accountNo: {
+      type: String,
+      trim: true
+    },
+    accountName: {
+      type: String,
+      trim: true
+    },
+    postalCode: {
+      type: String,
+      trim: true
+    },
+    buynanId: {
+      type: String,
+      trim: true
+    }
   }
 }, {
   timestamps: true
