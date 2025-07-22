@@ -118,7 +118,7 @@ const checkExpiredPromoCodes = async () => {
             agent.userId._id,
             '🔴 Promo Code Expired',
             `Your ${agent.promoCodeType} promo code ${agent.promoCode} has expired and been deactivated. Renew now to continue earning!`,
-            'error',
+            'system',
             {
               promoCode: agent.promoCode,
               promoType: agent.promoCodeType,
