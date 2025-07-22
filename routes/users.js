@@ -336,4 +336,89 @@ router.get('/agent-verification-status', verifyToken, async (req, res) => {
   }
 });
 
+// Toggle agent promo code active status
+router.put('/agent-toggle-status', verifyToken, async (req, res) => {
+  try {
+    // Check if user is an agent
+    const agent = await Agent.findOne({ userId: req.user._id });
+
+    if (!agent) {
+      return res.status(403).json({ message: 'Access denied. User is not an agent.' });
+    }
+
+    // Toggle the isActive status
+    const updatedAgent = await Agent.findByIdAndUpdate(
+      agent._id,
+      { isActive: !agent.isActive },
+      { new: true, runValidators: true }
+    );
+
+    res.json({
+      message: `Promo code ${updatedAgent.isActive ? 'activated' : 'deactivated'} successfully`,
+      isActive: updatedAgent.isActive
+    });
+
+  } catch (error) {
+    console.error('Toggle agent status error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Upgrade agent promo code tier
+router.put('/agent-upgrade-tier', verifyToken, async (req, res) => {
+  try {
+    // Check if user is an agent
+    const agent = await Agent.findOne({ userId: req.user._id, isActive: true });
+
+    if (!agent) {
+      return res.status(403).json({ message: 'Access denied. User is not an agent.' });
+    }
+
+    let newTier = '';
+    let requiredUsage = 0;
+
+    // Determine upgrade path
+    switch (agent.promoCodeType) {
+      case 'free':
+        newTier = 'silver';
+        requiredUsage = 700;
+        break;
+      case 'silver':
+        newTier = 'gold';
+        requiredUsage = 1500;
+        break;
+      case 'gold':
+        newTier = 'diamond';
+        requiredUsage = 2500;
+        break;
+      default:
+        return res.status(400).json({ message: 'No upgrade available for this tier' });
+    }
+
+    // Check if agent meets usage requirements
+    if (agent.usedCount < requiredUsage) {
+      return res.status(400).json({
+        message: `Insufficient usage. Need ${requiredUsage} uses, currently have ${agent.usedCount}`
+      });
+    }
+
+    // Upgrade the tier
+    const updatedAgent = await Agent.findByIdAndUpdate(
+      agent._id,
+      { promoCodeType: newTier },
+      { new: true, runValidators: true }
+    );
+
+    res.json({
+      message: `Congratulations! Your promo code has been upgraded to ${newTier.toUpperCase()}!`,
+      newTier: newTier,
+      previousTier: agent.promoCodeType
+    });
+
+  } catch (error) {
+    console.error('Upgrade tier error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;
