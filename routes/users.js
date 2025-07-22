@@ -188,9 +188,11 @@ router.get('/agent-dashboard', verifyToken, async (req, res) => {
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
 
-    const totalReferrals = await Earning.countDocuments({
+    // Count unique buyers (people referred) instead of total earnings
+    const uniqueBuyers = await Earning.distinct('buyerId', {
       usedPromoCodeOwnerId: req.user._id
     });
+    const totalReferrals = uniqueBuyers.length;
 
     res.json({
       isAgent: true,
@@ -579,8 +581,19 @@ router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
 
         // Update the promo code owner's earnings and stats
         promoCodeOwnerAgent.totalEarnings += earningAmount;
-        promoCodeOwnerAgent.totalReferrals += 1;
-        promoCodeOwnerAgent.usedCount += 1;
+
+        // Check if this is a new unique buyer (referral)
+        const existingEarning = await Earning.findOne({
+          usedPromoCodeOwnerId: promoCodeOwnerAgent.userId,
+          buyerId: user._id
+        });
+
+        // Only increment totalReferrals if this is the first time this buyer used the promo code
+        if (!existingEarning) {
+          promoCodeOwnerAgent.totalReferrals += 1;
+        }
+
+        promoCodeOwnerAgent.usedCount += 1; // Always increment used count (total times code was used)
         await promoCodeOwnerAgent.save();
       }
 
