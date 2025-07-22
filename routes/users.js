@@ -719,4 +719,177 @@ router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
   }
 });
 
+// Get user's promocode earnings
+router.get('/promocode-earnings', verifyToken, async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+
+    // Get all earnings where user is the promo code owner
+    const earnings = await Earning.find({
+      usedPromoCodeOwner: userEmail
+    }).populate('buyerId', 'name email').sort({ createdAt: -1 });
+
+    // Calculate totals by status
+    const totals = {
+      pending: 0,
+      processed: 0,
+      paid: 0,
+      total: 0
+    };
+
+    earnings.forEach(earning => {
+      totals[earning.status] += earning.amount;
+      totals.total += earning.amount;
+    });
+
+    // Get pending earnings for claim validation
+    const pendingEarnings = earnings.filter(earning => earning.status === 'pending');
+
+    res.json({
+      success: true,
+      earnings,
+      totals,
+      pendingEarnings,
+      canClaim: totals.pending >= 5000 // Minimum claim amount
+    });
+
+  } catch (error) {
+    console.error('Get promocode earnings error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Check if user has complete bank details for claiming
+router.get('/bank-details-status', verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    const bankDetails = user.bankDetails || {};
+
+    // Check if user has complete bank details OR binance ID
+    const hasCompleteBankDetails = bankDetails.bank &&
+                                  bankDetails.branch &&
+                                  bankDetails.accountNo &&
+                                  bankDetails.accountName &&
+                                  bankDetails.postalCode;
+
+    const hasBinanceId = bankDetails.binanceId && bankDetails.binanceId.trim();
+
+    const canClaim = hasCompleteBankDetails || hasBinanceId;
+
+    res.json({
+      success: true,
+      canClaim,
+      hasCompleteBankDetails,
+      hasBinanceId,
+      bankDetails: canClaim ? {
+        bank: bankDetails.bank || '',
+        branch: bankDetails.branch || '',
+        accountNo: bankDetails.accountNo || '',
+        accountName: bankDetails.accountName || '',
+        postalCode: bankDetails.postalCode || '',
+        binanceId: bankDetails.binanceId || ''
+      } : null
+    });
+
+  } catch (error) {
+    console.error('Check bank details status error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Claim selected earnings
+router.post('/claim-earnings', verifyToken, async (req, res) => {
+  try {
+    const { earningIds } = req.body;
+    const userEmail = req.user.email;
+
+    if (!earningIds || !Array.isArray(earningIds) || earningIds.length === 0) {
+      return res.status(400).json({ message: 'Please select earnings to claim' });
+    }
+
+    // Verify user has complete bank details or Binance ID
+    const user = await User.findById(req.user._id);
+    const bankDetails = user.bankDetails || {};
+
+    const hasCompleteBankDetails = bankDetails.bank &&
+                                  bankDetails.branch &&
+                                  bankDetails.accountNo &&
+                                  bankDetails.accountName &&
+                                  bankDetails.postalCode;
+    const hasBinanceId = bankDetails.binanceId && bankDetails.binanceId.trim();
+
+    if (!hasCompleteBankDetails && !hasBinanceId) {
+      return res.status(400).json({
+        message: 'Please complete your bank details or add Binance ID before claiming earnings'
+      });
+    }
+
+    // Get the selected earnings and verify they belong to the user and are pending
+    const earnings = await Earning.find({
+      _id: { $in: earningIds },
+      usedPromoCodeOwner: userEmail,
+      status: 'pending'
+    });
+
+    if (earnings.length !== earningIds.length) {
+      return res.status(400).json({
+        message: 'Some selected earnings are invalid or already processed'
+      });
+    }
+
+    // Calculate total amount
+    const totalAmount = earnings.reduce((sum, earning) => sum + earning.amount, 0);
+
+    // Check minimum claim amount
+    if (totalAmount < 5000) {
+      return res.status(400).json({
+        message: 'Minimum claim amount is 5,000 LKR'
+      });
+    }
+
+    // Update earnings status to processed
+    await Earning.updateMany(
+      { _id: { $in: earningIds } },
+      {
+        status: 'processed',
+        processedAt: new Date()
+      }
+    );
+
+    // Create a claim request record (for admin tracking)
+    const ClaimRequest = require('../models/ClaimRequest');
+    const claimRequest = new ClaimRequest({
+      userId: req.user._id,
+      userEmail: userEmail,
+      earningIds: earningIds,
+      totalAmount: totalAmount,
+      bankDetails: {
+        bank: bankDetails.bank || '',
+        branch: bankDetails.branch || '',
+        accountNo: bankDetails.accountNo || '',
+        accountName: bankDetails.accountName || '',
+        postalCode: bankDetails.postalCode || '',
+        binanceId: bankDetails.binanceId || ''
+      },
+      status: 'pending'
+    });
+
+    await claimRequest.save();
+
+    res.json({
+      success: true,
+      message: 'Claim request submitted successfully! Your earnings are now being processed.',
+      claimRequest: {
+        id: claimRequest._id,
+        totalAmount: totalAmount,
+        earningsCount: earnings.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Claim earnings error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

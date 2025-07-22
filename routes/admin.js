@@ -3,6 +3,8 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { HSCConfig, HSCTransaction, HSCPackage } = require('../models/HSC');
 const Advertisement = require('../models/Advertisement');
+const ClaimRequest = require('../models/ClaimRequest');
+const Earning = require('../models/Earning');
 const { verifyAdmin, verifyAdminToken } = require('../middleware/auth');
 
 const router = express.Router();
@@ -369,6 +371,173 @@ router.delete('/hsc-packages/:packageId', verifyAdminToken, async (req, res) => 
 
   } catch (error) {
     console.error('Delete HSC package error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get all claiming requests
+router.get('/claim-requests', verifyAdminToken, async (req, res) => {
+  try {
+    const { status = 'all', page = 1, limit = 20 } = req.query;
+
+    // Build query
+    const query = {};
+    if (status !== 'all') {
+      query.status = status;
+    }
+
+    // Get claim requests with user details and earnings
+    const claimRequests = await ClaimRequest.find(query)
+      .populate('userId', 'name email')
+      .populate({
+        path: 'earningIds',
+        populate: {
+          path: 'buyerId',
+          select: 'name email'
+        }
+      })
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await ClaimRequest.countDocuments(query);
+
+    res.json({
+      success: true,
+      claimRequests,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get claim requests error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Approve claim request (update earnings to paid)
+router.post('/claim-requests/:id/approve', verifyAdminToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminNote } = req.body;
+    const adminUsername = req.admin.username;
+
+    // Get the claim request
+    const claimRequest = await ClaimRequest.findById(id)
+      .populate('userId', 'name email')
+      .populate('earningIds');
+
+    if (!claimRequest) {
+      return res.status(404).json({ message: 'Claim request not found' });
+    }
+
+    if (claimRequest.status !== 'pending') {
+      return res.status(400).json({ message: 'Claim request already processed' });
+    }
+
+    // Update earnings status to paid
+    await Earning.updateMany(
+      { _id: { $in: claimRequest.earningIds } },
+      {
+        status: 'paid',
+        paidAt: new Date()
+      }
+    );
+
+    // Update claim request status
+    claimRequest.status = 'approved';
+    claimRequest.adminNote = adminNote || '';
+    claimRequest.processedBy = adminUsername;
+    claimRequest.processedAt = new Date();
+    await claimRequest.save();
+
+    // Send email to user (implement email service)
+    try {
+      const nodemailer = require('nodemailer');
+
+      // Create transporter (configure with your email service)
+      const transporter = nodemailer.createTransport({
+        service: 'gmail', // or your email service
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        }
+      });
+
+      const emailContent = `
+        <h2>Claim Request Approved</h2>
+        <p>Dear ${claimRequest.userId.name},</p>
+        <p>Your earning claim request has been approved and processed.</p>
+        <p><strong>Total Amount:</strong> ${claimRequest.totalAmount.toLocaleString()} LKR</p>
+        <p><strong>Earnings Count:</strong> ${claimRequest.earningIds.length}</p>
+        ${adminNote ? `<p><strong>Admin Note:</strong> ${adminNote}</p>` : ''}
+        <p>The payment will be processed to your registered bank account or Binance ID within 3-5 business days.</p>
+        <p>Thank you for using Holidaysri!</p>
+      `;
+
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: claimRequest.userId.email,
+        subject: 'Claim Request Approved - Holidaysri',
+        html: emailContent
+      });
+
+    } catch (emailError) {
+      console.error('Email sending error:', emailError);
+      // Don't fail the request if email fails
+    }
+
+    res.json({
+      success: true,
+      message: 'Claim request approved successfully',
+      claimRequest
+    });
+
+  } catch (error) {
+    console.error('Approve claim request error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get claim request statistics
+router.get('/claim-requests/stats', verifyAdminToken, async (req, res) => {
+  try {
+    const stats = await ClaimRequest.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$totalAmount' }
+        }
+      }
+    ]);
+
+    const formattedStats = {
+      pending: { count: 0, totalAmount: 0 },
+      approved: { count: 0, totalAmount: 0 },
+      rejected: { count: 0, totalAmount: 0 }
+    };
+
+    stats.forEach(stat => {
+      if (formattedStats[stat._id]) {
+        formattedStats[stat._id] = {
+          count: stat.count,
+          totalAmount: stat.totalAmount
+        };
+      }
+    });
+
+    res.json({
+      success: true,
+      stats: formattedStats
+    });
+
+  } catch (error) {
+    console.error('Get claim request stats error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
