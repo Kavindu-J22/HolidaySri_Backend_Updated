@@ -21,13 +21,54 @@ router.get('/profile', verifyToken, async (req, res) => {
 // Update user profile
 router.put('/profile', verifyToken, async (req, res) => {
   try {
-    const { name, contactNumber, countryCode, profileImage } = req.body;
+    const { name, contactNumber, countryCode, profileImage, bankDetails } = req.body;
 
     const updateData = {};
     if (name) updateData.name = name;
     if (contactNumber) updateData.contactNumber = contactNumber;
     if (countryCode) updateData.countryCode = countryCode;
     if (profileImage) updateData.profileImage = profileImage;
+
+    // Handle bank details with validation
+    if (bankDetails) {
+      const { bank, branch, accountNo, accountName, postalCode, binanceId } = bankDetails;
+
+      // Get current user's bank details to preserve existing data
+      const currentUser = await User.findById(req.user._id);
+      const currentBankDetails = currentUser.bankDetails || {};
+
+      // If any bank field is provided (except binanceId), validate that all required bank fields are present
+      const bankFieldsProvided = [bank, branch, accountNo, accountName, postalCode].some(field => field && field.trim());
+
+      if (bankFieldsProvided) {
+        // Validate that all required bank fields are provided
+        if (!bank || !bank.trim()) {
+          return res.status(400).json({ message: 'Bank name is required when providing bank details' });
+        }
+        if (!branch || !branch.trim()) {
+          return res.status(400).json({ message: 'Branch name is required when providing bank details' });
+        }
+        if (!accountNo || !accountNo.trim()) {
+          return res.status(400).json({ message: 'Account number is required when providing bank details' });
+        }
+        if (!accountName || !accountName.trim()) {
+          return res.status(400).json({ message: 'Account name is required when providing bank details' });
+        }
+        if (!postalCode || !postalCode.trim()) {
+          return res.status(400).json({ message: 'Postal code is required when providing bank details' });
+        }
+      }
+
+      // Update bank details - preserve existing values if not provided
+      updateData.bankDetails = {
+        bank: bank !== undefined ? (bank ? bank.trim() : '') : (currentBankDetails.bank || ''),
+        branch: branch !== undefined ? (branch ? branch.trim() : '') : (currentBankDetails.branch || ''),
+        accountNo: accountNo !== undefined ? (accountNo ? accountNo.trim() : '') : (currentBankDetails.accountNo || ''),
+        accountName: accountName !== undefined ? (accountName ? accountName.trim() : '') : (currentBankDetails.accountName || ''),
+        postalCode: postalCode !== undefined ? (postalCode ? postalCode.trim() : '') : (currentBankDetails.postalCode || ''),
+        binanceId: binanceId !== undefined ? (binanceId ? binanceId.trim() : '') : (currentBankDetails.binanceId || '')
+      };
+    }
 
     const user = await User.findByIdAndUpdate(
       req.user._id,
