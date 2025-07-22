@@ -99,7 +99,7 @@ const userSchema = new mongoose.Schema({
       type: String,
       trim: true
     },
-    buynanId: {
+    binanceId: {
       type: String,
       trim: true
     }
