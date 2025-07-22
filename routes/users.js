@@ -174,8 +174,8 @@ router.delete('/account', verifyToken, async (req, res) => {
 // Get agent dashboard data
 router.get('/agent-dashboard', verifyToken, async (req, res) => {
   try {
-    // Check if user is an agent
-    const agent = await Agent.findOne({ userId: req.user._id, isActive: true });
+    // Check if user is an agent (regardless of active status)
+    const agent = await Agent.findOne({ userId: req.user._id });
 
     if (!agent) {
       return res.json({ isAgent: false });
@@ -315,8 +315,8 @@ router.post('/agent-verification', verifyToken, async (req, res) => {
 // Get agent verification status
 router.get('/agent-verification-status', verifyToken, async (req, res) => {
   try {
-    // Check if user is an agent
-    const agent = await Agent.findOne({ userId: req.user._id, isActive: true });
+    // Check if user is an agent (regardless of active status)
+    const agent = await Agent.findOne({ userId: req.user._id });
 
     if (!agent) {
       return res.status(403).json({ message: 'Access denied. User is not an agent.' });
@@ -367,8 +367,8 @@ router.put('/agent-toggle-status', verifyToken, async (req, res) => {
 // Upgrade agent promo code tier
 router.put('/agent-upgrade-tier', verifyToken, async (req, res) => {
   try {
-    // Check if user is an agent
-    const agent = await Agent.findOne({ userId: req.user._id, isActive: true });
+    // Check if user is an agent (regardless of active status)
+    const agent = await Agent.findOne({ userId: req.user._id });
 
     if (!agent) {
       return res.status(403).json({ message: 'Access denied. User is not an agent.' });
