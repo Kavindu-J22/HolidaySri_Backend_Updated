@@ -468,21 +468,92 @@ router.post('/claim-requests/:id/approve', verifyAdminToken, async (req, res) =>
         }
       });
 
+      // Format bank details for email
+      const bankDetailsHtml = claimRequest.bankDetails.binanceId
+        ? `
+          <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+            <h4 style="color: #495057; margin: 0 0 10px 0;">Payment Method: Binance Transfer</h4>
+            <p style="margin: 5px 0;"><strong>Binance ID:</strong> ${claimRequest.bankDetails.binanceId}</p>
+          </div>
+        `
+        : `
+          <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+            <h4 style="color: #495057; margin: 0 0 10px 0;">Payment Method: Bank Transfer</h4>
+            <p style="margin: 5px 0;"><strong>Bank:</strong> ${claimRequest.bankDetails.bank}</p>
+            <p style="margin: 5px 0;"><strong>Branch:</strong> ${claimRequest.bankDetails.branch}</p>
+            <p style="margin: 5px 0;"><strong>Account Number:</strong> ****${claimRequest.bankDetails.accountNo?.slice(-4)}</p>
+            <p style="margin: 5px 0;"><strong>Account Name:</strong> ${claimRequest.bankDetails.accountName}</p>
+          </div>
+        `;
+
       const emailContent = `
-        <h2>Claim Request Approved</h2>
-        <p>Dear ${claimRequest.userId.name},</p>
-        <p>Your earning claim request has been approved and processed.</p>
-        <p><strong>Total Amount:</strong> ${claimRequest.totalAmount.toLocaleString()} LKR</p>
-        <p><strong>Earnings Count:</strong> ${claimRequest.earningIds.length}</p>
-        ${adminNote ? `<p><strong>Admin Note:</strong> ${adminNote}</p>` : ''}
-        <p>The payment will be processed to your registered bank account or Binance ID within 3-5 business days.</p>
-        <p>Thank you for using Holidaysri!</p>
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Payment Confirmation - Holidaysri</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 28px;">Payment Confirmation</h1>
+            <p style="color: #f8f9fa; margin: 10px 0 0 0; font-size: 16px;">Your earnings have been successfully transferred</p>
+          </div>
+
+          <div style="background: white; padding: 30px; border: 1px solid #e9ecef; border-top: none; border-radius: 0 0 10px 10px;">
+            <p style="font-size: 18px; margin-bottom: 20px;">Dear <strong>${claimRequest.userId.name}</strong>,</p>
+
+            <div style="background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
+              <h2 style="margin: 0 0 10px 0; font-size: 24px;">✅ Payment Completed</h2>
+              <p style="margin: 0; font-size: 18px; font-weight: bold;">${claimRequest.totalAmount.toLocaleString()} LKR</p>
+              <p style="margin: 5px 0 0 0; opacity: 0.9;">has been transferred to your account</p>
+            </div>
+
+            <h3 style="color: #495057; border-bottom: 2px solid #e9ecef; padding-bottom: 10px;">Transaction Details</h3>
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+              <p style="margin: 5px 0;"><strong>Transaction ID:</strong> ${claimRequest._id}</p>
+              <p style="margin: 5px 0;"><strong>Total Amount:</strong> ${claimRequest.totalAmount.toLocaleString()} LKR</p>
+              <p style="margin: 5px 0;"><strong>Earnings Count:</strong> ${claimRequest.earningIds.length} referral earnings</p>
+              <p style="margin: 5px 0;"><strong>Processed Date:</strong> ${new Date().toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}</p>
+            </div>
+
+            ${bankDetailsHtml}
+
+            ${adminNote ? `
+              <div style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #2196f3;">
+                <h4 style="color: #1976d2; margin: 0 0 10px 0;">Admin Note</h4>
+                <p style="margin: 0; color: #1565c0;">${adminNote}</p>
+              </div>
+            ` : ''}
+
+            <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
+              <p style="margin: 0; color: #856404;"><strong>Important:</strong> Please verify that you have received the payment in your account. If you have any questions or concerns, please contact our support team.</p>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+              <p style="color: #6c757d; margin: 0;">Thank you for being a valued partner with</p>
+              <h3 style="color: #495057; margin: 10px 0;">🏝️ Holidaysri</h3>
+              <p style="color: #6c757d; margin: 0; font-size: 14px;">Your trusted travel platform</p>
+            </div>
+
+            <div style="border-top: 1px solid #e9ecef; padding-top: 20px; text-align: center; color: #6c757d; font-size: 12px;">
+              <p>This is an automated message. Please do not reply to this email.</p>
+              <p>© ${new Date().getFullYear()} Holidaysri. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
       `;
 
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: claimRequest.userId.email,
-        subject: 'Claim Request Approved - Holidaysri',
+        subject: `✅ Payment Confirmation - ${claimRequest.totalAmount.toLocaleString()} LKR Transferred | Holidaysri`,
         html: emailContent
       });
 
