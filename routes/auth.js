@@ -229,7 +229,8 @@ router.post('/login', async (req, res) => {
         countryCode: user.countryCode,
         hscBalance: user.hscBalance,
         isEmailVerified: user.isEmailVerified,
-        profileImage: user.profileImage
+        profileImage: user.profileImage,
+        bankDetails: user.bankDetails || null
       }
     });
 
@@ -283,7 +284,8 @@ router.post('/google', async (req, res) => {
           countryCode: user.countryCode,
           hscBalance: user.hscBalance,
           isEmailVerified: user.isEmailVerified,
-          profileImage: user.profileImage
+          profileImage: user.profileImage,
+          bankDetails: user.bankDetails || null
         }
       });
     } else {
@@ -319,7 +321,8 @@ router.get('/me', verifyToken, async (req, res) => {
         hscBalance: req.user.hscBalance,
         isEmailVerified: req.user.isEmailVerified,
         profileImage: req.user.profileImage,
-        lastLogin: req.user.lastLogin
+        lastLogin: req.user.lastLogin,
+        bankDetails: req.user.bankDetails || null
       }
     });
   } catch (error) {
