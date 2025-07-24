@@ -613,4 +613,151 @@ router.get('/claim-requests/stats', verifyAdminToken, async (req, res) => {
   }
 });
 
+// Get HSC earned claim requests
+router.get('/hsc-earned-claims', verifyAdminToken, async (req, res) => {
+  try {
+    const HSCEarnedClaimRequest = require('../models/HSCEarnedClaimRequest');
+    const { status = 'all', page = 1, limit = 10, search = '' } = req.query;
+
+    // Build query
+    let query = {};
+    if (status !== 'all') {
+      query.status = status;
+    }
+    if (search) {
+      query.$or = [
+        { userEmail: { $regex: search, $options: 'i' } },
+        { 'bankDetails.accountName': { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Get paginated results
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const claimRequests = await HSCEarnedClaimRequest.find(query)
+      .populate('userId', 'name email')
+      .populate('hscEarnedIds')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await HSCEarnedClaimRequest.countDocuments(query);
+
+    res.json({
+      claimRequests,
+      pagination: {
+        current: parseInt(page),
+        pages: Math.ceil(total / parseInt(limit)),
+        total
+      }
+    });
+
+  } catch (error) {
+    console.error('Get HSC earned claim requests error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get HSC earned claim request stats
+router.get('/hsc-earned-claims/stats', verifyAdminToken, async (req, res) => {
+  try {
+    const HSCEarnedClaimRequest = require('../models/HSCEarnedClaimRequest');
+
+    const stats = await HSCEarnedClaimRequest.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalHSCAmount: { $sum: '$totalHSCAmount' },
+          totalLKRAmount: { $sum: '$totalLKRAmount' }
+        }
+      }
+    ]);
+
+    const formattedStats = {
+      pending: { count: 0, totalHSCAmount: 0, totalLKRAmount: 0 },
+      approved: { count: 0, totalHSCAmount: 0, totalLKRAmount: 0 },
+      rejected: { count: 0, totalHSCAmount: 0, totalLKRAmount: 0 }
+    };
+
+    stats.forEach(stat => {
+      if (formattedStats[stat._id]) {
+        formattedStats[stat._id] = {
+          count: stat.count,
+          totalHSCAmount: stat.totalHSCAmount,
+          totalLKRAmount: stat.totalLKRAmount
+        };
+      }
+    });
+
+    res.json(formattedStats);
+
+  } catch (error) {
+    console.error('Get HSC earned claim stats error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Approve HSC earned claim request
+router.post('/hsc-earned-claims/:requestId/approve', verifyAdminToken, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { adminNote = '' } = req.body;
+    const HSCEarnedClaimRequest = require('../models/HSCEarnedClaimRequest');
+    const HSCEarned = require('../models/HSCEarned');
+    const emailService = require('../utils/emailService');
+
+    // Find the claim request
+    const claimRequest = await HSCEarnedClaimRequest.findById(requestId)
+      .populate('userId', 'name email')
+      .populate('hscEarnedIds');
+
+    if (!claimRequest) {
+      return res.status(404).json({ message: 'Claim request not found' });
+    }
+
+    if (claimRequest.status !== 'pending') {
+      return res.status(400).json({ message: 'Only pending requests can be approved' });
+    }
+
+    // Update claim request status
+    claimRequest.status = 'approved';
+    claimRequest.adminNote = adminNote;
+    claimRequest.processedBy = req.admin.email;
+    claimRequest.processedAt = new Date();
+    await claimRequest.save();
+
+    // Update HSC earned records status to 'paid As LKR'
+    await HSCEarned.updateMany(
+      { _id: { $in: claimRequest.hscEarnedIds } },
+      {
+        status: 'paid As LKR',
+        updatedAt: new Date()
+      }
+    );
+
+    // Send email notification to user
+    try {
+      await emailService.sendHSCEarnedClaimApprovalEmail(
+        claimRequest.userEmail,
+        claimRequest.userId.name,
+        claimRequest.totalHSCAmount,
+        claimRequest.totalLKRAmount
+      );
+    } catch (emailError) {
+      console.error('Failed to send approval email:', emailError);
+      // Don't fail the request if email fails
+    }
+
+    res.json({
+      success: true,
+      message: 'HSC earned claim request approved successfully',
+      claimRequest
+    });
+
+  } catch (error) {
+    console.error('Approve HSC earned claim error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

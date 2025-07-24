@@ -697,6 +697,115 @@ const sendPromoCodePurchaseSuccess = async (buyerEmail, buyerName, promoCodeDeta
   }
 };
 
+// Send HSC earned claim approval notification email
+const sendHSCEarnedClaimApprovalEmail = async (email, name, hscAmount, lkrAmount) => {
+  const transporter = createTransporter();
+
+  const formattedDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri Tourism',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: 'HSC Earned Claim Approved - Bank Transfer Completed',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8f9fa;">
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 20px; text-align: center;">
+          <div style="background-color: rgba(255, 255, 255, 0.1); width: 80px; height: 80px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+            <div style="color: white; font-size: 36px; font-weight: bold;">✓</div>
+          </div>
+          <h1 style="color: white; margin: 0; font-size: 28px; font-weight: bold;">
+            HSC Earned Claim Approved!
+          </h1>
+          <p style="color: rgba(255, 255, 255, 0.9); margin: 10px 0 0 0; font-size: 16px;">
+            Your bank transfer has been completed successfully
+          </p>
+        </div>
+
+        <div style="background-color: white; padding: 40px 30px;">
+          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+            Dear ${name},
+          </p>
+
+          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 25px 0;">
+            Great news! Your HSC earned claim has been approved and the bank transfer has been completed successfully.
+          </p>
+
+          <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 12px; padding: 25px; margin: 25px 0; text-align: center;">
+            <div style="color: white; font-size: 32px; font-weight: bold; margin-bottom: 8px;">
+              ${lkrAmount.toLocaleString()} LKR
+            </div>
+            <div style="color: rgba(255, 255, 255, 0.9); font-size: 16px; margin-bottom: 15px;">
+              (${hscAmount.toLocaleString()} HSC converted)
+            </div>
+            <div style="background-color: rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 12px; display: inline-block;">
+              <div style="color: white; font-size: 14px; font-weight: 500;">
+                Transfer Date: ${formattedDate}
+              </div>
+            </div>
+          </div>
+
+          <div style="background-color: #f3f4f6; border-radius: 8px; padding: 20px; margin: 25px 0;">
+            <h3 style="color: #374151; margin: 0 0 15px 0; font-size: 18px;">
+              What happens next?
+            </h3>
+            <ul style="color: #6b7280; margin: 0; padding-left: 20px; line-height: 1.6;">
+              <li style="margin-bottom: 8px;">The amount has been transferred to your registered bank account</li>
+              <li style="margin-bottom: 8px;">Please allow 1-3 business days for the transfer to reflect in your account</li>
+              <li style="margin-bottom: 8px;">Your HSC earned records have been updated to "Paid as LKR" status</li>
+              <li>You can continue earning more HSC through our platform activities</li>
+            </ul>
+          </div>
+
+          <div style="background-color: #dbeafe; border-left: 4px solid #3b82f6; padding: 15px; margin: 25px 0;">
+            <p style="color: #1e40af; margin: 0; font-size: 14px;">
+              <strong>Note:</strong> If you don't see the transfer in your account within 3 business days,
+              please contact our support team with your claim reference.
+            </p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="http://localhost:5173/hsc-earnings-claim"
+               style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; padding: 12px 30px; border-radius: 8px; font-weight: 600; display: inline-block; transition: all 0.3s ease;">
+              View HSC Earnings
+            </a>
+          </div>
+
+          <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 25px 0 0 0;">
+            Thank you for being a valued member of the Holidaysri Tourism community.
+            Keep earning and growing with us!
+          </p>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri Tourism. All rights reserved.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
+              This is an automated message, please do not reply to this email.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('HSC earned claim approval email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   generateOTP,
   sendEmailVerificationOTP,
@@ -706,5 +815,6 @@ module.exports = {
   sendPromoCodeExpiredNotification,
   sendPromoCodeRenewalSuccess,
   sendPromoCodeSoldNotification,
-  sendPromoCodePurchaseSuccess
+  sendPromoCodePurchaseSuccess,
+  sendHSCEarnedClaimApprovalEmail
 };

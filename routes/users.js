@@ -1062,4 +1062,244 @@ router.post('/edit-selling', verifyToken, async (req, res) => {
   }
 });
 
+// Get HSC earned totals and records
+router.get('/hsc-earned', verifyToken, async (req, res) => {
+  try {
+    const HSCEarned = require('../models/HSCEarned');
+    const HSCConfig = require('../models/HSC').HSCConfig;
+
+    // Get current HSC value for conversion
+    const hscConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
+    const hscValue = hscConfig ? hscConfig.hscValue : 100;
+
+    // Get user's HSC earned records grouped by status
+    const hscEarnedRecords = await HSCEarned.find({ userId: req.user._id })
+      .populate('buyerUserId', 'name email')
+      .sort({ createdAt: -1 });
+
+    // Calculate totals by status
+    const totals = {
+      completed: 0,
+      processing: 0,
+      paidAsLKR: 0,
+      paidAsHSC: 0,
+      total: 0
+    };
+
+    const recordsByStatus = {
+      completed: [],
+      processing: [],
+      paidAsLKR: [],
+      paidAsHSC: []
+    };
+
+    hscEarnedRecords.forEach(record => {
+      const amount = record.earnedAmount;
+      totals.total += amount;
+
+      switch (record.status) {
+        case 'completed':
+          totals.completed += amount;
+          recordsByStatus.completed.push(record);
+          break;
+        case 'processing':
+          totals.processing += amount;
+          recordsByStatus.processing.push(record);
+          break;
+        case 'paid As LKR':
+          totals.paidAsLKR += amount;
+          recordsByStatus.paidAsLKR.push(record);
+          break;
+        case 'paid As HSC':
+          totals.paidAsHSC += amount;
+          recordsByStatus.paidAsHSC.push(record);
+          break;
+      }
+    });
+
+    res.json({
+      success: true,
+      totals,
+      records: recordsByStatus,
+      hscValue,
+      currency: hscConfig ? hscConfig.currency : 'LKR'
+    });
+
+  } catch (error) {
+    console.error('Get HSC earned error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Convert HSC earnings to HSC tokens
+router.post('/convert-hsc-earned-to-tokens', verifyToken, async (req, res) => {
+  try {
+    const HSCEarned = require('../models/HSCEarned');
+    const HSCTransaction = require('../models/HSC').HSCTransaction;
+
+    // Get all completed HSC earned records for the user
+    const completedEarnings = await HSCEarned.find({
+      userId: req.user._id,
+      status: 'completed'
+    });
+
+    if (completedEarnings.length === 0) {
+      return res.status(400).json({ message: 'No completed HSC earnings found to convert' });
+    }
+
+    // Calculate total HSC amount
+    const totalHSCAmount = completedEarnings.reduce((sum, earning) => sum + earning.earnedAmount, 0);
+
+    // Update user's HSC balance
+    const user = await User.findById(req.user._id);
+    const previousBalance = user.hscBalance;
+    user.hscBalance += totalHSCAmount;
+    await user.save();
+
+    // Create HSC transaction record
+    const hscTransaction = new HSCTransaction({
+      userId: req.user._id,
+      tokenType: 'HSC',
+      type: 'bonus',
+      amount: totalHSCAmount,
+      description: `Converted HSC earnings to tokens (${completedEarnings.length} records)`,
+      balanceBefore: previousBalance,
+      balanceAfter: user.hscBalance,
+      paymentDetails: {
+        paymentStatus: 'completed'
+      }
+    });
+    await hscTransaction.save();
+
+    // Update all completed earnings status to 'paid As HSC'
+    await HSCEarned.updateMany(
+      { _id: { $in: completedEarnings.map(e => e._id) } },
+      {
+        status: 'paid As HSC',
+        updatedAt: new Date()
+      }
+    );
+
+    res.json({
+      success: true,
+      message: `Successfully converted ${totalHSCAmount} HSC earnings to tokens`,
+      data: {
+        convertedAmount: totalHSCAmount,
+        recordsCount: completedEarnings.length,
+        newHSCBalance: user.hscBalance,
+        previousBalance: previousBalance
+      }
+    });
+
+  } catch (error) {
+    console.error('Convert HSC earned to tokens error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Create HSC earned claim request for LKR withdrawal
+router.post('/claim-hsc-earned', verifyToken, async (req, res) => {
+  try {
+    const { hscEarnedIds } = req.body;
+    const HSCEarned = require('../models/HSCEarned');
+    const HSCEarnedClaimRequest = require('../models/HSCEarnedClaimRequest');
+    const HSCConfig = require('../models/HSC').HSCConfig;
+
+    if (!hscEarnedIds || !Array.isArray(hscEarnedIds) || hscEarnedIds.length === 0) {
+      return res.status(400).json({ message: 'Please select HSC earnings to claim' });
+    }
+
+    // Get current HSC value for conversion
+    const hscConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
+    const hscValue = hscConfig ? hscConfig.hscValue : 100;
+
+    // Validate that all selected earnings belong to the user and are completed
+    const selectedEarnings = await HSCEarned.find({
+      _id: { $in: hscEarnedIds },
+      userId: req.user._id,
+      status: 'completed'
+    });
+
+    if (selectedEarnings.length !== hscEarnedIds.length) {
+      return res.status(400).json({ message: 'Some selected earnings are invalid or not available for claim' });
+    }
+
+    // Calculate totals
+    const totalHSCAmount = selectedEarnings.reduce((sum, earning) => sum + earning.earnedAmount, 0);
+    const totalLKRAmount = Math.round(totalHSCAmount * hscValue);
+
+    // Check minimum claim amount (5000 LKR)
+    if (totalLKRAmount < 5000) {
+      return res.status(400).json({
+        message: 'Minimum claim amount is 5000 LKR',
+        currentAmount: totalLKRAmount,
+        minimumRequired: 5000
+      });
+    }
+
+    // Get user's bank details
+    const user = await User.findById(req.user._id);
+    const bankDetails = user.bankDetails || {};
+
+    // Validate bank details
+    const hasBankDetails = bankDetails.bank && bankDetails.branch &&
+                          bankDetails.accountNo && bankDetails.accountName;
+    const hasBinanceId = bankDetails.binanceId;
+
+    if (!hasBankDetails && !hasBinanceId) {
+      return res.status(400).json({
+        message: 'Please complete your bank details or add Binance ID before claiming earnings',
+        requiresBankDetails: true
+      });
+    }
+
+    // Create claim request
+    const claimRequest = new HSCEarnedClaimRequest({
+      userId: req.user._id,
+      userEmail: req.user.email,
+      hscEarnedIds: hscEarnedIds,
+      claimType: 'LKR',
+      totalHSCAmount: totalHSCAmount,
+      totalLKRAmount: totalLKRAmount,
+      hscToLKRRate: hscValue,
+      bankDetails: {
+        bank: bankDetails.bank || '',
+        branch: bankDetails.branch || '',
+        accountNo: bankDetails.accountNo || '',
+        accountName: bankDetails.accountName || '',
+        postalCode: bankDetails.postalCode || '',
+        binanceId: bankDetails.binanceId || ''
+      },
+      status: 'pending'
+    });
+
+    await claimRequest.save();
+
+    // Update earnings status to processing
+    await HSCEarned.updateMany(
+      { _id: { $in: hscEarnedIds } },
+      {
+        status: 'processing',
+        updatedAt: new Date()
+      }
+    );
+
+    res.json({
+      success: true,
+      message: `Claim request submitted successfully for ${totalLKRAmount.toLocaleString()} LKR`,
+      claimRequest: {
+        id: claimRequest._id,
+        totalHSCAmount: totalHSCAmount,
+        totalLKRAmount: totalLKRAmount,
+        earningsCount: selectedEarnings.length,
+        status: 'pending'
+      }
+    });
+
+  } catch (error) {
+    console.error('Claim HSC earned error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

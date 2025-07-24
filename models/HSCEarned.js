@@ -61,7 +61,7 @@ const hscEarnedSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'completed', 'cancelled'],
+    enum: ['pending', 'completed', 'cancelled', 'paid As HSC', 'paid As LKR'],
     default: 'completed'
   },
   description: {
