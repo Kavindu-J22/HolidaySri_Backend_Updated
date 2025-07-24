@@ -400,6 +400,143 @@ router.post('/validate', verifyToken, async (req, res) => {
   }
 });
 
+// Get selling promo codes marketplace
+router.get('/marketplace', async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 12,
+      promoCodeType,
+      isActive,
+      sortBy = 'sellingListedAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    const skip = (page - 1) * limit;
+
+    // Build query for selling promo codes
+    const query = {
+      isSelling: true,
+      sellingPrice: { $gt: 0 }
+    };
+
+    if (promoCodeType && promoCodeType !== 'all') {
+      query.promoCodeType = promoCodeType;
+    }
+
+    if (isActive === 'true') {
+      query.isActive = true;
+      query.expirationDate = { $gt: new Date() };
+    }
+
+    // Build sort object
+    const sortObj = {};
+    if (sortBy === 'price_low_high') {
+      sortObj.sellingPrice = 1;
+    } else if (sortBy === 'price_high_low') {
+      sortObj.sellingPrice = -1;
+    } else {
+      sortObj[sortBy] = sortOrder === 'asc' ? 1 : -1;
+    }
+
+    // Get current HSC value for conversion
+    const hscConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
+    const hscValue = hscConfig ? hscConfig.hscValue : 100;
+
+    const sellingPromoCodes = await Agent.find(query)
+      .sort(sortObj)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate('userId', 'name email')
+      .select('promoCode promoCodeType isActive totalEarnings totalReferrals usedCount userName createdAt updatedAt expirationDate isVerified sellingListedAt sellingDescription sellingPrice isSelling');
+
+    const total = await Agent.countDocuments(query);
+
+    // Transform data to include LKR conversion
+    const transformedData = sellingPromoCodes.map(agent => ({
+      _id: agent._id,
+      promoCode: agent.promoCode,
+      promoCodeType: agent.promoCodeType,
+      isActive: agent.isActive,
+      totalEarnings: agent.totalEarnings || 0,
+      totalReferrals: agent.totalReferrals || 0,
+      usedCount: agent.usedCount || 0,
+      userName: agent.userName,
+      createdAt: agent.createdAt,
+      updatedAt: agent.updatedAt,
+      expirationDate: agent.expirationDate,
+      isVerified: agent.isVerified || false,
+      sellingListedAt: agent.sellingListedAt,
+      sellingDescription: agent.sellingDescription || '',
+      sellingPriceHSC: agent.sellingPrice,
+      sellingPriceLKR: Math.round(agent.sellingPrice * hscValue),
+      isExpired: new Date() > new Date(agent.expirationDate),
+      user: agent.userId
+    }));
+
+    res.json({
+      promoCodes: transformedData,
+      pagination: {
+        current: parseInt(page),
+        pages: Math.ceil(total / limit),
+        total,
+        hasNext: page * limit < total,
+        hasPrev: page > 1
+      },
+      hscValue
+    });
+
+  } catch (error) {
+    console.error('Get marketplace promo codes error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get marketplace statistics
+router.get('/marketplace/stats', async (req, res) => {
+  try {
+    const totalCount = await Agent.countDocuments({
+      isSelling: true,
+      sellingPrice: { $gt: 0 }
+    });
+
+    const activeCount = await Agent.countDocuments({
+      isSelling: true,
+      sellingPrice: { $gt: 0 },
+      isActive: true,
+      expirationDate: { $gt: new Date() }
+    });
+
+    const typeStats = await Agent.aggregate([
+      {
+        $match: {
+          isSelling: true,
+          sellingPrice: { $gt: 0 }
+        }
+      },
+      {
+        $group: {
+          _id: '$promoCodeType',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    res.json({
+      totalCount,
+      activeCount,
+      typeStats: typeStats.reduce((acc, stat) => {
+        acc[stat._id] = stat.count;
+        return acc;
+      }, {})
+    });
+
+  } catch (error) {
+    console.error('Get marketplace stats error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Process promo code payment
 router.post('/process-payment', verifyToken, async (req, res) => {
   try {
@@ -549,6 +686,135 @@ router.post('/process-payment', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Process payment error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Buy pre-used promo code
+router.post('/buy-preused', verifyToken, async (req, res) => {
+  try {
+    const { agentId } = req.body;
+
+    if (!agentId) {
+      return res.status(400).json({ message: 'Agent ID is required' });
+    }
+
+    // Get the selling agent
+    const sellingAgent = await Agent.findById(agentId);
+    if (!sellingAgent) {
+      return res.status(404).json({ message: 'Promo code not found' });
+    }
+
+    // Check if it's actually for sale
+    if (!sellingAgent.isSelling || sellingAgent.sellingPrice <= 0) {
+      return res.status(400).json({ message: 'This promo code is not for sale' });
+    }
+
+    // Check if buyer already has an active promo code
+    const buyerAgent = await Agent.findOne({
+      userId: req.user._id,
+      isActive: true,
+      expirationDate: { $gt: new Date() }
+    });
+
+    if (buyerAgent) {
+      return res.status(400).json({ message: 'You already have an active promo code' });
+    }
+
+    // Check buyer's HSC balance
+    const buyer = await User.findById(req.user._id);
+    if (buyer.hscBalance < sellingAgent.sellingPrice) {
+      return res.status(400).json({ message: 'Insufficient HSC balance' });
+    }
+
+    // Get current HSC value for conversion
+    const hscConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
+    const hscValue = hscConfig ? hscConfig.hscValue : 100;
+
+    // Start transaction-like operations
+    try {
+      // 1. Deduct HSC from buyer
+      buyer.hscBalance -= sellingAgent.sellingPrice;
+      await buyer.save();
+
+      // 2. Add HSC to seller
+      const seller = await User.findById(sellingAgent.userId);
+      if (seller) {
+        seller.hscBalance += sellingAgent.sellingPrice;
+        await seller.save();
+      }
+
+      // 3. Transfer ownership of the promo code
+      sellingAgent.userId = req.user._id;
+      sellingAgent.userName = buyer.name;
+      sellingAgent.email = buyer.email;
+      sellingAgent.isSelling = false;
+      sellingAgent.sellingPrice = 0;
+      sellingAgent.sellingDescription = '';
+      sellingAgent.sellingListedAt = null;
+      await sellingAgent.save();
+
+      // 4. Create transaction records
+      const { PaymentActivity } = require('../models/PaymentActivity');
+
+      // Payment activity for the purchase
+      const paymentActivity = new PaymentActivity({
+        userId: req.user._id,
+        itemName: `Pre-Used Promo Code - ${sellingAgent.promoCode}`,
+        itemPrice: Math.round(sellingAgent.sellingPrice * hscValue),
+        itemCategory: 'Pre-Used Promocode',
+        quantity: 1,
+        finalAmount: sellingAgent.sellingPrice,
+        discountAmount: 0,
+        earnRate: 0,
+        purchasedPromoCode: sellingAgent.promoCode,
+        purchasedPromoCodeType: sellingAgent.promoCodeType,
+        paymentMethod: 'HSC',
+        status: 'completed',
+        transactionId: `PREUSED_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
+      });
+
+      await paymentActivity.save();
+
+      // 5. Create promo code transaction
+      const promoTransaction = new PromoCodeTransaction({
+        userId: req.user._id,
+        promoCodeType: 'pre-used',
+        transactionType: 'purchase',
+        amount: Math.round(sellingAgent.sellingPrice * hscValue),
+        hscEquivalent: sellingAgent.sellingPrice,
+        description: `Purchased pre-used promo code: ${sellingAgent.promoCode}`
+      });
+
+      await promoTransaction.save();
+
+      res.json({
+        success: true,
+        message: 'Pre-used promo code purchased successfully!',
+        promoCode: sellingAgent.promoCode,
+        promoCodeType: sellingAgent.promoCodeType,
+        paidAmount: sellingAgent.sellingPrice,
+        paidAmountLKR: Math.round(sellingAgent.sellingPrice * hscValue),
+        newBalance: buyer.hscBalance,
+        transactionId: paymentActivity.transactionId
+      });
+
+    } catch (transactionError) {
+      console.error('Transaction error:', transactionError);
+
+      // Rollback: restore buyer's balance
+      try {
+        buyer.hscBalance += sellingAgent.sellingPrice;
+        await buyer.save();
+      } catch (rollbackError) {
+        console.error('Rollback error:', rollbackError);
+      }
+
+      throw transactionError;
+    }
+
+  } catch (error) {
+    console.error('Buy pre-used promo code error:', error);
+    res.status(500).json({ message: 'Server error during purchase' });
   }
 });
 
