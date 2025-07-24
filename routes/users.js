@@ -630,14 +630,15 @@ router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
         // Update the promo code owner's earnings and stats
         promoCodeOwnerAgent.totalEarnings += earningAmount;
 
-        // Check if this is a new unique buyer (referral)
-        const existingEarning = await Earning.findOne({
+        // Check if this is a new unique buyer (referral) - exclude the current earning we just saved
+        const existingEarningCount = await Earning.countDocuments({
           usedPromoCodeOwnerId: promoCodeOwnerAgent.userId,
           buyerId: user._id
         });
 
         // Only increment totalReferrals if this is the first time this buyer used the promo code
-        if (!existingEarning) {
+        // Since we just saved one earning, if count is 1, this is the first time
+        if (existingEarningCount === 1) {
           promoCodeOwnerAgent.totalReferrals += 1;
         }
 
