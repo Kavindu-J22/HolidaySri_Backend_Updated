@@ -255,7 +255,10 @@ router.get('/agent-dashboard', verifyToken, async (req, res) => {
         isSelling: agent.isSelling || false,
         sellingPrice: agent.sellingPrice || 0,
         sellingDescription: agent.sellingDescription || '',
-        sellingListedAt: agent.sellingListedAt || null
+        sellingListedAt: agent.sellingListedAt || null,
+        // Agent schema fields for current promocode stats
+        currentPromocodeTotalEarnings: agent.totalEarnings || 0,
+        currentPromocodeTotalReferrals: agent.totalReferrals || 0
       }
     });
 
