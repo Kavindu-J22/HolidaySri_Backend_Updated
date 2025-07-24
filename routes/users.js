@@ -251,7 +251,10 @@ router.get('/agent-dashboard', verifyToken, async (req, res) => {
         isVerified: agent.isVerified || false,
         verificationStatus: agent.verificationStatus || 'pending',
         usedPromoCode: agent.usedPromoCode || null,
-        usedPromoCodeOwner: agent.usedPromoCodeOwner || null
+        usedPromoCodeOwner: agent.usedPromoCodeOwner || null,
+        isSelling: agent.isSelling || false,
+        sellingPrice: agent.sellingPrice || 0,
+        sellingListedAt: agent.sellingListedAt || null
       }
     });
 
@@ -937,15 +940,21 @@ router.post('/sell-promocode', verifyToken, async (req, res) => {
     // Create payment activity record
     const paymentActivity = new PaymentActivity({
       userId: req.user._id,
-      type: 'debit',
+      buyerEmail: userEmail, // User is paying the fee
+      item: `Advertisement Fee - Selling Promocode ${agent.promoCode}`,
+      quantity: 1,
+      category: 'Advertisement Fee - Selling Promocode',
+      originalAmount: sellAdFee,
       amount: sellAdFee,
-      currency: 'HSC',
-      description: `Advertisement fee for selling promocode ${agent.promoCode}`,
-      status: 'completed',
-      relatedData: {
-        promoCode: agent.promoCode,
-        sellingPrice: parseFloat(sellingPrice)
-      }
+      discountedAmount: 0,
+      promoCode: agent.promoCode,
+      promoCodeOwner: userEmail,
+      promoCodeOwnerId: req.user._id,
+      forEarns: 0,
+      purchasedPromoCode: agent.promoCode,
+      purchasedPromoCodeType: agent.promoCodeType,
+      paymentMethod: 'HSC',
+      status: 'completed'
     });
     await paymentActivity.save();
 
