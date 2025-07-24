@@ -105,6 +105,10 @@ const agentSchema = new mongoose.Schema({
     type: Number,
     default: 0 // Price in HSC
   },
+  sellingDescription: {
+    type: String,
+    default: '' // Optional description for selling
+  },
   sellingListedAt: {
     type: Date
   }

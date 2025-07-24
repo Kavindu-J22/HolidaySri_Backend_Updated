@@ -254,6 +254,7 @@ router.get('/agent-dashboard', verifyToken, async (req, res) => {
         usedPromoCodeOwner: agent.usedPromoCodeOwner || null,
         isSelling: agent.isSelling || false,
         sellingPrice: agent.sellingPrice || 0,
+        sellingDescription: agent.sellingDescription || '',
         sellingListedAt: agent.sellingListedAt || null
       }
     });
@@ -901,7 +902,7 @@ router.post('/claim-earnings', verifyToken, async (req, res) => {
 // Sell promocode
 router.post('/sell-promocode', verifyToken, async (req, res) => {
   try {
-    const { sellingPrice } = req.body;
+    const { sellingPrice, sellingDescription } = req.body;
     const userEmail = req.user.email;
 
     if (!sellingPrice || parseFloat(sellingPrice) <= 0) {
@@ -961,6 +962,7 @@ router.post('/sell-promocode', verifyToken, async (req, res) => {
     // Update agent selling status
     agent.isSelling = true;
     agent.sellingPrice = parseFloat(sellingPrice);
+    agent.sellingDescription = sellingDescription || '';
     agent.sellingListedAt = new Date();
     await agent.save();
 
@@ -996,6 +998,7 @@ router.post('/toggle-selling', verifyToken, async (req, res) => {
     agent.isSelling = !agent.isSelling;
     if (!agent.isSelling) {
       agent.sellingPrice = 0;
+      agent.sellingDescription = '';
       agent.sellingListedAt = null;
     }
     await agent.save();
@@ -1009,6 +1012,48 @@ router.post('/toggle-selling', verifyToken, async (req, res) => {
 
   } catch (error) {
     console.error('Toggle selling error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Edit selling details
+router.post('/edit-selling', verifyToken, async (req, res) => {
+  try {
+    const { sellingPrice, sellingDescription } = req.body;
+    const userEmail = req.user.email;
+
+    if (!sellingPrice || parseFloat(sellingPrice) <= 0) {
+      return res.status(400).json({ message: 'Please enter a valid selling price' });
+    }
+
+    // Get user's agent data
+    const agent = await Agent.findOne({ email: userEmail });
+    if (!agent) {
+      return res.status(404).json({ message: 'Agent not found' });
+    }
+
+    // Check if agent is currently selling
+    if (!agent.isSelling) {
+      return res.status(400).json({ message: 'Your promocode is not currently listed for sale' });
+    }
+
+    // Update selling details
+    agent.sellingPrice = parseFloat(sellingPrice);
+    agent.sellingDescription = sellingDescription || '';
+    await agent.save();
+
+    res.json({
+      success: true,
+      message: 'Selling details updated successfully!',
+      data: {
+        promoCode: agent.promoCode,
+        sellingPrice: agent.sellingPrice,
+        sellingDescription: agent.sellingDescription
+      }
+    });
+
+  } catch (error) {
+    console.error('Edit selling error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
