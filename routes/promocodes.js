@@ -884,6 +884,50 @@ router.post('/buy-preused', verifyToken, async (req, res) => {
         // Don't fail the transaction if email fails
       }
 
+      // Create in-app notifications
+      try {
+        // Create notification for seller
+        await Notification.createNotification(
+          seller._id,
+          '💰 Promo Code Sold Successfully!',
+          `Great news! Your ${originalPromoCodeType} promo code "${originalPromoCode}" has been sold to ${buyer.name} for ${originalSellingPrice} HSC (≈ ${Math.round(originalSellingPrice * hscValue).toLocaleString()} LKR). You've earned ${originalSellingPrice} HSC!`,
+          'earning',
+          {
+            promoCode: originalPromoCode,
+            promoCodeType: originalPromoCodeType,
+            sellingPrice: originalSellingPrice,
+            sellingPriceLKR: Math.round(originalSellingPrice * hscValue),
+            buyerName: buyer.name,
+            buyerEmail: buyer.email,
+            transactionId: hscEarned.transactionId,
+            earnedAmount: originalSellingPrice,
+            earnedAmountLKR: Math.round(originalSellingPrice * hscValue)
+          },
+          'high'
+        );
+
+        // Create notification for buyer
+        await Notification.createNotification(
+          buyer._id,
+          '🎉 Welcome to Our Agent Network!',
+          `Congratulations! You've successfully purchased the ${originalPromoCodeType} promo code "${originalPromoCode}" for ${originalSellingPrice} HSC and are now an official agent with Holidaysri Tourism. Start sharing your code and earning commissions today!`,
+          'purchase',
+          {
+            promoCode: originalPromoCode,
+            promoCodeType: originalPromoCodeType,
+            paidAmount: originalSellingPrice,
+            paidAmountLKR: Math.round(originalSellingPrice * hscValue),
+            transactionId: hscEarned.transactionId,
+            isNewAgent: true,
+            agentStatus: 'active'
+          },
+          'high'
+        );
+      } catch (notificationError) {
+        console.error('In-app notification error:', notificationError);
+        // Don't fail the transaction if notification creation fails
+      }
+
       res.json({
         success: true,
         message: 'Pre-used promo code purchased successfully! You are now an agent with us.',
