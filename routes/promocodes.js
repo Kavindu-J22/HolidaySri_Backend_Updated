@@ -1168,6 +1168,7 @@ router.get('/explore', verifyToken, async (req, res) => {
           usedCount: 1,
           createdAt: 1,
           expirationDate: 1,
+          isVerified: 1,
           'user.name': 1
         }
       }
@@ -1294,7 +1295,7 @@ router.get('/favorites', verifyToken, async (req, res) => {
     const accessRecord = await PromoCodeAccess.findOne({ userId })
       .populate({
         path: 'favoritePromoCodes.agentId',
-        select: 'promoCode userName promoCodeType totalEarnings totalReferrals usedCount isActive promoteStatus expirationDate',
+        select: 'promoCode userName promoCodeType totalEarnings totalReferrals usedCount isActive promoteStatus expirationDate isVerified',
         match: { isActive: true, promoteStatus: 'on' }
       });
 
@@ -1313,6 +1314,7 @@ router.get('/favorites', verifyToken, async (req, res) => {
         totalEarnings: fav.agentId.totalEarnings,
         totalReferrals: fav.agentId.totalReferrals,
         usedCount: fav.agentId.usedCount,
+        isVerified: fav.agentId.isVerified,
         addedAt: fav.addedAt,
         isFavorite: true
       }));
