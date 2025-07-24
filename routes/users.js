@@ -256,6 +256,9 @@ router.get('/agent-dashboard', verifyToken, async (req, res) => {
         sellingPrice: agent.sellingPrice || 0,
         sellingDescription: agent.sellingDescription || '',
         sellingListedAt: agent.sellingListedAt || null,
+        promoteStatus: agent.promoteStatus || 'off',
+        promotePayment: agent.promotePayment || 'unpaid',
+        promotePaymentDate: agent.promotePaymentDate || null,
         // Agent schema fields for current promocode stats
         currentPromocodeTotalEarnings: agent.totalEarnings || 0,
         currentPromocodeTotalReferrals: agent.totalReferrals || 0
@@ -1298,6 +1301,148 @@ router.post('/claim-hsc-earned', verifyToken, async (req, res) => {
 
   } catch (error) {
     console.error('Claim HSC earned error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Promote promocode - Pay HSC to promote
+router.post('/promote-promocode', verifyToken, async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+
+    // Get user's agent data
+    const agent = await Agent.findOne({ email: userEmail });
+    if (!agent) {
+      return res.status(404).json({ message: 'Agent not found' });
+    }
+
+    // Check if promocode is expired
+    const now = new Date();
+    if (agent.expirationDate <= now) {
+      return res.status(400).json({ message: 'Cannot promote expired promocode. Please renew first.' });
+    }
+
+    // Check if promocode is active
+    if (!agent.isActive) {
+      return res.status(400).json({ message: 'Cannot promote inactive promocode. Please activate first.' });
+    }
+
+    // Check if promocode type is free (cannot promote)
+    if (agent.promoCodeType === 'free') {
+      return res.status(400).json({ message: 'Free promocodes cannot be promoted. Upgrade to a paid tier first.' });
+    }
+
+    // Check if already promoted and paid
+    if (agent.promoteStatus === 'on' && agent.promotePayment === 'paid') {
+      return res.status(400).json({ message: 'Your promocode is already promoted.' });
+    }
+
+    // Get promotion cost based on promocode type (hardcoded values)
+    let promotionCostHSC = 0;
+    switch (agent.promoCodeType) {
+      case 'silver':
+        promotionCostHSC = 5;
+        break;
+      case 'gold':
+        promotionCostHSC = 3;
+        break;
+      case 'diamond':
+        promotionCostHSC = 0; // Free for diamond
+        break;
+      default:
+        return res.status(400).json({ message: 'Invalid promocode type for promotion' });
+    }
+
+    // Check user's HSC balance (only if not diamond)
+    const user = await User.findById(req.user._id);
+    if (promotionCostHSC > 0 && user.hscBalance < promotionCostHSC) {
+      return res.status(400).json({
+        message: `Insufficient HSC balance. You need ${promotionCostHSC} HSC to promote your ${agent.promoCodeType} promocode.`,
+        required: promotionCostHSC,
+        current: user.hscBalance
+      });
+    }
+
+    // Deduct HSC from user's balance (only if not diamond)
+    if (promotionCostHSC > 0) {
+      user.hscBalance -= promotionCostHSC;
+      await user.save();
+
+      // Create payment activity record
+      const paymentActivity = new PaymentActivity({
+        userId: req.user._id,
+        buyerEmail: userEmail,
+        item: `Promotion Fee - ${agent.promoCode} (${agent.promoCodeType})`,
+        quantity: 1,
+        category: 'Promotion Fee',
+        originalAmount: promotionCostHSC,
+        amount: promotionCostHSC,
+        discountedAmount: 0,
+        promoCode: agent.promoCode,
+        promoCodeOwner: userEmail,
+        promoCodeOwnerId: req.user._id,
+        forEarns: 0,
+        purchasedPromoCode: agent.promoCode,
+        purchasedPromoCodeType: agent.promoCodeType,
+        paymentMethod: 'HSC',
+        status: 'completed'
+      });
+      await paymentActivity.save();
+    }
+
+    // Update agent promotion status
+    agent.promoteStatus = 'on';
+    agent.promotePayment = 'paid';
+    agent.promotePaymentDate = new Date();
+    await agent.save();
+
+    res.json({
+      success: true,
+      message: `Your ${agent.promoCodeType} promocode has been promoted successfully!`,
+      data: {
+        promoCode: agent.promoCode,
+        promoCodeType: agent.promoCodeType,
+        promotionCost: promotionCostHSC,
+        newHscBalance: user.hscBalance,
+        promoteStatus: 'on',
+        promotePayment: 'paid'
+      }
+    });
+
+  } catch (error) {
+    console.error('Promote promocode error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Toggle promotion status (on/off)
+router.post('/toggle-promotion', verifyToken, async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+
+    // Get user's agent data
+    const agent = await Agent.findOne({ email: userEmail });
+    if (!agent) {
+      return res.status(404).json({ message: 'Agent not found' });
+    }
+
+    // Check if payment is made (can only toggle if paid)
+    if (agent.promotePayment !== 'paid') {
+      return res.status(400).json({ message: 'You must pay the promotion fee first before toggling promotion status.' });
+    }
+
+    // Toggle promotion status
+    agent.promoteStatus = agent.promoteStatus === 'on' ? 'off' : 'on';
+    await agent.save();
+
+    res.json({
+      success: true,
+      message: `Promotion ${agent.promoteStatus === 'on' ? 'enabled' : 'disabled'} successfully`,
+      promoteStatus: agent.promoteStatus
+    });
+
+  } catch (error) {
+    console.error('Toggle promotion error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

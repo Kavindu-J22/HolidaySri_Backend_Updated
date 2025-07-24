@@ -93,9 +93,11 @@ const checkExpiredPromoCodes = async () => {
     
     for (const agent of expiredAgents) {
       try {
-        // Deactivate the promo code
+        // Deactivate the promo code and reset promotion status
         agent.isActive = false;
         agent.expiredNotificationEmailSent = true; // Mark as processed
+        agent.promoteStatus = 'off';
+        agent.promotePayment = 'unpaid';
         await agent.save();
         
         if (agent.userId && agent.userId.email) {
@@ -139,6 +141,36 @@ const checkExpiredPromoCodes = async () => {
   }
 };
 
+// Check for inactive promo codes with promotion status on and update them
+const checkInactivePromotedPromoCodes = async () => {
+  try {
+    console.log('🔍 Checking for inactive promo codes with promotion status on...');
+
+    // Find agents whose promo codes are inactive but have promotion status on
+    const inactivePromotedAgents = await Agent.find({
+      isActive: false,
+      promoteStatus: 'on'
+    });
+
+    console.log(`🔴 Found ${inactivePromotedAgents.length} inactive promo codes with promotion status on`);
+
+    for (const agent of inactivePromotedAgents) {
+      try {
+        // Update promotion status to off and payment to unpaid
+        agent.promoteStatus = 'off';
+        await agent.save();
+
+        console.log(`✅ Updated promotion status for inactive promo code ${agent.promoCode}`);
+
+      } catch (error) {
+        console.error(`❌ Error updating promotion status for agent ${agent.promoCode}:`, error);
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error in checkInactivePromotedPromoCodes:', error);
+  }
+};
+
 // Initialize the scheduler
 const initializePromoCodeScheduler = () => {
   console.log('🚀 Initializing promo code expiration scheduler...');
@@ -160,12 +192,22 @@ const initializePromoCodeScheduler = () => {
     scheduled: true,
     timezone: "Asia/Colombo" // Sri Lanka timezone
   });
-  
+
+  // Run every 30 minutes to check for inactive promoted promo codes
+  cron.schedule('*/30 * * * *', () => {
+    console.log('⏰ Running inactive promoted promo codes check...');
+    checkInactivePromotedPromoCodes();
+  }, {
+    scheduled: true,
+    timezone: "Asia/Colombo" // Sri Lanka timezone
+  });
+
   // Run immediately on startup to catch any missed expirations
   setTimeout(() => {
     console.log('🔄 Running initial expiration checks...');
     checkExpiringPromoCodes();
     checkExpiredPromoCodes();
+    checkInactivePromotedPromoCodes();
   }, 5000); // Wait 5 seconds after startup
   
   console.log('✅ Promo code expiration scheduler initialized');
@@ -174,5 +216,6 @@ const initializePromoCodeScheduler = () => {
 module.exports = {
   initializePromoCodeScheduler,
   checkExpiringPromoCodes,
-  checkExpiredPromoCodes
+  checkExpiredPromoCodes,
+  checkInactivePromotedPromoCodes
 };

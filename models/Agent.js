@@ -111,6 +111,20 @@ const agentSchema = new mongoose.Schema({
   },
   sellingListedAt: {
     type: Date
+  },
+  // Promotion related fields
+  promoteStatus: {
+    type: String,
+    enum: ['on', 'off'],
+    default: 'off'
+  },
+  promotePayment: {
+    type: String,
+    enum: ['paid', 'unpaid'],
+    default: 'unpaid'
+  },
+  promotePaymentDate: {
+    type: Date
   }
 }, {
   timestamps: true
