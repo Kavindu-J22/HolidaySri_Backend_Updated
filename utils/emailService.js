@@ -493,6 +493,210 @@ const sendPromoCodeRenewalSuccess = async (email, name, promoCode, promoType, re
   }
 };
 
+// Send promo code sold notification to seller
+const sendPromoCodeSoldNotification = async (sellerEmail, sellerName, promoCodeDetails, buyerDetails, earnedAmount, earnedAmountLKR) => {
+  const transporter = createTransporter();
+
+  const formattedDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri Tourism',
+      address: process.env.EMAIL_USER
+    },
+    to: sellerEmail,
+    subject: '🎉 Great News! Your Promo Code Has Been Sold!',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Congratulations!</h1>
+              <p style="color: white; margin: 10px 0 0 0; font-size: 18px;">Your Promo Code Has Been Sold!</p>
+            </div>
+          </div>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Dear ${sellerName},
+          </p>
+
+          <div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 5px;">
+            <h3 style="color: #059669; margin: 0 0 10px 0;">💰 Sale Completed Successfully!</h3>
+            <p style="color: #059669; margin: 0; font-size: 16px;">
+              Your <strong>${promoCodeDetails.promoCodeType.toUpperCase()}</strong> promo code has been purchased and you've earned <strong>${earnedAmount} HSC (≈ ${earnedAmountLKR.toLocaleString()} LKR)</strong>!
+            </p>
+          </div>
+
+          <div style="background: #f0f9ff; padding: 20px; border-radius: 10px; margin: 20px 0;">
+            <h3 style="color: #1e40af; margin: 0 0 15px 0;">📋 Sale Details:</h3>
+            <ul style="color: #1e40af; margin: 0; padding-left: 20px;">
+              <li style="margin-bottom: 8px;"><strong>Promo Code:</strong> ${promoCodeDetails.promoCode}</li>
+              <li style="margin-bottom: 8px;"><strong>Type:</strong> ${promoCodeDetails.promoCodeType.toUpperCase()}</li>
+              <li style="margin-bottom: 8px;"><strong>Sale Price:</strong> ${promoCodeDetails.sellingPrice} HSC</li>
+              <li style="margin-bottom: 8px;"><strong>LKR Equivalent:</strong> ${promoCodeDetails.sellingPriceLKR.toLocaleString()} LKR</li>
+              <li style="margin-bottom: 8px;"><strong>Sale Date:</strong> ${formattedDate}</li>
+            </ul>
+          </div>
+
+          <div style="background: #fef3c7; padding: 20px; border-radius: 10px; margin: 20px 0;">
+            <h3 style="color: #92400e; margin: 0 0 15px 0;">👤 Buyer Information:</h3>
+            <ul style="color: #92400e; margin: 0; padding-left: 20px;">
+              <li style="margin-bottom: 8px;"><strong>Buyer Name:</strong> ${buyerDetails.buyerName}</li>
+              <li style="margin-bottom: 8px;"><strong>Email:</strong> ${buyerDetails.buyerEmail}</li>
+              <li style="margin-bottom: 8px;"><strong>Purchase Date:</strong> ${formattedDate}</li>
+            </ul>
+          </div>
+
+          <div style="background: #ecfdf5; padding: 20px; border-radius: 10px; margin: 20px 0;">
+            <h3 style="color: #059669; margin: 0 0 15px 0;">💡 What Happens Next?</h3>
+            <ul style="color: #059669; margin: 0; padding-left: 20px;">
+              <li style="margin-bottom: 8px;">Your earnings have been recorded in your HSC account</li>
+              <li style="margin-bottom: 8px;">The promo code ownership has been transferred to the buyer</li>
+              <li style="margin-bottom: 8px;">You can view your earnings in your dashboard</li>
+              <li style="margin-bottom: 8px;">Consider listing more promo codes for additional income</li>
+            </ul>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="http://localhost:5173/profile" style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+              View My Dashboard
+            </a>
+          </div>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri Tourism. All rights reserved.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
+              This is an automated message, please do not reply to this email.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Promo code sold notification email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Send promo code purchase success notification to buyer
+const sendPromoCodePurchaseSuccess = async (buyerEmail, buyerName, promoCodeDetails, paidAmount, paidAmountLKR) => {
+  const transporter = createTransporter();
+
+  const formattedDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri Tourism',
+      address: process.env.EMAIL_USER
+    },
+    to: buyerEmail,
+    subject: '🎉 Welcome to Our Agent Network! Your Promo Code Purchase is Complete',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <div style="background: linear-gradient(135deg, #2563eb, #1d4ed8); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Welcome Agent!</h1>
+              <p style="color: white; margin: 10px 0 0 0; font-size: 18px;">You're Now Part of Our Agent Network!</p>
+            </div>
+          </div>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Dear ${buyerName},
+          </p>
+
+          <div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 5px;">
+            <h3 style="color: #059669; margin: 0 0 10px 0;">✅ Purchase Successful!</h3>
+            <p style="color: #059669; margin: 0; font-size: 16px;">
+              Congratulations! You have successfully purchased a <strong>${promoCodeDetails.promoCodeType.toUpperCase()}</strong> promo code and are now an official agent with Holidaysri Tourism!
+            </p>
+          </div>
+
+          <div style="background: #f0f9ff; padding: 20px; border-radius: 10px; margin: 20px 0;">
+            <h3 style="color: #1e40af; margin: 0 0 15px 0;">📋 Purchase Details:</h3>
+            <ul style="color: #1e40af; margin: 0; padding-left: 20px;">
+              <li style="margin-bottom: 8px;"><strong>Your Promo Code:</strong> ${promoCodeDetails.promoCode}</li>
+              <li style="margin-bottom: 8px;"><strong>Type:</strong> ${promoCodeDetails.promoCodeType.toUpperCase()}</li>
+              <li style="margin-bottom: 8px;"><strong>Amount Paid:</strong> ${paidAmount} HSC</li>
+              <li style="margin-bottom: 8px;"><strong>LKR Equivalent:</strong> ${paidAmountLKR.toLocaleString()} LKR</li>
+              <li style="margin-bottom: 8px;"><strong>Purchase Date:</strong> ${formattedDate}</li>
+              <li style="margin-bottom: 8px;"><strong>Status:</strong> Active & Ready to Use</li>
+            </ul>
+          </div>
+
+          <div style="background: #fef3c7; padding: 20px; border-radius: 10px; margin: 20px 0;">
+            <h3 style="color: #92400e; margin: 0 0 15px 0;">🚀 As Our New Agent, You Can:</h3>
+            <ul style="color: #92400e; margin: 0; padding-left: 20px;">
+              <li style="margin-bottom: 8px;">Share your promo code and earn referral commissions</li>
+              <li style="margin-bottom: 8px;">Access exclusive agent benefits and discounts</li>
+              <li style="margin-bottom: 8px;">Track your earnings in real-time through your dashboard</li>
+              <li style="margin-bottom: 8px;">Build your network and increase your income potential</li>
+            </ul>
+          </div>
+
+          <div style="background: #ecfdf5; padding: 20px; border-radius: 10px; margin: 20px 0;">
+            <h3 style="color: #059669; margin: 0 0 15px 0;">📈 Start Earning Today:</h3>
+            <ul style="color: #059669; margin: 0; padding-left: 20px;">
+              <li style="margin-bottom: 8px;">Visit your agent dashboard to get started</li>
+              <li style="margin-bottom: 8px;">Share your promo code with friends and family</li>
+              <li style="margin-bottom: 8px;">Monitor your referrals and earnings</li>
+              <li style="margin-bottom: 8px;">Explore additional earning opportunities</li>
+            </ul>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="http://localhost:5173/profile" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+              Access My Agent Dashboard
+            </a>
+          </div>
+
+          <div style="background: #dbeafe; border: 1px solid #93c5fd; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="color: #1e40af; margin: 0; font-size: 14px; text-align: center;">
+              <strong>Pro Tip:</strong> The more you share your promo code, the more you earn! Start building your network today and watch your income grow.
+            </p>
+          </div>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri Tourism. All rights reserved.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
+              This is an automated message, please do not reply to this email.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Promo code purchase success email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   generateOTP,
   sendEmailVerificationOTP,
@@ -500,5 +704,7 @@ module.exports = {
   sendPasswordResetEmail,
   sendPromoCodeExpirationWarning,
   sendPromoCodeExpiredNotification,
-  sendPromoCodeRenewalSuccess
+  sendPromoCodeRenewalSuccess,
+  sendPromoCodeSoldNotification,
+  sendPromoCodePurchaseSuccess
 };

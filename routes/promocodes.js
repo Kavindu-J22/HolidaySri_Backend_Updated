@@ -5,7 +5,9 @@ const Agent = require('../models/Agent');
 const Earning = require('../models/Earning');
 const PaymentActivity = require('../models/PaymentActivity');
 const Notification = require('../models/Notification');
+const HSCEarned = require('../models/HSCEarned');
 const { verifyToken, verifyAdminToken } = require('../middleware/auth');
+const { sendPromoCodeSoldNotification, sendPromoCodePurchaseSuccess } = require('../utils/emailService');
 const nodemailer = require('nodemailer');
 
 const router = express.Router();
@@ -761,12 +763,34 @@ router.post('/buy-preused', verifyToken, async (req, res) => {
       buyer.hscBalance -= sellingAgent.sellingPrice;
       await buyer.save();
 
-      // 2. Add HSC to seller
+      // 2. Record HSC earnings for seller (don't add to balance directly)
       const seller = await User.findById(sellingAgent.userId);
-      if (seller) {
-        seller.hscBalance += sellingAgent.sellingPrice;
-        await seller.save();
+      if (!seller) {
+        throw new Error('Seller not found');
       }
+
+      // Create HSCEarned record
+      const hscEarned = new HSCEarned({
+        userId: seller._id,
+        buyerUserId: req.user._id,
+        earnedAmount: sellingAgent.sellingPrice,
+        category: 'Promocode Sold',
+        itemDetails: {
+          promoCode: sellingAgent.promoCode,
+          promoCodeType: sellingAgent.promoCodeType,
+          sellingPrice: sellingAgent.sellingPrice,
+          sellingPriceLKR: Math.round(sellingAgent.sellingPrice * hscValue)
+        },
+        buyerDetails: {
+          buyerName: buyer.name,
+          buyerEmail: buyer.email,
+          purchaseDate: new Date()
+        },
+        transactionId: `PREUSED_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`,
+        description: `Promo code ${sellingAgent.promoCode} sold to ${buyer.name}`
+      });
+
+      await hscEarned.save();
 
       // 3. Transfer ownership of the promo code
       sellingAgent.userId = req.user._id;
@@ -779,7 +803,7 @@ router.post('/buy-preused', verifyToken, async (req, res) => {
       await sellingAgent.save();
 
       // 4. Create transaction records
-      const { PaymentActivity } = require('../models/PaymentActivity');
+      // PaymentActivity is already imported at the top
 
       // Payment activity for the purchase
       const paymentActivity = new PaymentActivity({
@@ -812,15 +836,52 @@ router.post('/buy-preused', verifyToken, async (req, res) => {
 
       await promoTransaction.save();
 
+      // Send email notifications
+      try {
+        // Send notification to seller
+        await sendPromoCodeSoldNotification(
+          seller.email,
+          seller.name,
+          {
+            promoCode: sellingAgent.promoCode,
+            promoCodeType: sellingAgent.promoCodeType,
+            sellingPrice: sellingAgent.sellingPrice,
+            sellingPriceLKR: Math.round(sellingAgent.sellingPrice * hscValue)
+          },
+          {
+            buyerName: buyer.name,
+            buyerEmail: buyer.email
+          },
+          sellingAgent.sellingPrice,
+          Math.round(sellingAgent.sellingPrice * hscValue)
+        );
+
+        // Send notification to buyer
+        await sendPromoCodePurchaseSuccess(
+          buyer.email,
+          buyer.name,
+          {
+            promoCode: sellingAgent.promoCode,
+            promoCodeType: sellingAgent.promoCodeType
+          },
+          sellingAgent.sellingPrice,
+          Math.round(sellingAgent.sellingPrice * hscValue)
+        );
+      } catch (emailError) {
+        console.error('Email notification error:', emailError);
+        // Don't fail the transaction if email fails
+      }
+
       res.json({
         success: true,
-        message: 'Pre-used promo code purchased successfully!',
+        message: 'Pre-used promo code purchased successfully! You are now an agent with us.',
         promoCode: sellingAgent.promoCode,
         promoCodeType: sellingAgent.promoCodeType,
         paidAmount: sellingAgent.sellingPrice,
         paidAmountLKR: Math.round(sellingAgent.sellingPrice * hscValue),
         newBalance: buyer.hscBalance,
-        transactionId: paymentActivity.transactionId
+        transactionId: paymentActivity.transactionId,
+        redirectTo: '/profile' // Redirect to agent dashboard
       });
 
     } catch (transactionError) {
