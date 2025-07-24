@@ -1274,6 +1274,7 @@ router.post('/claim-hsc-earned', verifyToken, async (req, res) => {
     });
 
     await claimRequest.save();
+    console.log('HSC earned claim request created:', claimRequest._id);
 
     // Update earnings status to processing
     await HSCEarned.updateMany(
@@ -1283,6 +1284,7 @@ router.post('/claim-hsc-earned', verifyToken, async (req, res) => {
         updatedAt: new Date()
       }
     );
+    console.log(`Updated ${hscEarnedIds.length} HSC earned records to processing status`);
 
     res.json({
       success: true,

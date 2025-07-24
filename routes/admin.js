@@ -619,6 +619,12 @@ router.get('/hsc-earned-claims', verifyAdminToken, async (req, res) => {
     const HSCEarnedClaimRequest = require('../models/HSCEarnedClaimRequest');
     const { status = 'all', page = 1, limit = 10, search = '' } = req.query;
 
+    console.log('Admin fetching HSC earned claims with params:', { status, page, limit, search });
+
+    // Test if model exists and can query
+    const allClaims = await HSCEarnedClaimRequest.find({});
+    console.log(`Total HSC earned claims in database: ${allClaims.length}`);
+
     // Build query
     let query = {};
     if (status !== 'all') {
@@ -631,6 +637,8 @@ router.get('/hsc-earned-claims', verifyAdminToken, async (req, res) => {
       ];
     }
 
+    console.log('HSC earned claims query:', query);
+
     // Get paginated results
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const claimRequests = await HSCEarnedClaimRequest.find(query)
@@ -641,6 +649,8 @@ router.get('/hsc-earned-claims', verifyAdminToken, async (req, res) => {
       .limit(parseInt(limit));
 
     const total = await HSCEarnedClaimRequest.countDocuments(query);
+
+    console.log(`Found ${claimRequests.length} HSC earned claim requests out of ${total} total`);
 
     res.json({
       claimRequests,
@@ -654,6 +664,40 @@ router.get('/hsc-earned-claims', verifyAdminToken, async (req, res) => {
   } catch (error) {
     console.error('Get HSC earned claim requests error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Test endpoint for HSC earned claims
+router.get('/hsc-earned-claims/test', verifyAdminToken, async (req, res) => {
+  try {
+    const HSCEarnedClaimRequest = require('../models/HSCEarnedClaimRequest');
+
+    console.log('Testing HSC earned claims model...');
+
+    // Test basic query
+    const allClaims = await HSCEarnedClaimRequest.find({});
+    console.log(`Found ${allClaims.length} HSC earned claims in database`);
+
+    // Test with populate
+    const claimsWithPopulate = await HSCEarnedClaimRequest.find({})
+      .populate('userId', 'name email')
+      .populate('hscEarnedIds');
+    console.log(`Found ${claimsWithPopulate.length} HSC earned claims with populate`);
+
+    res.json({
+      success: true,
+      totalClaims: allClaims.length,
+      claimsWithPopulate: claimsWithPopulate.length,
+      sampleClaims: allClaims.slice(0, 2) // Return first 2 claims for inspection
+    });
+
+  } catch (error) {
+    console.error('HSC earned claims test error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    });
   }
 });
 
