@@ -6,6 +6,7 @@ const Earning = require('../models/Earning');
 const PaymentActivity = require('../models/PaymentActivity');
 const Notification = require('../models/Notification');
 const HSCEarned = require('../models/HSCEarned');
+const PromoCodeAccess = require('../models/PromoCodeAccess');
 const { verifyToken, verifyAdminToken } = require('../middleware/auth');
 const { sendPromoCodeSoldNotification, sendPromoCodePurchaseSuccess } = require('../utils/emailService');
 const nodemailer = require('nodemailer');
@@ -180,6 +181,7 @@ router.get('/config', async (req, res) => {
       currency: hscConfig ? hscConfig.currency : 'LKR',
       lastUpdated: promoConfig.lastUpdated,
       sellAdFee: promoConfig.sellAdFee || 100,
+      accessPromoCodeViewAmount: promoConfig.accessPromoCodeViewAmount || 50,
       discounts: {
         monthlyAdDiscount: promoConfig.discounts.monthlyAdDiscount,
         dailyAdDiscount: promoConfig.discounts.dailyAdDiscount,
@@ -218,7 +220,7 @@ router.get('/admin/config', verifyAdminToken, async (req, res) => {
 // Admin: Update promo code configuration
 router.put('/admin/config', verifyAdminToken, async (req, res) => {
   try {
-    const { silver, gold, diamond, free, discounts, sellAdFee } = req.body;
+    const { silver, gold, diamond, free, discounts, sellAdFee, accessPromoCodeViewAmount } = req.body;
 
     // Validate that free promo code price is always 0
     if (free && free.price && free.price !== 0) {
@@ -238,6 +240,7 @@ router.put('/admin/config', verifyAdminToken, async (req, res) => {
     }
     if (discounts) updateData.discounts = discounts;
     if (sellAdFee !== undefined) updateData.sellAdFee = sellAdFee;
+    if (accessPromoCodeViewAmount !== undefined) updateData.accessPromoCodeViewAmount = accessPromoCodeViewAmount;
 
     const promoConfig = new PromoCodeConfig(updateData);
     await promoConfig.save();
@@ -958,6 +961,367 @@ router.post('/buy-preused', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Buy pre-used promo code error:', error);
     res.status(500).json({ message: 'Server error during purchase' });
+  }
+});
+
+// Check user access to promo code view page
+router.get('/check-access', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const userEmail = req.user.email;
+
+    // Check if user is an agent (agents get free access)
+    const agent = await Agent.findOne({ userId });
+    if (agent) {
+      // Ensure access record exists for agent
+      let accessRecord = await PromoCodeAccess.findOne({ userId });
+      if (!accessRecord) {
+        accessRecord = new PromoCodeAccess({
+          userId,
+          userEmail,
+          hasAccess: true,
+          accessType: 'agent'
+        });
+        await accessRecord.save();
+      } else if (!accessRecord.hasAccess) {
+        accessRecord.hasAccess = true;
+        accessRecord.accessType = 'agent';
+        await accessRecord.save();
+      }
+
+      return res.json({
+        hasAccess: true,
+        accessType: 'agent',
+        isAgent: true,
+        message: 'Free access as travel agent'
+      });
+    }
+
+    // Check if user has paid for access
+    const accessRecord = await PromoCodeAccess.findOne({ userId });
+    if (accessRecord && accessRecord.hasAccess) {
+      return res.json({
+        hasAccess: true,
+        accessType: accessRecord.accessType,
+        isAgent: false,
+        paidAmount: accessRecord.paidAmount,
+        paymentDate: accessRecord.paymentDate
+      });
+    }
+
+    // User needs to pay for access
+    const promoConfig = await PromoCodeConfig.findOne().sort({ createdAt: -1 });
+    const accessAmount = promoConfig?.accessPromoCodeViewAmount || 50;
+
+    res.json({
+      hasAccess: false,
+      isAgent: false,
+      accessAmount,
+      message: 'Payment required to access promo code view page'
+    });
+
+  } catch (error) {
+    console.error('Check access error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Process payment for promo code view access
+router.post('/pay-access', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const userEmail = req.user.email;
+
+    // Check if user already has access
+    const existingAccess = await PromoCodeAccess.findOne({ userId });
+    if (existingAccess && existingAccess.hasAccess) {
+      return res.status(400).json({ message: 'You already have access to the promo code view page' });
+    }
+
+    // Check if user is an agent (shouldn't need to pay)
+    const agent = await Agent.findOne({ userId });
+    if (agent) {
+      return res.status(400).json({ message: 'Agents get free access to promo codes' });
+    }
+
+    // Get access amount from config
+    const promoConfig = await PromoCodeConfig.findOne().sort({ createdAt: -1 });
+    const accessAmount = promoConfig?.accessPromoCodeViewAmount || 50;
+
+    // Check user's HSC balance
+    const user = await User.findById(userId);
+    if (user.hscBalance < accessAmount) {
+      return res.status(400).json({
+        message: 'Insufficient HSC balance',
+        required: accessAmount,
+        current: user.hscBalance,
+        shortfall: accessAmount - user.hscBalance
+      });
+    }
+
+    // Deduct HSC from user's balance
+    const balanceBefore = user.hscBalance;
+    user.hscBalance -= accessAmount;
+    await user.save();
+
+    // Create payment activity record
+    const paymentActivity = new PaymentActivity({
+      userId,
+      buyerEmail: userEmail,
+      item: 'Promo Code View Page Access',
+      quantity: 1,
+      category: 'Access Fee',
+      originalAmount: accessAmount,
+      amount: accessAmount,
+      discountedAmount: 0,
+      paymentMethod: 'HSC',
+      status: 'completed'
+    });
+    await paymentActivity.save();
+
+    // Create or update access record
+    let accessRecord = await PromoCodeAccess.findOne({ userId });
+    if (accessRecord) {
+      accessRecord.hasAccess = true;
+      accessRecord.accessType = 'paid';
+      accessRecord.paidAmount = accessAmount;
+      accessRecord.paymentDate = new Date();
+      accessRecord.paymentTransactionId = paymentActivity.transactionId;
+    } else {
+      accessRecord = new PromoCodeAccess({
+        userId,
+        userEmail,
+        hasAccess: true,
+        accessType: 'paid',
+        paidAmount: accessAmount,
+        paymentDate: new Date(),
+        paymentTransactionId: paymentActivity.transactionId
+      });
+    }
+    await accessRecord.save();
+
+    res.json({
+      success: true,
+      message: 'Payment successful! You now have access to the promo code view page.',
+      paidAmount: accessAmount,
+      newBalance: user.hscBalance,
+      transactionId: paymentActivity.transactionId
+    });
+
+  } catch (error) {
+    console.error('Pay access error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get active promo codes for explore page (requires access)
+router.get('/explore', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { page = 1, limit = 12 } = req.query;
+    const skip = (page - 1) * limit;
+
+    // Check if user has access
+    const agent = await Agent.findOne({ userId });
+    const accessRecord = await PromoCodeAccess.findOne({ userId });
+
+    const hasAccess = agent || (accessRecord && accessRecord.hasAccess);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Access denied. Please pay for access or become an agent.' });
+    }
+
+    // Update last accessed time
+    if (accessRecord) {
+      accessRecord.lastAccessedAt = new Date();
+      await accessRecord.save();
+    }
+
+    // Get active promo codes with promoteStatus 'on'
+    const query = {
+      isActive: true,
+      promoteStatus: 'on',
+      expirationDate: { $gt: new Date() }
+    };
+
+    // Get total count for pagination
+    const total = await Agent.countDocuments(query);
+
+    // Get promo codes with random order
+    const promoCodes = await Agent.aggregate([
+      { $match: query },
+      { $sample: { size: parseInt(limit) } }, // Random sampling
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      {
+        $project: {
+          promoCode: 1,
+          userName: 1,
+          promoCodeType: 1,
+          totalEarnings: 1,
+          totalReferrals: 1,
+          usedCount: 1,
+          createdAt: 1,
+          expirationDate: 1,
+          'user.name': 1
+        }
+      }
+    ]);
+
+    // Get user's favorites if they have access record
+    let favoritePromoCodeIds = [];
+    if (accessRecord) {
+      favoritePromoCodeIds = accessRecord.favoritePromoCodes.map(fav => fav.agentId.toString());
+    }
+
+    // Add isFavorite flag to each promo code
+    const promoCodesWithFavorites = promoCodes.map(promo => ({
+      ...promo,
+      isFavorite: favoritePromoCodeIds.includes(promo._id.toString())
+    }));
+
+    res.json({
+      promoCodes: promoCodesWithFavorites,
+      pagination: {
+        current: parseInt(page),
+        pages: Math.ceil(total / limit),
+        total,
+        hasNext: page < Math.ceil(total / limit),
+        hasPrev: page > 1
+      },
+      userAccess: {
+        isAgent: !!agent,
+        accessType: agent ? 'agent' : accessRecord?.accessType
+      }
+    });
+
+  } catch (error) {
+    console.error('Get explore promo codes error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Add promo code to favorites
+router.post('/favorites/add', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { agentId, promoCode } = req.body;
+
+    if (!agentId || !promoCode) {
+      return res.status(400).json({ message: 'Agent ID and promo code are required' });
+    }
+
+    // Check if user has access
+    const agent = await Agent.findOne({ userId });
+    let accessRecord = await PromoCodeAccess.findOne({ userId });
+
+    const hasAccess = agent || (accessRecord && accessRecord.hasAccess);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Create access record if user is agent but doesn't have one
+    if (agent && !accessRecord) {
+      accessRecord = new PromoCodeAccess({
+        userId,
+        userEmail: req.user.email,
+        hasAccess: true,
+        accessType: 'agent'
+      });
+      await accessRecord.save();
+    }
+
+    // Verify the promo code exists and is active
+    const targetAgent = await Agent.findById(agentId);
+    if (!targetAgent || !targetAgent.isActive || targetAgent.promoteStatus !== 'on') {
+      return res.status(404).json({ message: 'Promo code not found or not active' });
+    }
+
+    // Add to favorites
+    await accessRecord.addFavorite(agentId, promoCode);
+
+    res.json({
+      success: true,
+      message: 'Promo code added to favorites',
+      promoCode: promoCode.toUpperCase()
+    });
+
+  } catch (error) {
+    console.error('Add favorite error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Remove promo code from favorites
+router.post('/favorites/remove', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { agentId } = req.body;
+
+    if (!agentId) {
+      return res.status(400).json({ message: 'Agent ID is required' });
+    }
+
+    const accessRecord = await PromoCodeAccess.findOne({ userId });
+    if (!accessRecord) {
+      return res.status(404).json({ message: 'Access record not found' });
+    }
+
+    // Remove from favorites
+    await accessRecord.removeFavorite(agentId);
+
+    res.json({
+      success: true,
+      message: 'Promo code removed from favorites'
+    });
+
+  } catch (error) {
+    console.error('Remove favorite error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get user's favorite promo codes
+router.get('/favorites', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const accessRecord = await PromoCodeAccess.findOne({ userId })
+      .populate({
+        path: 'favoritePromoCodes.agentId',
+        select: 'promoCode userName promoCodeType totalEarnings totalReferrals usedCount isActive promoteStatus expirationDate',
+        match: { isActive: true, promoteStatus: 'on' }
+      });
+
+    if (!accessRecord) {
+      return res.json({ favorites: [] });
+    }
+
+    // Filter out inactive promo codes and format response
+    const activeFavorites = accessRecord.favoritePromoCodes
+      .filter(fav => fav.agentId) // Remove null entries from populate
+      .map(fav => ({
+        _id: fav.agentId._id,
+        promoCode: fav.agentId.promoCode,
+        userName: fav.agentId.userName,
+        promoCodeType: fav.agentId.promoCodeType,
+        totalEarnings: fav.agentId.totalEarnings,
+        totalReferrals: fav.agentId.totalReferrals,
+        usedCount: fav.agentId.usedCount,
+        addedAt: fav.addedAt,
+        isFavorite: true
+      }));
+
+    res.json({ favorites: activeFavorites });
+
+  } catch (error) {
+    console.error('Get favorites error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
