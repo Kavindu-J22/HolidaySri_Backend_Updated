@@ -297,7 +297,7 @@ const promoCodeTransactionSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['card', 'bank_transfer', 'admin_credit', 'free'],
+    enum: ['card', 'bank_transfer', 'admin_credit', 'free', 'hsc'],
     required: function() {
       return this.transactionType === 'purchase';
     }

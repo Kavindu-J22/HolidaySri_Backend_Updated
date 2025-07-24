@@ -757,10 +757,15 @@ router.post('/buy-preused', verifyToken, async (req, res) => {
     const hscConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
     const hscValue = hscConfig ? hscConfig.hscValue : 100;
 
+    // Store original values before modifying sellingAgent
+    const originalSellingPrice = sellingAgent.sellingPrice;
+    const originalPromoCode = sellingAgent.promoCode;
+    const originalPromoCodeType = sellingAgent.promoCodeType;
+
     // Start transaction-like operations
     try {
       // 1. Deduct HSC from buyer
-      buyer.hscBalance -= sellingAgent.sellingPrice;
+      buyer.hscBalance -= originalSellingPrice;
       await buyer.save();
 
       // 2. Record HSC earnings for seller (don't add to balance directly)
@@ -773,13 +778,13 @@ router.post('/buy-preused', verifyToken, async (req, res) => {
       const hscEarned = new HSCEarned({
         userId: seller._id,
         buyerUserId: req.user._id,
-        earnedAmount: sellingAgent.sellingPrice,
+        earnedAmount: originalSellingPrice,
         category: 'Promocode Sold',
         itemDetails: {
-          promoCode: sellingAgent.promoCode,
-          promoCodeType: sellingAgent.promoCodeType,
-          sellingPrice: sellingAgent.sellingPrice,
-          sellingPriceLKR: Math.round(sellingAgent.sellingPrice * hscValue)
+          promoCode: originalPromoCode,
+          promoCodeType: originalPromoCodeType,
+          sellingPrice: originalSellingPrice,
+          sellingPriceLKR: Math.round(originalSellingPrice * hscValue)
         },
         buyerDetails: {
           buyerName: buyer.name,
@@ -787,7 +792,7 @@ router.post('/buy-preused', verifyToken, async (req, res) => {
           purchaseDate: new Date()
         },
         transactionId: `PREUSED_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`,
-        description: `Promo code ${sellingAgent.promoCode} sold to ${buyer.name}`
+        description: `Promo code ${originalPromoCode} sold to ${buyer.name}`
       });
 
       await hscEarned.save();
@@ -808,18 +813,20 @@ router.post('/buy-preused', verifyToken, async (req, res) => {
       // Payment activity for the purchase
       const paymentActivity = new PaymentActivity({
         userId: req.user._id,
-        itemName: `Pre-Used Promo Code - ${sellingAgent.promoCode}`,
-        itemPrice: Math.round(sellingAgent.sellingPrice * hscValue),
-        itemCategory: 'Pre-Used Promocode',
+        buyerEmail: buyer.email,
+        item: `Pre-Used Promo Code - ${originalPromoCode}`,
         quantity: 1,
-        finalAmount: sellingAgent.sellingPrice,
-        discountAmount: 0,
-        earnRate: 0,
-        purchasedPromoCode: sellingAgent.promoCode,
-        purchasedPromoCodeType: sellingAgent.promoCodeType,
+        category: 'Pre-Used Promocode',
+        originalAmount: originalSellingPrice,
+        amount: originalSellingPrice,
+        discountedAmount: 0,
+        promoCode: originalPromoCode,
+        promoCodeOwner: seller.email,
+        promoCodeOwnerId: seller._id,
+        forEarns: Math.round(originalSellingPrice * hscValue),
         paymentMethod: 'HSC',
         status: 'completed',
-        transactionId: `PREUSED_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
+        transactionId: hscEarned.transactionId
       });
 
       await paymentActivity.save();
@@ -829,9 +836,14 @@ router.post('/buy-preused', verifyToken, async (req, res) => {
         userId: req.user._id,
         promoCodeType: 'pre-used',
         transactionType: 'purchase',
-        amount: Math.round(sellingAgent.sellingPrice * hscValue),
-        hscEquivalent: sellingAgent.sellingPrice,
-        description: `Purchased pre-used promo code: ${sellingAgent.promoCode}`
+        amount: Math.round(originalSellingPrice * hscValue),
+        hscEquivalent: originalSellingPrice,
+        description: `Purchased pre-used promo code: ${originalPromoCode}`,
+        paymentMethod: 'hsc', // Using HSC balance for payment
+        paymentDetails: {
+          transactionId: hscEarned.transactionId,
+          paymentStatus: 'completed'
+        }
       });
 
       await promoTransaction.save();
@@ -843,17 +855,17 @@ router.post('/buy-preused', verifyToken, async (req, res) => {
           seller.email,
           seller.name,
           {
-            promoCode: sellingAgent.promoCode,
-            promoCodeType: sellingAgent.promoCodeType,
-            sellingPrice: sellingAgent.sellingPrice,
-            sellingPriceLKR: Math.round(sellingAgent.sellingPrice * hscValue)
+            promoCode: originalPromoCode,
+            promoCodeType: originalPromoCodeType,
+            sellingPrice: originalSellingPrice,
+            sellingPriceLKR: Math.round(originalSellingPrice * hscValue)
           },
           {
             buyerName: buyer.name,
             buyerEmail: buyer.email
           },
-          sellingAgent.sellingPrice,
-          Math.round(sellingAgent.sellingPrice * hscValue)
+          originalSellingPrice, // HSC amount earned
+          Math.round(originalSellingPrice * hscValue) // LKR equivalent earned
         );
 
         // Send notification to buyer
@@ -861,11 +873,11 @@ router.post('/buy-preused', verifyToken, async (req, res) => {
           buyer.email,
           buyer.name,
           {
-            promoCode: sellingAgent.promoCode,
-            promoCodeType: sellingAgent.promoCodeType
+            promoCode: originalPromoCode,
+            promoCodeType: originalPromoCodeType
           },
-          sellingAgent.sellingPrice,
-          Math.round(sellingAgent.sellingPrice * hscValue)
+          originalSellingPrice, // HSC amount paid
+          Math.round(originalSellingPrice * hscValue) // LKR equivalent paid
         );
       } catch (emailError) {
         console.error('Email notification error:', emailError);
@@ -875,10 +887,10 @@ router.post('/buy-preused', verifyToken, async (req, res) => {
       res.json({
         success: true,
         message: 'Pre-used promo code purchased successfully! You are now an agent with us.',
-        promoCode: sellingAgent.promoCode,
-        promoCodeType: sellingAgent.promoCodeType,
-        paidAmount: sellingAgent.sellingPrice,
-        paidAmountLKR: Math.round(sellingAgent.sellingPrice * hscValue),
+        promoCode: originalPromoCode,
+        promoCodeType: originalPromoCodeType,
+        paidAmount: originalSellingPrice,
+        paidAmountLKR: Math.round(originalSellingPrice * hscValue),
         newBalance: buyer.hscBalance,
         transactionId: paymentActivity.transactionId,
         redirectTo: '/profile' // Redirect to agent dashboard
