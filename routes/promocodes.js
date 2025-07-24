@@ -323,17 +323,34 @@ router.get('/admin/transactions', verifyAdminToken, async (req, res) => {
 // Check if user already has a promo code
 router.get('/user-has-promocode', verifyToken, async (req, res) => {
   try {
+    // Check for ANY promo code (active, inactive, or expired)
     const agent = await Agent.findOne({
-      userId: req.user._id,
-      isActive: true,
-      expirationDate: { $gt: new Date() }
+      userId: req.user._id
     });
 
-    res.json({
-      hasPromoCode: !!agent,
-      promoCode: agent ? agent.promoCode : null,
-      promoCodeType: agent ? agent.promoCodeType : null
-    });
+    if (agent) {
+      const isActive = agent.isActive && new Date() <= new Date(agent.expirationDate);
+      const isExpired = new Date() > new Date(agent.expirationDate);
+
+      res.json({
+        hasPromoCode: true,
+        promoCode: agent.promoCode,
+        promoCodeType: agent.promoCodeType,
+        isActive: agent.isActive,
+        isExpired: isExpired,
+        isCurrentlyActive: isActive,
+        expirationDate: agent.expirationDate,
+        totalEarnings: agent.totalEarnings || 0,
+        totalReferrals: agent.totalReferrals || 0,
+        usedCount: agent.usedCount || 0
+      });
+    } else {
+      res.json({
+        hasPromoCode: false,
+        promoCode: null,
+        promoCodeType: null
+      });
+    }
 
   } catch (error) {
     console.error('Check user promo code error:', error);
@@ -409,7 +426,8 @@ router.get('/marketplace', async (req, res) => {
       promoCodeType,
       isActive,
       sortBy = 'sellingListedAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
+      search
     } = req.query;
 
     const skip = (page - 1) * limit;
@@ -427,6 +445,15 @@ router.get('/marketplace', async (req, res) => {
     if (isActive === 'true') {
       query.isActive = true;
       query.expirationDate = { $gt: new Date() };
+    }
+
+    // Add search functionality
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      query.$or = [
+        { userName: searchRegex },
+        { promoCode: searchRegex }
+      ];
     }
 
     // Build sort object
@@ -709,15 +736,13 @@ router.post('/buy-preused', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'This promo code is not for sale' });
     }
 
-    // Check if buyer already has an active promo code
+    // Check if buyer already has ANY promo code (active, inactive, or expired)
     const buyerAgent = await Agent.findOne({
-      userId: req.user._id,
-      isActive: true,
-      expirationDate: { $gt: new Date() }
+      userId: req.user._id
     });
 
     if (buyerAgent) {
-      return res.status(400).json({ message: 'You already have an active promo code' });
+      return res.status(400).json({ message: 'You already have a promo code. You cannot purchase another one.' });
     }
 
     // Check buyer's HSC balance
