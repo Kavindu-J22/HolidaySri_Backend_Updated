@@ -249,6 +249,12 @@ const promoCodeConfigSchema = new mongoose.Schema({
       default: 200 // LKR
     }
   },
+  // Selling advertisement fee
+  sellAdFee: {
+    type: Number,
+    required: true,
+    default: 100 // HSC
+  },
   lastUpdated: {
     type: Date,
     default: Date.now

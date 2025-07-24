@@ -177,6 +177,7 @@ router.get('/config', async (req, res) => {
       hscValue,
       currency: hscConfig ? hscConfig.currency : 'LKR',
       lastUpdated: promoConfig.lastUpdated,
+      sellAdFee: promoConfig.sellAdFee || 100,
       discounts: {
         monthlyAdDiscount: promoConfig.discounts.monthlyAdDiscount,
         dailyAdDiscount: promoConfig.discounts.dailyAdDiscount,
@@ -215,7 +216,7 @@ router.get('/admin/config', verifyAdminToken, async (req, res) => {
 // Admin: Update promo code configuration
 router.put('/admin/config', verifyAdminToken, async (req, res) => {
   try {
-    const { silver, gold, diamond, free, discounts } = req.body;
+    const { silver, gold, diamond, free, discounts, sellAdFee } = req.body;
 
     // Validate that free promo code price is always 0
     if (free && free.price && free.price !== 0) {
@@ -234,6 +235,7 @@ router.put('/admin/config', verifyAdminToken, async (req, res) => {
       updateData.free = { ...free, price: 0 }; // Ensure free price is always 0
     }
     if (discounts) updateData.discounts = discounts;
+    if (sellAdFee !== undefined) updateData.sellAdFee = sellAdFee;
 
     const promoConfig = new PromoCodeConfig(updateData);
     await promoConfig.save();

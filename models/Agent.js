@@ -95,6 +95,18 @@ const agentSchema = new mongoose.Schema({
   expiredNotificationEmailSent: {
     type: Boolean,
     default: false
+  },
+  // Selling related fields
+  isSelling: {
+    type: Boolean,
+    default: false
+  },
+  sellingPrice: {
+    type: Number,
+    default: 0 // Price in HSC
+  },
+  sellingListedAt: {
+    type: Date
   }
 }, {
   timestamps: true

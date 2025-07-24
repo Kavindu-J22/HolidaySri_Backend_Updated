@@ -3,6 +3,9 @@ const User = require('../models/User');
 const Agent = require('../models/Agent');
 const Earning = require('../models/Earning');
 const Notification = require('../models/Notification');
+const ClaimRequest = require('../models/ClaimRequest');
+const PaymentActivity = require('../models/PaymentActivity');
+const { PromoCodeConfig } = require('../models/HSC');
 const { verifyToken, verifyEmailVerified } = require('../middleware/auth');
 
 const router = express.Router();
@@ -888,6 +891,115 @@ router.post('/claim-earnings', verifyToken, async (req, res) => {
 
   } catch (error) {
     console.error('Claim earnings error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Sell promocode
+router.post('/sell-promocode', verifyToken, async (req, res) => {
+  try {
+    const { sellingPrice } = req.body;
+    const userEmail = req.user.email;
+
+    if (!sellingPrice || parseFloat(sellingPrice) <= 0) {
+      return res.status(400).json({ message: 'Please enter a valid selling price' });
+    }
+
+    // Get user's agent data
+    const agent = await Agent.findOne({ email: userEmail });
+    if (!agent) {
+      return res.status(404).json({ message: 'Agent not found' });
+    }
+
+    // Check if agent is already selling
+    if (agent.isSelling) {
+      return res.status(400).json({ message: 'Your promocode is already listed for sale' });
+    }
+
+    // Get selling advertisement fee from config
+    const promoConfig = await PromoCodeConfig.findOne().sort({ createdAt: -1 });
+    const sellAdFee = promoConfig?.sellAdFee || 100;
+
+    // Check user's HSC balance
+    const user = await User.findById(req.user._id);
+    if (user.hscBalance < sellAdFee) {
+      return res.status(400).json({
+        message: `Insufficient HSC balance. You need ${sellAdFee} HSC to list your promocode for sale.`,
+        required: sellAdFee,
+        current: user.hscBalance
+      });
+    }
+
+    // Deduct HSC from user's balance
+    user.hscBalance -= sellAdFee;
+    await user.save();
+
+    // Create payment activity record
+    const paymentActivity = new PaymentActivity({
+      userId: req.user._id,
+      type: 'debit',
+      amount: sellAdFee,
+      currency: 'HSC',
+      description: `Advertisement fee for selling promocode ${agent.promoCode}`,
+      status: 'completed',
+      relatedData: {
+        promoCode: agent.promoCode,
+        sellingPrice: parseFloat(sellingPrice)
+      }
+    });
+    await paymentActivity.save();
+
+    // Update agent selling status
+    agent.isSelling = true;
+    agent.sellingPrice = parseFloat(sellingPrice);
+    agent.sellingListedAt = new Date();
+    await agent.save();
+
+    res.json({
+      success: true,
+      message: 'Your promocode has been listed for sale successfully!',
+      data: {
+        promoCode: agent.promoCode,
+        sellingPrice: agent.sellingPrice,
+        adFeePaid: sellAdFee,
+        newHscBalance: user.hscBalance
+      }
+    });
+
+  } catch (error) {
+    console.error('Sell promocode error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Toggle selling status
+router.post('/toggle-selling', verifyToken, async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+
+    // Get user's agent data
+    const agent = await Agent.findOne({ email: userEmail });
+    if (!agent) {
+      return res.status(404).json({ message: 'Agent not found' });
+    }
+
+    // Toggle selling status
+    agent.isSelling = !agent.isSelling;
+    if (!agent.isSelling) {
+      agent.sellingPrice = 0;
+      agent.sellingListedAt = null;
+    }
+    await agent.save();
+
+    res.json({
+      success: true,
+      message: agent.isSelling ? 'Promocode is now listed for sale' : 'Promocode removed from sale',
+      isSelling: agent.isSelling,
+      sellingPrice: agent.sellingPrice
+    });
+
+  } catch (error) {
+    console.error('Toggle selling error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
