@@ -1118,7 +1118,14 @@ router.post('/pay-access', verifyToken, async (req, res) => {
 router.get('/explore', verifyToken, async (req, res) => {
   try {
     const userId = req.user._id;
-    const { page = 1, limit = 12 } = req.query;
+    const {
+      page = 1,
+      limit = 12,
+      search,
+      promoCodeType,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
     const skip = (page - 1) * limit;
 
     // Check if user has access
@@ -1136,43 +1143,99 @@ router.get('/explore', verifyToken, async (req, res) => {
       await accessRecord.save();
     }
 
-    // Get active promo codes with promoteStatus 'on'
+    // Build query for active promo codes with promoteStatus 'on'
     const query = {
       isActive: true,
       promoteStatus: 'on',
       expirationDate: { $gt: new Date() }
     };
 
+    // Add promo code type filter
+    if (promoCodeType && promoCodeType !== 'all') {
+      query.promoCodeType = promoCodeType;
+    }
+
+    // Add search functionality
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      query.$or = [
+        { userName: searchRegex },
+        { promoCode: searchRegex }
+      ];
+    }
+
     // Get total count for pagination
     const total = await Agent.countDocuments(query);
 
-    // Get promo codes with random order
-    const promoCodes = await Agent.aggregate([
-      { $match: query },
-      { $sample: { size: parseInt(limit) } }, // Random sampling
-      {
-        $lookup: {
-          from: 'users',
-          localField: 'userId',
-          foreignField: '_id',
-          as: 'user'
+    // Build sort object
+    const sortObj = {};
+    if (sortBy === 'random') {
+      // Use aggregation for random sampling
+      const promoCodes = await Agent.aggregate([
+        { $match: query },
+        { $sample: { size: parseInt(limit) } },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'userId',
+            foreignField: '_id',
+            as: 'user'
+          }
+        },
+        {
+          $project: {
+            promoCode: 1,
+            userName: 1,
+            promoCodeType: 1,
+            totalEarnings: 1,
+            totalReferrals: 1,
+            usedCount: 1,
+            createdAt: 1,
+            expirationDate: 1,
+            isVerified: 1,
+            'user.name': 1
+          }
         }
-      },
-      {
-        $project: {
-          promoCode: 1,
-          userName: 1,
-          promoCodeType: 1,
-          totalEarnings: 1,
-          totalReferrals: 1,
-          usedCount: 1,
-          createdAt: 1,
-          expirationDate: 1,
-          isVerified: 1,
-          'user.name': 1
-        }
+      ]);
+
+      // Get user's favorites if they have access record
+      let favoritePromoCodeIds = [];
+      if (accessRecord) {
+        favoritePromoCodeIds = accessRecord.favoritePromoCodes.map(fav => fav.agentId.toString());
       }
-    ]);
+
+      // Add isFavorite flag to each promo code
+      const promoCodesWithFavorites = promoCodes.map(promo => ({
+        ...promo,
+        isFavorite: favoritePromoCodeIds.includes(promo._id.toString())
+      }));
+
+      return res.json({
+        promoCodes: promoCodesWithFavorites,
+        pagination: {
+          current: parseInt(page),
+          pages: Math.ceil(total / limit),
+          total,
+          hasNext: page < Math.ceil(total / limit),
+          hasPrev: page > 1
+        },
+        userAccess: {
+          isAgent: !!agent,
+          accessType: agent ? 'agent' : accessRecord?.accessType
+        }
+      });
+    } else {
+      // Use regular find with sorting
+      sortObj[sortBy] = sortOrder === 'asc' ? 1 : -1;
+    }
+
+    // Get promo codes with sorting and pagination
+    const promoCodes = await Agent.find(query)
+      .sort(sortObj)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate('userId', 'name email')
+      .select('promoCode promoCodeType isActive totalEarnings totalReferrals usedCount userName createdAt updatedAt expirationDate isVerified promoteStatus');
 
     // Get user's favorites if they have access record
     let favoritePromoCodeIds = [];
@@ -1182,7 +1245,7 @@ router.get('/explore', verifyToken, async (req, res) => {
 
     // Add isFavorite flag to each promo code
     const promoCodesWithFavorites = promoCodes.map(promo => ({
-      ...promo,
+      ...promo.toObject(),
       isFavorite: favoritePromoCodeIds.includes(promo._id.toString())
     }));
 
