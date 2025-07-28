@@ -46,6 +46,9 @@ const notificationRoutes = require('./routes/notifications');
 const destinationRoutes = require('./routes/destinations');
 const reviewRoutes = require('./routes/reviews');
 const favoriteRoutes = require('./routes/favorites');
+const locationRoutes = require('./routes/locations');
+const locationReviewRoutes = require('./routes/locationReviews');
+const locationFavoriteRoutes = require('./routes/locationFavorites');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -57,6 +60,9 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/destinations', destinationRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/favorites', favoriteRoutes);
+app.use('/api/locations', locationRoutes);
+app.use('/api/location-reviews', locationReviewRoutes);
+app.use('/api/location-favorites', locationFavoriteRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
