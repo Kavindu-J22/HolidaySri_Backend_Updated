@@ -43,6 +43,9 @@ const hscRoutes = require('./routes/hsc');
 const adminRoutes = require('./routes/admin');
 const promocodeRoutes = require('./routes/promocodes');
 const notificationRoutes = require('./routes/notifications');
+const destinationRoutes = require('./routes/destinations');
+const reviewRoutes = require('./routes/reviews');
+const favoriteRoutes = require('./routes/favorites');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -51,6 +54,9 @@ app.use('/api/hsc', hscRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/promocodes', promocodeRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/destinations', destinationRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/favorites', favoriteRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
