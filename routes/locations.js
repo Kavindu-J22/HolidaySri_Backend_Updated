@@ -171,8 +171,8 @@ router.post('/', verifyAdminToken, async (req, res) => {
     }
 
     // Validate images array
-    if (!Array.isArray(images) || images.length === 0 || images.length > 5) {
-      return res.status(400).json({ message: 'Please provide 1-5 images' });
+    if (!Array.isArray(images) || images.length === 0 || images.length > 6) {
+      return res.status(400).json({ message: 'Please provide 1-6 images' });
     }
 
     // Validate location type
