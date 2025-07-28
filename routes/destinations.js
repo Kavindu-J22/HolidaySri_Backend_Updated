@@ -168,12 +168,13 @@ router.post('/', verifyAdminToken, async (req, res) => {
       distanceFromColombo,
       province,
       district,
-      climate
+      climate,
+      recommendedToVisit
     } = req.body;
 
     // Validate required fields
-    if (!name || !type || !description || !images || !mapUrl || 
-        distanceFromColombo === undefined || !province || !district || !climate) {
+    if (!name || !type || !description || !images || !mapUrl ||
+        distanceFromColombo === undefined || !province || !district || !climate || !recommendedToVisit) {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
@@ -197,7 +198,8 @@ router.post('/', verifyAdminToken, async (req, res) => {
       distanceFromColombo: parseFloat(distanceFromColombo),
       province,
       district,
-      climate
+      climate,
+      recommendedToVisit
     });
 
     await destination.save();
@@ -231,7 +233,8 @@ router.put('/:id', verifyAdminToken, async (req, res) => {
       distanceFromColombo,
       province,
       district,
-      climate
+      climate,
+      recommendedToVisit
     } = req.body;
 
     const destination = await Destination.findById(req.params.id);
@@ -254,6 +257,7 @@ router.put('/:id', verifyAdminToken, async (req, res) => {
     if (province) destination.province = province;
     if (district) destination.district = district;
     if (climate) destination.climate = climate;
+    if (recommendedToVisit) destination.recommendedToVisit = recommendedToVisit;
 
     await destination.save();
 

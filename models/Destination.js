@@ -93,6 +93,12 @@ const destinationSchema = new mongoose.Schema({
     ],
     required: true
   },
+  recommendedToVisit: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 100
+  },
   averageRating: {
     type: Number,
     default: 0,
