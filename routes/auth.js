@@ -230,7 +230,12 @@ router.post('/login', async (req, res) => {
         hscBalance: user.hscBalance,
         isEmailVerified: user.isEmailVerified,
         profileImage: user.profileImage,
-        bankDetails: user.bankDetails || null
+        bankDetails: user.bankDetails || null,
+        // Membership fields
+        isMember: user.isMember || false,
+        membershipType: user.membershipType || null,
+        membershipStartDate: user.membershipStartDate || null,
+        membershipExpirationDate: user.membershipExpirationDate || null
       }
     });
 
@@ -285,7 +290,12 @@ router.post('/google', async (req, res) => {
           hscBalance: user.hscBalance,
           isEmailVerified: user.isEmailVerified,
           profileImage: user.profileImage,
-          bankDetails: user.bankDetails || null
+          bankDetails: user.bankDetails || null,
+          // Membership fields
+          isMember: user.isMember || false,
+          membershipType: user.membershipType || null,
+          membershipStartDate: user.membershipStartDate || null,
+          membershipExpirationDate: user.membershipExpirationDate || null
         }
       });
     } else {
@@ -322,7 +332,12 @@ router.get('/me', verifyToken, async (req, res) => {
         isEmailVerified: req.user.isEmailVerified,
         profileImage: req.user.profileImage,
         lastLogin: req.user.lastLogin,
-        bankDetails: req.user.bankDetails || null
+        bankDetails: req.user.bankDetails || null,
+        // Membership fields
+        isMember: req.user.isMember || false,
+        membershipType: req.user.membershipType || null,
+        membershipStartDate: req.user.membershipStartDate || null,
+        membershipExpirationDate: req.user.membershipExpirationDate || null
       }
     });
   } catch (error) {
