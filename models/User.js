@@ -103,6 +103,24 @@ const userSchema = new mongoose.Schema({
       type: String,
       trim: true
     }
+  },
+  // Membership fields
+  isMember: {
+    type: Boolean,
+    default: false
+  },
+  membershipType: {
+    type: String,
+    enum: ['monthly', 'yearly'],
+    default: null
+  },
+  membershipStartDate: {
+    type: Date,
+    default: null
+  },
+  membershipExpirationDate: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true

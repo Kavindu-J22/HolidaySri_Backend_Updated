@@ -2,10 +2,12 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { HSCConfig, HSCTransaction, HSCPackage } = require('../models/HSC');
+const { MembershipConfig, MembershipTransaction } = require('../models/Membership');
 const Advertisement = require('../models/Advertisement');
 const ClaimRequest = require('../models/ClaimRequest');
 const Earning = require('../models/Earning');
 const { verifyAdmin, verifyAdminToken } = require('../middleware/auth');
+const { checkExpiredMemberships, checkExpiringMemberships } = require('../jobs/membershipExpiration');
 
 const router = express.Router();
 
@@ -770,6 +772,227 @@ router.post('/hsc-earned-claims/:requestId/approve', verifyAdminToken, async (re
   } catch (error) {
     console.error('Approve HSC earned claim error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Membership Management Routes
+
+// Test endpoint for membership
+router.get('/membership-test', verifyAdminToken, async (req, res) => {
+  try {
+    console.log('Admin membership test endpoint hit');
+    console.log('Admin user:', req.admin);
+    res.json({
+      success: true,
+      message: 'Admin membership test successful',
+      admin: req.admin
+    });
+  } catch (error) {
+    console.error('Admin membership test error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Test failed',
+      error: error.message
+    });
+  }
+});
+
+// Get membership configuration
+router.get('/membership-config', verifyAdminToken, async (req, res) => {
+  try {
+    console.log('Admin membership config request received');
+    let membershipConfig = await MembershipConfig.findOne({ isActive: true });
+
+    if (!membershipConfig) {
+      console.log('No membership config found, creating default');
+      // Create default configuration if none exists
+      membershipConfig = new MembershipConfig({
+        monthlyCharge: 2500,
+        yearlyCharge: 25000,
+        updatedBy: req.admin.username || 'admin'
+      });
+      await membershipConfig.save();
+      console.log('Default membership config created');
+    }
+
+    console.log('Returning membership config:', membershipConfig);
+    res.json({
+      success: true,
+      config: membershipConfig
+    });
+
+  } catch (error) {
+    console.error('Get membership config error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Update membership configuration
+router.put('/membership-config', verifyAdminToken, async (req, res) => {
+  try {
+    const { monthlyCharge, yearlyCharge, features } = req.body;
+
+    if (!monthlyCharge || !yearlyCharge || monthlyCharge <= 0 || yearlyCharge <= 0) {
+      return res.status(400).json({ message: 'Invalid charges provided' });
+    }
+
+    let membershipConfig = await MembershipConfig.findOne({ isActive: true });
+
+    if (!membershipConfig) {
+      membershipConfig = new MembershipConfig({
+        monthlyCharge,
+        yearlyCharge,
+        features: features || [],
+        updatedBy: req.admin.username || 'admin'
+      });
+    } else {
+      membershipConfig.monthlyCharge = monthlyCharge;
+      membershipConfig.yearlyCharge = yearlyCharge;
+      if (features) membershipConfig.features = features;
+      membershipConfig.lastUpdated = new Date();
+      membershipConfig.updatedBy = req.admin.username || 'admin';
+    }
+
+    await membershipConfig.save();
+
+    res.json({
+      success: true,
+      message: 'Membership configuration updated successfully',
+      config: membershipConfig
+    });
+
+  } catch (error) {
+    console.error('Update membership config error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get membership statistics
+router.get('/membership-stats', verifyAdminToken, async (req, res) => {
+  try {
+    console.log('Admin membership stats request received');
+    const totalMembers = await User.countDocuments({ isMember: true });
+    const monthlyMembers = await User.countDocuments({
+      isMember: true,
+      membershipType: 'monthly'
+    });
+    const yearlyMembers = await User.countDocuments({
+      isMember: true,
+      membershipType: 'yearly'
+    });
+    console.log('Member counts:', { totalMembers, monthlyMembers, yearlyMembers });
+
+    // Get membership revenue
+    const revenueStats = await MembershipTransaction.aggregate([
+      { $match: { status: 'active' } },
+      {
+        $group: {
+          _id: '$membershipType',
+          count: { $sum: 1 },
+          totalRevenue: { $sum: '$amount' },
+          totalHSC: { $sum: '$hscAmount' }
+        }
+      }
+    ]);
+
+    const formattedRevenue = {
+      monthly: { count: 0, totalRevenue: 0, totalHSC: 0 },
+      yearly: { count: 0, totalRevenue: 0, totalHSC: 0 }
+    };
+
+    revenueStats.forEach(stat => {
+      if (formattedRevenue[stat._id]) {
+        formattedRevenue[stat._id] = {
+          count: stat.count,
+          totalRevenue: stat.totalRevenue,
+          totalHSC: stat.totalHSC
+        };
+      }
+    });
+
+    // Get recent membership transactions
+    const recentTransactions = await MembershipTransaction.find()
+      .populate('userId', 'name email')
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    res.json({
+      success: true,
+      stats: {
+        totalMembers,
+        monthlyMembers,
+        yearlyMembers,
+        revenue: formattedRevenue,
+        totalRevenue: formattedRevenue.monthly.totalRevenue + formattedRevenue.yearly.totalRevenue
+      },
+      recentTransactions
+    });
+
+  } catch (error) {
+    console.error('Get membership stats error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get all membership transactions
+router.get('/membership-transactions', verifyAdminToken, async (req, res) => {
+  try {
+    const { page = 1, limit = 20, status = 'all', type = 'all' } = req.query;
+    const skip = (page - 1) * limit;
+
+    let query = {};
+    if (status !== 'all') query.status = status;
+    if (type !== 'all') query.membershipType = type;
+
+    const transactions = await MembershipTransaction.find(query)
+      .populate('userId', 'name email')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await MembershipTransaction.countDocuments(query);
+
+    res.json({
+      success: true,
+      transactions,
+      pagination: {
+        current: parseInt(page),
+        pages: Math.ceil(total / limit),
+        total
+      }
+    });
+
+  } catch (error) {
+    console.error('Get membership transactions error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Manual trigger for membership expiration check
+router.post('/membership-expiration-check', verifyAdminToken, async (req, res) => {
+  try {
+    console.log('Manual membership expiration check triggered by admin');
+
+    // Run both expiration checks
+    await checkExpiredMemberships();
+    await checkExpiringMemberships();
+
+    res.json({
+      success: true,
+      message: 'Membership expiration check completed successfully'
+    });
+
+  } catch (error) {
+    console.error('Manual membership expiration check error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to run membership expiration check',
+      error: error.message
+    });
   }
 });
 

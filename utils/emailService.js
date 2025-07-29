@@ -806,6 +806,222 @@ const sendHSCEarnedClaimApprovalEmail = async (email, name, hscAmount, lkrAmount
   }
 };
 
+// Send membership purchase success email
+const sendMembershipPurchaseEmail = async (email, name, membershipType, startDate, expirationDate, features) => {
+  const transporter = createTransporter();
+
+  const formattedStartDate = startDate.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const formattedExpirationDate = expirationDate.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const featuresList = features.map(feature => `<li style="margin: 8px 0; color: #555;">${feature}</li>`).join('');
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri Tourism',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: `🎉 Welcome to Holidaysri Membership - ${membershipType.charAt(0).toUpperCase() + membershipType.slice(1)} Plan Activated!`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #2563eb; margin: 0;">🎉 Welcome to Holidaysri Membership!</h1>
+            <p style="color: #666; margin: 5px 0;">Premium Benefits Activated</p>
+          </div>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Dear ${name},
+          </p>
+
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; border-radius: 10px; text-align: center; margin: 20px 0;">
+            <h2 style="margin: 0 0 10px 0; font-size: 24px;">✅ Membership Activated</h2>
+            <p style="margin: 0; font-size: 18px; font-weight: bold;">${membershipType.charAt(0).toUpperCase() + membershipType.slice(1)} Plan</p>
+            <p style="margin: 5px 0 0 0; opacity: 0.9;">Valid until ${formattedExpirationDate}</p>
+          </div>
+
+          <h3 style="color: #495057; border-bottom: 2px solid #e9ecef; padding-bottom: 10px;">Your Premium Benefits</h3>
+          <ul style="padding-left: 20px; margin: 15px 0;">
+            ${featuresList}
+          </ul>
+
+          <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+            <h4 style="color: #495057; margin: 0 0 10px 0;">Membership Details</h4>
+            <p style="margin: 5px 0;"><strong>Plan:</strong> ${membershipType.charAt(0).toUpperCase() + membershipType.slice(1)}</p>
+            <p style="margin: 5px 0;"><strong>Start Date:</strong> ${formattedStartDate}</p>
+            <p style="margin: 5px 0;"><strong>Expiration Date:</strong> ${formattedExpirationDate}</p>
+          </div>
+
+          <div style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #2196f3;">
+            <p style="margin: 0; color: #1565c0;"><strong>What's Next?</strong> Start enjoying your premium benefits immediately! Your advertisements will now appear in Featured Ads and you'll have enhanced visibility across the platform.</p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <p style="color: #6c757d; margin: 0;">Thank you for choosing</p>
+            <h3 style="color: #495057; margin: 10px 0;">🏝️ Holidaysri</h3>
+            <p style="color: #6c757d; margin: 0; font-size: 14px;">Your trusted travel platform</p>
+          </div>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri Tourism. All rights reserved.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
+              This is an automated message, please do not reply to this email.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Membership purchase email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Send membership expiration warning email
+const sendMembershipExpirationWarning = async (email, name, membershipType, expirationDate) => {
+  const transporter = createTransporter();
+
+  const formattedExpirationDate = expirationDate.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const daysLeft = Math.ceil((expirationDate - new Date()) / (1000 * 60 * 60 * 24));
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri Tourism',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: `⚠️ Membership Expiring Soon - ${daysLeft} Days Left | Holidaysri`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #f59e0b; margin: 0;">⚠️ Membership Expiring Soon</h1>
+            <p style="color: #666; margin: 5px 0;">Don't lose your premium benefits</p>
+          </div>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Dear ${name},
+          </p>
+
+          <div style="background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); color: white; padding: 25px; border-radius: 10px; text-align: center; margin: 20px 0;">
+            <h2 style="margin: 0 0 10px 0; font-size: 24px;">⏰ ${daysLeft} Days Left</h2>
+            <p style="margin: 0; font-size: 18px; font-weight: bold;">Your ${membershipType} membership expires on</p>
+            <p style="margin: 5px 0 0 0; opacity: 0.9; font-size: 16px;">${formattedExpirationDate}</p>
+          </div>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Your Holidaysri membership is about to expire. Don't miss out on your premium benefits including featured ads, enhanced visibility, and priority support.
+          </p>
+
+          <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #ffc107;">
+            <p style="margin: 0; color: #856404;"><strong>Renew Now</strong> to continue enjoying all premium benefits without interruption.</p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <p style="color: #6c757d; margin: 0;">Thank you for being a valued member of</p>
+            <h3 style="color: #495057; margin: 10px 0;">🏝️ Holidaysri</h3>
+          </div>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri Tourism. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Membership expiration warning email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Send membership expired email
+const sendMembershipExpiredEmail = async (email, name) => {
+  const transporter = createTransporter();
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri Tourism',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: `❌ Membership Expired - Renew to Restore Benefits | Holidaysri`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #dc2626; margin: 0;">❌ Membership Expired</h1>
+            <p style="color: #666; margin: 5px 0;">Your premium benefits have been suspended</p>
+          </div>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Dear ${name},
+          </p>
+
+          <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; padding: 25px; border-radius: 10px; text-align: center; margin: 20px 0;">
+            <h2 style="margin: 0 0 10px 0; font-size: 24px;">Membership Expired</h2>
+            <p style="margin: 0; font-size: 16px; opacity: 0.9;">Your premium benefits are no longer active</p>
+          </div>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Your Holidaysri membership has expired. You can still use our platform, but premium features like featured ads and enhanced visibility are no longer available.
+          </p>
+
+          <div style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #2196f3;">
+            <p style="margin: 0; color: #1565c0;"><strong>Renew Today</strong> to restore all your premium benefits and continue growing your business with enhanced visibility.</p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <p style="color: #6c757d; margin: 0;">We'd love to have you back as a member of</p>
+            <h3 style="color: #495057; margin: 10px 0;">🏝️ Holidaysri</h3>
+          </div>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri Tourism. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Membership expired email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   generateOTP,
   sendEmailVerificationOTP,
@@ -816,5 +1032,8 @@ module.exports = {
   sendPromoCodeRenewalSuccess,
   sendPromoCodeSoldNotification,
   sendPromoCodePurchaseSuccess,
-  sendHSCEarnedClaimApprovalEmail
+  sendHSCEarnedClaimApprovalEmail,
+  sendMembershipPurchaseEmail,
+  sendMembershipExpirationWarning,
+  sendMembershipExpiredEmail
 };

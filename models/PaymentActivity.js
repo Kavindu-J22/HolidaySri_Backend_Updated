@@ -22,6 +22,7 @@ const paymentActivitySchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
+    enum: ['Promo Codes', 'Membership', 'HSC Purchase', 'Advertisement'],
     default: 'Promo Codes'
   },
   originalAmount: {
@@ -58,6 +59,17 @@ const paymentActivitySchema = new mongoose.Schema({
   purchasedPromoCodeType: {
     type: String,
     enum: ['silver', 'gold', 'diamond', 'free']
+  },
+  // Membership specific fields
+  membershipType: {
+    type: String,
+    enum: ['monthly', 'yearly']
+  },
+  membershipStartDate: {
+    type: Date
+  },
+  membershipExpirationDate: {
+    type: Date
   },
   paymentMethod: {
     type: String,

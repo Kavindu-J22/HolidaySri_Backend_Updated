@@ -84,9 +84,22 @@ const hscTransactionSchema = new mongoose.Schema({
   relatedAdvertisement: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Advertisement'
+  },
+  transactionId: {
+    type: String,
+    unique: true,
+    sparse: true
   }
 }, {
   timestamps: true
+});
+
+// Generate transaction ID before saving
+hscTransactionSchema.pre('save', function(next) {
+  if (this.isNew && !this.transactionId) {
+    this.transactionId = `HSC_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+  }
+  next();
 });
 
 const hscPackageSchema = new mongoose.Schema({

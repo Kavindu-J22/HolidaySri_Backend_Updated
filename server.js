@@ -49,6 +49,8 @@ const favoriteRoutes = require('./routes/favorites');
 const locationRoutes = require('./routes/locations');
 const locationReviewRoutes = require('./routes/locationReviews');
 const locationFavoriteRoutes = require('./routes/locationFavorites');
+const membershipRoutes = require('./routes/membership');
+const { startMembershipJobs } = require('./jobs/membershipExpiration');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -63,6 +65,7 @@ app.use('/api/favorites', favoriteRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/location-reviews', locationReviewRoutes);
 app.use('/api/location-favorites', locationFavoriteRoutes);
+app.use('/api/membership', membershipRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
@@ -84,4 +87,7 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+
+  // Start membership expiration jobs
+  startMembershipJobs();
 });
