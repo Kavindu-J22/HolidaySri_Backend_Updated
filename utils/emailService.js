@@ -1287,7 +1287,123 @@ const sendCommercialPartnerExpiredEmail = async (email, name, partnerDetails) =>
   }
 };
 
-// Export all functions including the commercial partner ones
+// Send newsletter subscription confirmation email
+const sendNewsletterSubscriptionConfirmation = async (email) => {
+  const transporter = createTransporter();
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri Tourism',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: '🎉 Welcome to Holidaysri Newsletter!',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 20px;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Thank You for Subscribing!</h1>
+          <p style="color: white; margin: 10px 0 0 0; font-size: 18px;">Welcome to the Holidaysri family!</p>
+        </div>
+
+        <div style="background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <h2 style="color: #333; margin-top: 0;">Welcome to Our Newsletter!</h2>
+
+          <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
+            Thank you for subscribing to the Holidaysri Tourism newsletter! We're excited to have you join our community of travel enthusiasts.
+          </p>
+
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #333; margin-top: 0;">What to Expect:</h3>
+            <ul style="color: #666; line-height: 1.8; padding-left: 20px;">
+              <li>🏝️ Exclusive travel destinations and hidden gems in Sri Lanka</li>
+              <li>🎯 Special offers and discounts on tours and packages</li>
+              <li>📅 Updates on upcoming events and festivals</li>
+              <li>💡 Travel tips and insider recommendations</li>
+              <li>📰 Latest tourism news and updates</li>
+              <li>💡 And more Earning opportunities</li>
+            </ul>
+          </div>
+
+          <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
+            We promise to send you only valuable content and respect your inbox. You can update your preferences or unsubscribe at any time.
+          </p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="https://holidaysri.com" style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; font-weight: bold; display: inline-block;">
+              Explore Holidaysri
+            </a>
+          </div>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri Tourism. All rights reserved.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 10px 0 0 0;">
+              You received this email because you subscribed to our newsletter.
+              <a href="#" style="color: #10b981;">Unsubscribe</a> |
+              <a href="#" style="color: #10b981;">Update Preferences</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Newsletter confirmation email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Send custom newsletter email
+const sendNewsletterEmail = async (email, subject, htmlBody) => {
+  const transporter = createTransporter();
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri Tourism',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: subject,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 20px; border-radius: 10px 10px 0 0; text-align: center;">
+          <img src="https://res.cloudinary.com/dqdcmluxj/image/upload/v1752712704/4_xi6zj7.png" alt="Holidaysri" style="height: 40px; margin-bottom: 10px;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">Holidaysri Tourism</h1>
+        </div>
+
+        <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          ${htmlBody}
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri Tourism. All rights reserved.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 10px 0 0 0;">
+              You received this email because you subscribed to our newsletter.
+              <a href="#" style="color: #10b981;">Unsubscribe</a> |
+              <a href="#" style="color: #10b981;">Update Preferences</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Newsletter email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Export all functions including the newsletter ones
 module.exports = {
   generateOTP,
   sendEmailVerificationOTP,
@@ -1304,5 +1420,7 @@ module.exports = {
   sendMembershipExpiredEmail,
   sendCommercialPartnerWelcomeEmail,
   sendCommercialPartnerExpirationWarning,
-  sendCommercialPartnerExpiredEmail
+  sendCommercialPartnerExpiredEmail,
+  sendNewsletterSubscriptionConfirmation,
+  sendNewsletterEmail
 };
