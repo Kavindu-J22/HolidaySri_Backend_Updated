@@ -14,6 +14,12 @@ const router = express.Router();
 router.get('/profile', verifyToken, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-password');
+    console.log('Profile API - User partner fields:', {
+      isPartner: user.isPartner,
+      partnerExpirationDate: user.partnerExpirationDate,
+      isMember: user.isMember,
+      membershipExpirationDate: user.membershipExpirationDate
+    });
     res.json({ user });
   } catch (error) {
     console.error('Get profile error:', error);

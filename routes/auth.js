@@ -235,7 +235,10 @@ router.post('/login', async (req, res) => {
         isMember: user.isMember || false,
         membershipType: user.membershipType || null,
         membershipStartDate: user.membershipStartDate || null,
-        membershipExpirationDate: user.membershipExpirationDate || null
+        membershipExpirationDate: user.membershipExpirationDate || null,
+        // Commercial Partner fields
+        isPartner: user.isPartner || false,
+        partnerExpirationDate: user.partnerExpirationDate || null
       }
     });
 
@@ -295,7 +298,10 @@ router.post('/google', async (req, res) => {
           isMember: user.isMember || false,
           membershipType: user.membershipType || null,
           membershipStartDate: user.membershipStartDate || null,
-          membershipExpirationDate: user.membershipExpirationDate || null
+          membershipExpirationDate: user.membershipExpirationDate || null,
+          // Commercial Partner fields
+          isPartner: user.isPartner || false,
+          partnerExpirationDate: user.partnerExpirationDate || null
         }
       });
     } else {
@@ -337,7 +343,10 @@ router.get('/me', verifyToken, async (req, res) => {
         isMember: req.user.isMember || false,
         membershipType: req.user.membershipType || null,
         membershipStartDate: req.user.membershipStartDate || null,
-        membershipExpirationDate: req.user.membershipExpirationDate || null
+        membershipExpirationDate: req.user.membershipExpirationDate || null,
+        // Commercial Partner fields
+        isPartner: req.user.isPartner || false,
+        partnerExpirationDate: req.user.partnerExpirationDate || null
       }
     });
   } catch (error) {
