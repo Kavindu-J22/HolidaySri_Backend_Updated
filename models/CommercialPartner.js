@@ -65,7 +65,23 @@ const commercialPartnerSchema = new mongoose.Schema({
   businessType: {
     type: String,
     required: true,
-    enum: ['Tourism Agency', 'Event Planning Company', 'Advertising Agency', 'Other'],
+    enum: [
+      'Tourism Agency',
+      'Event Planning Company',
+      'Advertising Agency',
+      'Software Company',
+      'Hotel',
+      'Restaurant',
+      'Travel Service Provider',
+      'Transportation Service',
+      'Entertainment Company',
+      'Photography & Videography',
+      'Wedding Planning Service',
+      'Real Estate Agency',
+      'Construction Company',
+      'Consulting Firm',
+      'Other'
+    ],
     default: 'Other'
   },
   businessLogo: {
