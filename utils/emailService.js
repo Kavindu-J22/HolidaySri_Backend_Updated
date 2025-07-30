@@ -152,7 +152,7 @@ const sendWelcomeEmail = async (email, name) => {
 const sendPasswordResetEmail = async (email, name, resetToken) => {
   const transporter = createTransporter();
 
-  const resetUrl = `http://localhost:5173/reset-password?token=${resetToken}`;
+  const resetUrl = `http://localhost:3000/reset-password?token=${resetToken}`;
 
   const mailOptions = {
     from: {
