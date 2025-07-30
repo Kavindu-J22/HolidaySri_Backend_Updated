@@ -11,7 +11,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'],
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -50,7 +50,9 @@ const locationRoutes = require('./routes/locations');
 const locationReviewRoutes = require('./routes/locationReviews');
 const locationFavoriteRoutes = require('./routes/locationFavorites');
 const membershipRoutes = require('./routes/membership');
+const commercialPartnerRoutes = require('./routes/commercialPartner');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
+const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -66,6 +68,7 @@ app.use('/api/locations', locationRoutes);
 app.use('/api/location-reviews', locationReviewRoutes);
 app.use('/api/location-favorites', locationFavoriteRoutes);
 app.use('/api/membership', membershipRoutes);
+app.use('/api/commercial-partner', commercialPartnerRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
@@ -90,4 +93,7 @@ app.listen(PORT, () => {
 
   // Start membership expiration jobs
   startMembershipJobs();
+
+  // Start commercial partnership expiration jobs
+  startCommercialPartnershipJobs();
 });

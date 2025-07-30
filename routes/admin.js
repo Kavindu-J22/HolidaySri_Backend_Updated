@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { HSCConfig, HSCTransaction, HSCPackage } = require('../models/HSC');
 const { MembershipConfig, MembershipTransaction } = require('../models/Membership');
+const { CommercialPartnerConfig, CommercialPartner } = require('../models/CommercialPartner');
 const Advertisement = require('../models/Advertisement');
 const ClaimRequest = require('../models/ClaimRequest');
 const Earning = require('../models/Earning');
@@ -993,6 +994,178 @@ router.post('/membership-expiration-check', verifyAdminToken, async (req, res) =
       message: 'Failed to run membership expiration check',
       error: error.message
     });
+  }
+});
+
+// Commercial Partner Management Routes
+
+// Get commercial partner configuration
+router.get('/commercial-partner-config', verifyAdminToken, async (req, res) => {
+  try {
+    console.log('Admin commercial partner config request received');
+    let partnerConfig = await CommercialPartnerConfig.findOne({ isActive: true });
+
+    if (!partnerConfig) {
+      console.log('No commercial partner config found, creating default');
+      // Create default configuration if none exists
+      partnerConfig = new CommercialPartnerConfig({
+        monthlyCharge: 5000,
+        yearlyCharge: 50000,
+        updatedBy: req.admin.username || 'admin'
+      });
+      await partnerConfig.save();
+      console.log('Default commercial partner config created');
+    }
+
+    console.log('Returning commercial partner config:', partnerConfig);
+    res.json({
+      success: true,
+      config: partnerConfig
+    });
+
+  } catch (error) {
+    console.error('Get commercial partner config error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update commercial partner configuration
+router.put('/commercial-partner-config', verifyAdminToken, async (req, res) => {
+  try {
+    console.log('Admin commercial partner config update request received');
+    const { monthlyCharge, yearlyCharge, features } = req.body;
+
+    if (!monthlyCharge || !yearlyCharge) {
+      return res.status(400).json({ message: 'Monthly and yearly charges are required' });
+    }
+
+    let partnerConfig = await CommercialPartnerConfig.findOne({ isActive: true });
+
+    if (!partnerConfig) {
+      partnerConfig = new CommercialPartnerConfig({
+        monthlyCharge,
+        yearlyCharge,
+        features: features || [],
+        updatedBy: req.admin.username || 'admin'
+      });
+    } else {
+      partnerConfig.monthlyCharge = monthlyCharge;
+      partnerConfig.yearlyCharge = yearlyCharge;
+      if (features) partnerConfig.features = features;
+      partnerConfig.lastUpdated = new Date();
+      partnerConfig.updatedBy = req.admin.username || 'admin';
+    }
+
+    await partnerConfig.save();
+
+    res.json({
+      success: true,
+      message: 'Commercial partner configuration updated successfully',
+      config: partnerConfig
+    });
+
+  } catch (error) {
+    console.error('Update commercial partner config error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get commercial partner statistics
+router.get('/commercial-partner-stats', verifyAdminToken, async (req, res) => {
+  try {
+    console.log('Admin commercial partner stats request received');
+    const totalPartners = await User.countDocuments({ isPartner: true });
+    const activePartners = await CommercialPartner.countDocuments({ status: 'active' });
+    const expiredPartners = await CommercialPartner.countDocuments({ status: 'expired' });
+
+    const monthlyPartners = await CommercialPartner.countDocuments({
+      status: 'active',
+      partnershipType: 'monthly'
+    });
+    const yearlyPartners = await CommercialPartner.countDocuments({
+      status: 'active',
+      partnershipType: 'yearly'
+    });
+
+    console.log('Partner counts:', { totalPartners, activePartners, expiredPartners, monthlyPartners, yearlyPartners });
+
+    // Get partner revenue
+    const revenueStats = await CommercialPartner.aggregate([
+      { $match: { status: 'active' } },
+      {
+        $group: {
+          _id: '$partnershipType',
+          count: { $sum: 1 },
+          totalRevenue: { $sum: '$amount' },
+          totalHSC: { $sum: '$hscAmount' }
+        }
+      }
+    ]);
+
+    console.log('Partner revenue stats:', revenueStats);
+
+    const revenue = {
+      monthly: { count: 0, totalRevenue: 0 },
+      yearly: { count: 0, totalRevenue: 0 }
+    };
+
+    revenueStats.forEach(stat => {
+      if (stat._id === 'monthly') {
+        revenue.monthly = { count: stat.count, totalRevenue: stat.totalRevenue };
+      } else if (stat._id === 'yearly') {
+        revenue.yearly = { count: stat.count, totalRevenue: stat.totalRevenue };
+      }
+    });
+
+    const totalRevenue = revenue.monthly.totalRevenue + revenue.yearly.totalRevenue;
+
+    res.json({
+      success: true,
+      stats: {
+        totalPartners,
+        activePartners,
+        expiredPartners,
+        monthlyPartners,
+        yearlyPartners,
+        revenue,
+        totalRevenue
+      }
+    });
+
+  } catch (error) {
+    console.error('Get commercial partner stats error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get commercial partners list
+router.get('/commercial-partners', verifyAdminToken, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const partners = await CommercialPartner.find()
+      .populate('userId', 'name email contactNumber')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await CommercialPartner.countDocuments();
+
+    res.json({
+      success: true,
+      partners,
+      pagination: {
+        current: page,
+        pages: Math.ceil(total / limit),
+        total
+      }
+    });
+
+  } catch (error) {
+    console.error('Get commercial partners error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

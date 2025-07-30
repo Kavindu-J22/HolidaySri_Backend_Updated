@@ -121,6 +121,15 @@ const userSchema = new mongoose.Schema({
   membershipExpirationDate: {
     type: Date,
     default: null
+  },
+  // Commercial Partner fields
+  isPartner: {
+    type: Boolean,
+    default: false
+  },
+  partnerExpirationDate: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true

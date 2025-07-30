@@ -1022,6 +1022,272 @@ const sendMembershipExpiredEmail = async (email, name) => {
   }
 };
 
+// Send commercial partner welcome email
+const sendCommercialPartnerWelcomeEmail = async (email, name, partnerDetails) => {
+  const transporter = createTransporter();
+
+  const formattedDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const expirationDate = new Date(partnerDetails.expirationDate).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri Tourism',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: '🎉 Welcome to Holidaysri Commercial Partnership!',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <div style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Welcome Commercial Partner!</h1>
+              <p style="color: white; margin: 10px 0 0 0; font-size: 18px;">You're Now a Holidaysri Commercial Partner!</p>
+            </div>
+          </div>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Dear ${name},
+          </p>
+
+          <div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 5px;">
+            <h3 style="color: #059669; margin: 0 0 10px 0;">✅ Partnership Activated!</h3>
+            <p style="color: #059669; margin: 0; font-size: 16px;">
+              Congratulations! Your commercial partnership with Holidaysri Tourism is now active. Welcome to our exclusive business network!
+            </p>
+          </div>
+
+          <div style="background: #f0f9ff; padding: 20px; border-radius: 10px; margin: 20px 0;">
+            <h3 style="color: #1e40af; margin: 0 0 15px 0;">📋 Partnership Details:</h3>
+            <ul style="color: #1e40af; margin: 0; padding-left: 20px;">
+              <li style="margin-bottom: 8px;"><strong>Company:</strong> ${partnerDetails.companyName}</li>
+              <li style="margin-bottom: 8px;"><strong>Partnership Type:</strong> ${partnerDetails.partnershipType.charAt(0).toUpperCase() + partnerDetails.partnershipType.slice(1)}</li>
+              <li style="margin-bottom: 8px;"><strong>Start Date:</strong> ${formattedDate}</li>
+              <li style="margin-bottom: 8px;"><strong>Valid Until:</strong> ${expirationDate}</li>
+              <li style="margin-bottom: 8px;"><strong>Status:</strong> Active</li>
+            </ul>
+          </div>
+
+          <div style="background: #fef3c7; padding: 20px; border-radius: 10px; margin: 20px 0;">
+            <h3 style="color: #92400e; margin: 0 0 15px 0;">🚀 Your Commercial Partner Benefits:</h3>
+            <ul style="color: #92400e; margin: 0; padding-left: 20px;">
+              ${partnerDetails.features.map(feature => `<li style="margin-bottom: 8px;">${feature}</li>`).join('')}
+            </ul>
+          </div>
+
+          <div style="background: #e0f2fe; padding: 20px; border-radius: 10px; margin: 20px 0;">
+            <h3 style="color: #0277bd; margin: 0 0 15px 0;">📞 Next Steps:</h3>
+            <ul style="color: #0277bd; margin: 0; padding-left: 20px;">
+              <li style="margin-bottom: 8px;">Log in to your account to access partner features</li>
+              <li style="margin-bottom: 8px;">Update your business logo anytime from your partner dashboard</li>
+              <li style="margin-bottom: 8px;">Start enjoying enhanced visibility for your advertisements</li>
+              <li style="margin-bottom: 8px;">Access exclusive business tools and analytics</li>
+            </ul>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="http://localhost:5173/ads/opportunities/partnerships"
+               style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+              Access Partner Dashboard
+            </a>
+          </div>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Thank you for choosing Holidaysri Tourism as your business partner. We're excited to help grow your business!
+          </p>
+
+          <p style="color: #555; line-height: 1.6;">
+            Best regards,<br>
+            <strong>The Holidaysri Tourism Team</strong>
+          </p>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri Tourism. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Commercial partner welcome email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Send commercial partner expiration warning email
+const sendCommercialPartnerExpirationWarning = async (email, name, partnerDetails) => {
+  const transporter = createTransporter();
+
+  const expirationDate = new Date(partnerDetails.expirationDate).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri Tourism',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: '⚠️ Your Commercial Partnership is Expiring Soon',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <div style="background: linear-gradient(135deg, #f59e0b, #d97706); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">⚠️ Partnership Expiring</h1>
+              <p style="color: white; margin: 10px 0 0 0; font-size: 18px;">Don't Lose Your Commercial Benefits!</p>
+            </div>
+          </div>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Dear ${name},
+          </p>
+
+          <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 20px 0; border-radius: 5px;">
+            <h3 style="color: #92400e; margin: 0 0 10px 0;">⚠️ Partnership Expiring Soon</h3>
+            <p style="color: #92400e; margin: 0; font-size: 16px;">
+              Your commercial partnership for <strong>${partnerDetails.companyName}</strong> will expire on <strong>${expirationDate}</strong>.
+            </p>
+          </div>
+
+          <div style="background: #e0f2fe; padding: 20px; border-radius: 10px; margin: 20px 0;">
+            <h3 style="color: #0277bd; margin: 0 0 15px 0;">🔄 Renew Your Partnership</h3>
+            <p style="color: #0277bd; margin: 0 0 15px 0;">
+              Don't lose access to your exclusive commercial partner benefits. Renew your partnership today to continue enjoying:
+            </p>
+            <ul style="color: #0277bd; margin: 0; padding-left: 20px;">
+              <li style="margin-bottom: 8px;">Enhanced advertisement visibility</li>
+              <li style="margin-bottom: 8px;">Priority customer support</li>
+              <li style="margin-bottom: 8px;">Access to exclusive business tools</li>
+              <li style="margin-bottom: 8px;">Premium listing features</li>
+            </ul>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="http://localhost:5173/ads/opportunities/partnerships"
+               style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+              Renew Partnership Now
+            </a>
+          </div>
+
+          <p style="color: #555; line-height: 1.6;">
+            Best regards,<br>
+            <strong>The Holidaysri Tourism Team</strong>
+          </p>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri Tourism. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Commercial partner expiration warning email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Send commercial partner expired email
+const sendCommercialPartnerExpiredEmail = async (email, name, partnerDetails) => {
+  const transporter = createTransporter();
+
+  const expirationDate = new Date(partnerDetails.expirationDate).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri Tourism',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: '❌ Your Commercial Partnership has Expired',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <div style="background: linear-gradient(135deg, #ef4444, #dc2626); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">❌ Partnership Expired</h1>
+              <p style="color: white; margin: 10px 0 0 0; font-size: 18px;">Renew to Restore Your Benefits</p>
+            </div>
+          </div>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Dear ${name},
+          </p>
+
+          <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 20px; margin: 20px 0; border-radius: 5px;">
+            <h3 style="color: #dc2626; margin: 0 0 10px 0;">❌ Partnership Expired</h3>
+            <p style="color: #dc2626; margin: 0; font-size: 16px;">
+              Your commercial partnership for <strong>${partnerDetails.companyName}</strong> expired on <strong>${expirationDate}</strong>.
+            </p>
+          </div>
+
+          <div style="background: #f0f9ff; padding: 20px; border-radius: 10px; margin: 20px 0;">
+            <h3 style="color: #1e40af; margin: 0 0 15px 0;">🔄 Renew Your Partnership</h3>
+            <p style="color: #1e40af; margin: 0 0 15px 0;">
+              You can renew your partnership anytime to restore all your commercial benefits and continue growing your business with us.
+            </p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="http://localhost:5173/ads/opportunities/partnerships"
+               style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+              Renew Partnership
+            </a>
+          </div>
+
+          <p style="color: #555; line-height: 1.6;">
+            Best regards,<br>
+            <strong>The Holidaysri Tourism Team</strong>
+          </p>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri Tourism. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Commercial partner expired email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Export all functions including the commercial partner ones
 module.exports = {
   generateOTP,
   sendEmailVerificationOTP,
@@ -1035,5 +1301,8 @@ module.exports = {
   sendHSCEarnedClaimApprovalEmail,
   sendMembershipPurchaseEmail,
   sendMembershipExpirationWarning,
-  sendMembershipExpiredEmail
+  sendMembershipExpiredEmail,
+  sendCommercialPartnerWelcomeEmail,
+  sendCommercialPartnerExpirationWarning,
+  sendCommercialPartnerExpiredEmail
 };
