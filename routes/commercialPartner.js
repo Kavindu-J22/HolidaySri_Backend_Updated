@@ -127,10 +127,13 @@ router.post('/purchase', verifyToken, async (req, res) => {
     session.startTransaction();
 
     try {
+      // Store original balance before deduction
+      const originalBalance = user.hscBalance;
+
       // Deduct HSC from user
       user.hscBalance -= hscRequired;
       user.isPartner = true;
-      
+
       // Set expiration date
       const startDate = new Date();
       let expirationDate;
@@ -213,6 +216,7 @@ router.post('/purchase', verifyToken, async (req, res) => {
         type: 'spend',
         amount: hscRequired,
         description: `Commercial Partnership - ${partnershipType}`,
+        balanceBefore: originalBalance,
         balanceAfter: user.hscBalance,
         relatedTransaction: paymentActivity._id
       });
