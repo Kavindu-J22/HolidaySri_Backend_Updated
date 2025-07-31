@@ -281,14 +281,32 @@ router.get('/subscribers', verifyAdminToken, async (req, res) => {
       };
     }
 
-    // Get stats
+    // Get stats with proper deduplication calculation
     const stats = await NewsletterSubscriber.getStats();
     const userStats = await User.countDocuments({ isActive: true });
+
+    // Calculate actual deduplicated total contacts
+    let actualTotalContacts = stats.total + userStats;
+
+    if (type === 'all') {
+      // For 'all' type, we already have the deduplicated count from the result
+      actualTotalContacts = result.pagination.total;
+    } else {
+      // Calculate deduplicated count by finding overlapping emails
+      const [subscriberEmails, userEmails] = await Promise.all([
+        NewsletterSubscriber.find({}).distinct('email'),
+        User.find({ isActive: true }).distinct('email')
+      ]);
+
+      // Create a set to count unique emails
+      const uniqueEmails = new Set([...subscriberEmails, ...userEmails]);
+      actualTotalContacts = uniqueEmails.size;
+    }
 
     result.stats = {
       ...stats,
       totalUsers: userStats,
-      totalContacts: stats.total + userStats
+      totalContacts: actualTotalContacts
     };
 
     res.status(200).json(result);

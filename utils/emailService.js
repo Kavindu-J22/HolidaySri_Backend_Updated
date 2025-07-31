@@ -1362,6 +1362,11 @@ const sendNewsletterSubscriptionConfirmation = async (email) => {
 const sendNewsletterEmail = async (email, subject, htmlBody) => {
   const transporter = createTransporter();
 
+  // Process the HTML body to ensure proper formatting and link styling
+  const processedHtmlBody = htmlBody
+    .replace(/\n/g, '<br>')  // Convert line breaks to HTML breaks
+    .replace(/<a\s+href="([^"]*)"[^>]*>([^<]*)<\/a>/gi, '<a href="$1" style="color: #10b981; text-decoration: none; font-weight: bold; border-bottom: 1px solid #10b981; padding-bottom: 1px;">$2</a>'); // Ensure links have proper styling
+
   const mailOptions = {
     from: {
       name: 'Holidaysri Tourism',
@@ -1377,7 +1382,9 @@ const sendNewsletterEmail = async (email, subject, htmlBody) => {
         </div>
 
         <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-          ${htmlBody}
+          <div style="color: #333; line-height: 1.6; font-size: 16px;">
+            ${processedHtmlBody}
+          </div>
 
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
             <p style="color: #888; font-size: 14px; margin: 0;">
@@ -1385,8 +1392,8 @@ const sendNewsletterEmail = async (email, subject, htmlBody) => {
             </p>
             <p style="color: #888; font-size: 12px; margin: 10px 0 0 0;">
               You received this email because you subscribed to our newsletter.
-              <a href="#" style="color: #10b981;">Unsubscribe</a> |
-              <a href="#" style="color: #10b981;">Update Preferences</a>
+              <a href="#" style="color: #10b981; text-decoration: none;">Unsubscribe</a> |
+              <a href="#" style="color: #10b981; text-decoration: none;">Update Preferences</a>
             </p>
           </div>
         </div>
