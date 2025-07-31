@@ -164,6 +164,16 @@ const promoCodeConfigSchema = new mongoose.Schema({
       type: Number,
       required: true,
       default: 100 // LKR
+    },
+    earningForHourlyAd: {
+      type: Number,
+      required: true,
+      default: 50 // LKR for 1 hour
+    },
+    earningForYearlyAd: {
+      type: Number,
+      required: true,
+      default: 12000 // LKR
     }
   },
   gold: {
@@ -190,6 +200,16 @@ const promoCodeConfigSchema = new mongoose.Schema({
       type: Number,
       required: true,
       default: 200 // LKR
+    },
+    earningForHourlyAd: {
+      type: Number,
+      required: true,
+      default: 100 // LKR for 1 hour
+    },
+    earningForYearlyAd: {
+      type: Number,
+      required: true,
+      default: 24000 // LKR
     }
   },
   diamond: {
@@ -216,6 +236,16 @@ const promoCodeConfigSchema = new mongoose.Schema({
       type: Number,
       required: true,
       default: 300 // LKR
+    },
+    earningForHourlyAd: {
+      type: Number,
+      required: true,
+      default: 150 // LKR for 1 hour
+    },
+    earningForYearlyAd: {
+      type: Number,
+      required: true,
+      default: 36000 // LKR
     }
   },
   free: {
@@ -242,6 +272,16 @@ const promoCodeConfigSchema = new mongoose.Schema({
       type: Number,
       required: true,
       default: 10 // LKR
+    },
+    earningForHourlyAd: {
+      type: Number,
+      required: true,
+      default: 5 // LKR for 1 hour
+    },
+    earningForYearlyAd: {
+      type: Number,
+      required: true,
+      default: 600 // LKR
     }
   },
   // Global discount settings (same for all types)
@@ -300,7 +340,7 @@ const promoCodeTransactionSchema = new mongoose.Schema({
   },
   transactionType: {
     type: String,
-    enum: ['purchase', 'use_monthly_ad', 'use_daily_ad', 'use_purchase'],
+    enum: ['purchase', 'use_monthly_ad', 'use_daily_ad', 'use_hourly_ad', 'use_yearly_ad', 'use_purchase'],
     required: true
   },
   amount: {

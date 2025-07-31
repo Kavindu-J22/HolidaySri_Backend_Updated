@@ -135,7 +135,9 @@ router.get('/config', async (req, res) => {
         priceInLKR: calculateDiscountedPrice(promoConfig.silver.price, promoConfig.silver.discountRate),
         earningForPurchase: promoConfig.silver.earningForPurchase,
         earningForMonthlyAd: promoConfig.silver.earningForMonthlyAd,
-        earningForDailyAd: promoConfig.silver.earningForDailyAd
+        earningForDailyAd: promoConfig.silver.earningForDailyAd,
+        earningForHourlyAd: promoConfig.silver.earningForHourlyAd,
+        earningForYearlyAd: promoConfig.silver.earningForYearlyAd
       },
       gold: {
         originalPriceInLKR: promoConfig.gold.price,
@@ -147,7 +149,9 @@ router.get('/config', async (req, res) => {
         priceInLKR: calculateDiscountedPrice(promoConfig.gold.price, promoConfig.gold.discountRate),
         earningForPurchase: promoConfig.gold.earningForPurchase,
         earningForMonthlyAd: promoConfig.gold.earningForMonthlyAd,
-        earningForDailyAd: promoConfig.gold.earningForDailyAd
+        earningForDailyAd: promoConfig.gold.earningForDailyAd,
+        earningForHourlyAd: promoConfig.gold.earningForHourlyAd,
+        earningForYearlyAd: promoConfig.gold.earningForYearlyAd
       },
       diamond: {
         originalPriceInLKR: promoConfig.diamond.price,
@@ -159,7 +163,9 @@ router.get('/config', async (req, res) => {
         priceInLKR: calculateDiscountedPrice(promoConfig.diamond.price, promoConfig.diamond.discountRate),
         earningForPurchase: promoConfig.diamond.earningForPurchase,
         earningForMonthlyAd: promoConfig.diamond.earningForMonthlyAd,
-        earningForDailyAd: promoConfig.diamond.earningForDailyAd
+        earningForDailyAd: promoConfig.diamond.earningForDailyAd,
+        earningForHourlyAd: promoConfig.diamond.earningForHourlyAd,
+        earningForYearlyAd: promoConfig.diamond.earningForYearlyAd
       },
       free: {
         originalPriceInLKR: 0,
@@ -171,7 +177,9 @@ router.get('/config', async (req, res) => {
         priceInLKR: 0,
         earningForPurchase: promoConfig.free.earningForPurchase,
         earningForMonthlyAd: promoConfig.free.earningForMonthlyAd,
-        earningForDailyAd: promoConfig.free.earningForDailyAd
+        earningForDailyAd: promoConfig.free.earningForDailyAd,
+        earningForHourlyAd: promoConfig.free.earningForHourlyAd,
+        earningForYearlyAd: promoConfig.free.earningForYearlyAd
       }
     };
 
