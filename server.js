@@ -52,6 +52,7 @@ const locationFavoriteRoutes = require('./routes/locationFavorites');
 const membershipRoutes = require('./routes/membership');
 const commercialPartnerRoutes = require('./routes/commercialPartner');
 const newsletterRoutes = require('./routes/newsletter');
+const publicRoutes = require('./routes/public');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
 const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
 
@@ -71,6 +72,7 @@ app.use('/api/location-favorites', locationFavoriteRoutes);
 app.use('/api/membership', membershipRoutes);
 app.use('/api/commercial-partner', commercialPartnerRoutes);
 app.use('/api/newsletter', newsletterRoutes);
+app.use('/api/public', publicRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
