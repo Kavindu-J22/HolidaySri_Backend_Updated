@@ -28,16 +28,16 @@ const sendEmailVerificationOTP = async (email, name, otp) => {
 
   const mailOptions = {
     from: {
-      name: 'Holidaysri Tourism',
+      name: 'Holidaysri.com',
       address: process.env.EMAIL_USER
     },
     to: email,
-    subject: 'Email Verification - Holidaysri Tourism',
+    subject: 'Email Verification - Holidaysri.com',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
         <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
           <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #2563eb; margin: 0;">Holidaysri Tourism</h1>
+            <h1 style="color: #2563eb; margin: 0;">Holidaysri.com</h1>
             <p style="color: #666; margin: 5px 0;">Sri Lanka's Premier Tourism Platform</p>
           </div>
           
@@ -48,7 +48,7 @@ const sendEmailVerificationOTP = async (email, name, otp) => {
           </p>
           
           <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
-            Thank you for registering with Holidaysri Tourism! To complete your registration and secure your account, please verify your email address using the OTP below:
+            Thank you for registering with Holidaysri.com! To complete your registration and secure your account, please verify your email address using the OTP below:
           </p>
           
           <div style="background-color: #f0f8ff; padding: 20px; border-radius: 8px; text-align: center; margin: 30px 0;">
@@ -60,12 +60,12 @@ const sendEmailVerificationOTP = async (email, name, otp) => {
           </div>
           
           <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
-            If you didn't create an account with Holidaysri Tourism, please ignore this email.
+            If you didn't create an account with Holidaysri.com, please ignore this email.
           </p>
           
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
             <p style="color: #888; font-size: 14px; margin: 0;">
-              © 2024 Holidaysri Tourism. All rights reserved.
+              © 2024 Holidaysri.com. All rights reserved.
             </p>
             <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
               This is an automated message, please do not reply to this email.
@@ -91,16 +91,16 @@ const sendWelcomeEmail = async (email, name) => {
   
   const mailOptions = {
     from: {
-      name: 'Holidaysri Tourism',
+      name: 'Holidaysri.com',
       address: process.env.EMAIL_USER
     },
     to: email,
-    subject: 'Welcome to Holidaysri Tourism!',
+    subject: 'Welcome to Holidaysri.com!',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
         <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
           <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #2563eb; margin: 0;">Welcome to Holidaysri Tourism!</h1>
+            <h1 style="color: #2563eb; margin: 0;">Welcome to Holidaysri.com!</h1>
             <p style="color: #666; margin: 5px 0;">Sri Lanka's Premier Tourism Platform</p>
           </div>
           
@@ -131,7 +131,7 @@ const sendWelcomeEmail = async (email, name) => {
           
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
             <p style="color: #888; font-size: 14px; margin: 0;">
-              © 2024 Holidaysri Tourism. All rights reserved.
+              © 2024 Holidaysri.com. All rights reserved.
             </p>
           </div>
         </div>
@@ -156,16 +156,16 @@ const sendPasswordResetEmail = async (email, name, resetToken) => {
 
   const mailOptions = {
     from: {
-      name: 'Holidaysri Tourism',
+      name: 'Holidaysri.com',
       address: process.env.EMAIL_USER
     },
     to: email,
-    subject: 'Password Reset - Holidaysri Tourism',
+    subject: 'Password Reset - Holidaysri.com',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
         <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
           <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #2563eb; margin: 0;">Holidaysri Tourism</h1>
+            <h1 style="color: #2563eb; margin: 0;">Holidaysri.com</h1>
             <p style="color: #666; margin: 5px 0;">Sri Lanka's Premier Tourism Platform</p>
           </div>
 
@@ -176,7 +176,7 @@ const sendPasswordResetEmail = async (email, name, resetToken) => {
           </p>
 
           <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
-            We received a request to reset your password for your Holidaysri Tourism account. If you didn't make this request, you can safely ignore this email.
+            We received a request to reset your password for your Holidaysri.com account. If you didn't make this request, you can safely ignore this email.
           </p>
 
           <p style="color: #555; line-height: 1.6; margin-bottom: 30px;">
@@ -207,7 +207,7 @@ const sendPasswordResetEmail = async (email, name, resetToken) => {
 
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
             <p style="color: #888; font-size: 14px; margin: 0;">
-              © 2024 Holidaysri Tourism. All rights reserved.
+              © 2024 Holidaysri.com. All rights reserved.
             </p>
             <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
               This is an automated message, please do not reply to this email.
@@ -239,7 +239,7 @@ const sendPromoCodeExpirationWarning = async (email, name, promoCode, promoType,
 
   const mailOptions = {
     from: {
-      name: 'Holidaysri Tourism',
+      name: 'Holidaysri.com',
       address: process.env.EMAIL_USER
     },
     to: email,
@@ -293,7 +293,7 @@ const sendPromoCodeExpirationWarning = async (email, name, promoCode, promoType,
 
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
             <p style="color: #888; font-size: 14px; margin: 0;">
-              © 2024 Holidaysri Tourism. All rights reserved.
+              © 2024 Holidaysri.com. All rights reserved.
             </p>
             <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
               This is an automated message, please do not reply to this email.
@@ -319,7 +319,7 @@ const sendPromoCodeExpiredNotification = async (email, name, promoCode, promoTyp
 
   const mailOptions = {
     from: {
-      name: 'Holidaysri Tourism',
+      name: 'Holidaysri.com',
       address: process.env.EMAIL_USER
     },
     to: email,
@@ -377,7 +377,7 @@ const sendPromoCodeExpiredNotification = async (email, name, promoCode, promoTyp
 
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
             <p style="color: #888; font-size: 14px; margin: 0;">
-              © 2024 Holidaysri Tourism. All rights reserved.
+              © 2024 Holidaysri.com. All rights reserved.
             </p>
             <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
               This is an automated message, please do not reply to this email.
@@ -412,7 +412,7 @@ const sendPromoCodeRenewalSuccess = async (email, name, promoCode, promoType, re
 
   const mailOptions = {
     from: {
-      name: 'Holidaysri Tourism',
+      name: 'Holidaysri.com',
       address: process.env.EMAIL_USER
     },
     to: email,
@@ -473,7 +473,7 @@ const sendPromoCodeRenewalSuccess = async (email, name, promoCode, promoType, re
 
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
             <p style="color: #888; font-size: 14px; margin: 0;">
-              © 2024 Holidaysri Tourism. All rights reserved.
+              © 2024 Holidaysri.com. All rights reserved.
             </p>
             <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
               This is an automated message, please do not reply to this email.
@@ -507,7 +507,7 @@ const sendPromoCodeSoldNotification = async (sellerEmail, sellerName, promoCodeD
 
   const mailOptions = {
     from: {
-      name: 'Holidaysri Tourism',
+      name: 'Holidaysri.com',
       address: process.env.EMAIL_USER
     },
     to: sellerEmail,
@@ -571,7 +571,7 @@ const sendPromoCodeSoldNotification = async (sellerEmail, sellerName, promoCodeD
 
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
             <p style="color: #888; font-size: 14px; margin: 0;">
-              © 2024 Holidaysri Tourism. All rights reserved.
+              © 2024 Holidaysri.com. All rights reserved.
             </p>
             <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
               This is an automated message, please do not reply to this email.
@@ -605,7 +605,7 @@ const sendPromoCodePurchaseSuccess = async (buyerEmail, buyerName, promoCodeDeta
 
   const mailOptions = {
     from: {
-      name: 'Holidaysri Tourism',
+      name: 'Holidaysri.com',
       address: process.env.EMAIL_USER
     },
     to: buyerEmail,
@@ -627,7 +627,7 @@ const sendPromoCodePurchaseSuccess = async (buyerEmail, buyerName, promoCodeDeta
           <div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 5px;">
             <h3 style="color: #059669; margin: 0 0 10px 0;">✅ Purchase Successful!</h3>
             <p style="color: #059669; margin: 0; font-size: 16px;">
-              Congratulations! You have successfully purchased a <strong>${promoCodeDetails.promoCodeType.toUpperCase()}</strong> promo code and are now an official agent with Holidaysri Tourism!
+              Congratulations! You have successfully purchased a <strong>${promoCodeDetails.promoCodeType.toUpperCase()}</strong> promo code and are now an official agent with Holidaysri.com!
             </p>
           </div>
 
@@ -677,7 +677,7 @@ const sendPromoCodePurchaseSuccess = async (buyerEmail, buyerName, promoCodeDeta
 
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
             <p style="color: #888; font-size: 14px; margin: 0;">
-              © 2024 Holidaysri Tourism. All rights reserved.
+              © 2024 Holidaysri.com. All rights reserved.
             </p>
             <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
               This is an automated message, please do not reply to this email.
@@ -711,7 +711,7 @@ const sendHSCEarnedClaimApprovalEmail = async (email, name, hscAmount, lkrAmount
 
   const mailOptions = {
     from: {
-      name: 'Holidaysri Tourism',
+      name: 'Holidaysri.com',
       address: process.env.EMAIL_USER
     },
     to: email,
@@ -780,13 +780,13 @@ const sendHSCEarnedClaimApprovalEmail = async (email, name, hscAmount, lkrAmount
           </div>
 
           <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 25px 0 0 0;">
-            Thank you for being a valued member of the Holidaysri Tourism community.
+            Thank you for being a valued member of the Holidaysri.com community.
             Keep earning and growing with us!
           </p>
 
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
             <p style="color: #888; font-size: 14px; margin: 0;">
-              © 2024 Holidaysri Tourism. All rights reserved.
+              © 2024 Holidaysri.com. All rights reserved.
             </p>
             <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
               This is an automated message, please do not reply to this email.
@@ -826,7 +826,7 @@ const sendMembershipPurchaseEmail = async (email, name, membershipType, startDat
 
   const mailOptions = {
     from: {
-      name: 'Holidaysri Tourism',
+      name: 'Holidaysri.com',
       address: process.env.EMAIL_USER
     },
     to: email,
@@ -873,7 +873,7 @@ const sendMembershipPurchaseEmail = async (email, name, membershipType, startDat
 
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
             <p style="color: #888; font-size: 14px; margin: 0;">
-              © 2024 Holidaysri Tourism. All rights reserved.
+              © 2024 Holidaysri.com. All rights reserved.
             </p>
             <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
               This is an automated message, please do not reply to this email.
@@ -907,7 +907,7 @@ const sendMembershipExpirationWarning = async (email, name, membershipType, expi
 
   const mailOptions = {
     from: {
-      name: 'Holidaysri Tourism',
+      name: 'Holidaysri.com',
       address: process.env.EMAIL_USER
     },
     to: email,
@@ -945,7 +945,7 @@ const sendMembershipExpirationWarning = async (email, name, membershipType, expi
 
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
             <p style="color: #888; font-size: 14px; margin: 0;">
-              © 2024 Holidaysri Tourism. All rights reserved.
+              © 2024 Holidaysri.com. All rights reserved.
             </p>
           </div>
         </div>
@@ -968,7 +968,7 @@ const sendMembershipExpiredEmail = async (email, name) => {
 
   const mailOptions = {
     from: {
-      name: 'Holidaysri Tourism',
+      name: 'Holidaysri.com',
       address: process.env.EMAIL_USER
     },
     to: email,
@@ -1005,7 +1005,7 @@ const sendMembershipExpiredEmail = async (email, name) => {
 
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
             <p style="color: #888; font-size: 14px; margin: 0;">
-              © 2024 Holidaysri Tourism. All rights reserved.
+              © 2024 Holidaysri.com. All rights reserved.
             </p>
           </div>
         </div>
@@ -1040,7 +1040,7 @@ const sendCommercialPartnerWelcomeEmail = async (email, name, partnerDetails) =>
 
   const mailOptions = {
     from: {
-      name: 'Holidaysri Tourism',
+      name: 'Holidaysri.com',
       address: process.env.EMAIL_USER
     },
     to: email,
@@ -1062,7 +1062,7 @@ const sendCommercialPartnerWelcomeEmail = async (email, name, partnerDetails) =>
           <div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 5px;">
             <h3 style="color: #059669; margin: 0 0 10px 0;">✅ Partnership Activated!</h3>
             <p style="color: #059669; margin: 0; font-size: 16px;">
-              Congratulations! Your commercial partnership with Holidaysri Tourism is now active. Welcome to our exclusive business network!
+              Congratulations! Your commercial partnership with Holidaysri.com is now active. Welcome to our exclusive business network!
             </p>
           </div>
 
@@ -1102,17 +1102,17 @@ const sendCommercialPartnerWelcomeEmail = async (email, name, partnerDetails) =>
           </div>
 
           <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
-            Thank you for choosing Holidaysri Tourism as your business partner. We're excited to help grow your business!
+            Thank you for choosing Holidaysri.com as your business partner. We're excited to help grow your business!
           </p>
 
           <p style="color: #555; line-height: 1.6;">
             Best regards,<br>
-            <strong>The Holidaysri Tourism Team</strong>
+            <strong>The Holidaysri.com Team</strong>
           </p>
 
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
             <p style="color: #888; font-size: 14px; margin: 0;">
-              © 2024 Holidaysri Tourism. All rights reserved.
+              © 2024 Holidaysri.com. All rights reserved.
             </p>
           </div>
         </div>
@@ -1141,7 +1141,7 @@ const sendCommercialPartnerExpirationWarning = async (email, name, partnerDetail
 
   const mailOptions = {
     from: {
-      name: 'Holidaysri Tourism',
+      name: 'Holidaysri.com',
       address: process.env.EMAIL_USER
     },
     to: email,
@@ -1189,12 +1189,12 @@ const sendCommercialPartnerExpirationWarning = async (email, name, partnerDetail
 
           <p style="color: #555; line-height: 1.6;">
             Best regards,<br>
-            <strong>The Holidaysri Tourism Team</strong>
+            <strong>The Holidaysri.com Team</strong>
           </p>
 
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
             <p style="color: #888; font-size: 14px; margin: 0;">
-              © 2024 Holidaysri Tourism. All rights reserved.
+              © 2024 Holidaysri.com. All rights reserved.
             </p>
           </div>
         </div>
@@ -1223,7 +1223,7 @@ const sendCommercialPartnerExpiredEmail = async (email, name, partnerDetails) =>
 
   const mailOptions = {
     from: {
-      name: 'Holidaysri Tourism',
+      name: 'Holidaysri.com',
       address: process.env.EMAIL_USER
     },
     to: email,
@@ -1265,12 +1265,12 @@ const sendCommercialPartnerExpiredEmail = async (email, name, partnerDetails) =>
 
           <p style="color: #555; line-height: 1.6;">
             Best regards,<br>
-            <strong>The Holidaysri Tourism Team</strong>
+            <strong>The Holidaysri.com Team</strong>
           </p>
 
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
             <p style="color: #888; font-size: 14px; margin: 0;">
-              © 2024 Holidaysri Tourism. All rights reserved.
+              © 2024 Holidaysri.com. All rights reserved.
             </p>
           </div>
         </div>
@@ -1293,7 +1293,7 @@ const sendNewsletterSubscriptionConfirmation = async (email) => {
 
   const mailOptions = {
     from: {
-      name: 'Holidaysri Tourism',
+      name: 'Holidaysri.com',
       address: process.env.EMAIL_USER
     },
     to: email,
@@ -1309,7 +1309,7 @@ const sendNewsletterSubscriptionConfirmation = async (email) => {
           <h2 style="color: #333; margin-top: 0;">Welcome to Our Newsletter!</h2>
 
           <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
-            Thank you for subscribing to the Holidaysri Tourism newsletter! We're excited to have you join our community of travel enthusiasts.
+            Thank you for subscribing to the Holidaysri.com newsletter! We're excited to have you join our community of travel enthusiasts.
           </p>
 
           <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
@@ -1336,7 +1336,7 @@ const sendNewsletterSubscriptionConfirmation = async (email) => {
 
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
             <p style="color: #888; font-size: 14px; margin: 0;">
-              © 2024 Holidaysri Tourism. All rights reserved.
+              © 2024 Holidaysri.com. All rights reserved.
             </p>
             <p style="color: #888; font-size: 12px; margin: 10px 0 0 0;">
               You received this email because you subscribed to our newsletter.
@@ -1363,13 +1363,24 @@ const sendNewsletterEmail = async (email, subject, htmlBody) => {
   const transporter = createTransporter();
 
   // Process the HTML body to ensure proper formatting and link styling
-  const processedHtmlBody = htmlBody
-    .replace(/\n/g, '<br>')  // Convert line breaks to HTML breaks
-    .replace(/<a\s+href="([^"]*)"[^>]*>([^<]*)<\/a>/gi, '<a href="$1" style="color: #10b981; text-decoration: none; font-weight: bold; border-bottom: 1px solid #10b981; padding-bottom: 1px;">$2</a>'); // Ensure links have proper styling
+  let processedHtmlBody = htmlBody.replace(/\n/g, '<br>'); // Convert line breaks to HTML breaks
+
+  // Enhanced link processing - handle all possible link formats
+  // This approach ensures all links get proper styling regardless of their original format
+  console.log('🔗 Processing email body for links...');
+  console.log('Original body:', htmlBody);
+
+  processedHtmlBody = processedHtmlBody.replace(
+    /<a\s+[^>]*?href\s*=\s*["']([^"']*?)["'][^>]*?>([^<]*?)<\/a>/gi,
+    '<a href="$1" style="color: #10b981 !important; text-decoration: none !important; font-weight: bold !important; border-bottom: 1px solid #10b981 !important; padding-bottom: 1px !important; display: inline-block !important; margin: 2px 0 !important;">$2</a>'
+  );
+
+  console.log('Processed body:', processedHtmlBody);
+  console.log('🔗 Link processing completed.');
 
   const mailOptions = {
     from: {
-      name: 'Holidaysri Tourism',
+      name: 'Holidaysri.com',
       address: process.env.EMAIL_USER
     },
     to: email,
@@ -1378,7 +1389,7 @@ const sendNewsletterEmail = async (email, subject, htmlBody) => {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
         <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 20px; border-radius: 10px 10px 0 0; text-align: center;">
           <img src="https://res.cloudinary.com/dqdcmluxj/image/upload/v1752712704/4_xi6zj7.png" alt="Holidaysri" style="height: 40px; margin-bottom: 10px;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">Holidaysri Tourism</h1>
+          <h1 style="color: white; margin: 0; font-size: 24px;">Holidaysri.com</h1>
         </div>
 
         <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
@@ -1388,7 +1399,7 @@ const sendNewsletterEmail = async (email, subject, htmlBody) => {
 
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
             <p style="color: #888; font-size: 14px; margin: 0;">
-              © 2024 Holidaysri Tourism. All rights reserved.
+              © 2024 Holidaysri.com. All rights reserved.
             </p>
             <p style="color: #888; font-size: 12px; margin: 10px 0 0 0;">
               You received this email because you subscribed to our newsletter.

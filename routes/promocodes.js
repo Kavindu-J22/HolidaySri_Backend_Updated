@@ -914,7 +914,7 @@ router.post('/buy-preused', verifyToken, async (req, res) => {
         await Notification.createNotification(
           buyer._id,
           '🎉 Welcome to Our Agent Network!',
-          `Congratulations! You've successfully purchased the ${originalPromoCodeType} promo code "${originalPromoCode}" for ${originalSellingPrice} HSC and are now an official agent with Holidaysri Tourism. Start sharing your code and earning commissions today!`,
+          `Congratulations! You've successfully purchased the ${originalPromoCodeType} promo code "${originalPromoCode}" for ${originalSellingPrice} HSC and are now an official agent with Holidaysri.com. Start sharing your code and earning commissions today!`,
           'purchase',
           {
             promoCode: originalPromoCode,

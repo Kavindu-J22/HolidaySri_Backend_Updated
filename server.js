@@ -74,7 +74,7 @@ app.use('/api/newsletter', newsletterRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
-  res.json({ message: 'Holidaysri Tourism API Server' });
+  res.json({ message: 'Holidaysri.com API Server' });
 });
 
 // Error handling middleware
