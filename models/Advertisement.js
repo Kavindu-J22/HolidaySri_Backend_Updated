@@ -8,8 +8,92 @@ const advertisementSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['hotel', 'guide', 'vehicle', 'restaurant', 'other'],
+    enum: [
+      // Tourism And Travel Category
+      'travel_buddys',
+      'tour_guiders',
+      'local_tour_packages',
+      'customize_tour_package',
+      'travelsafe_help_professionals',
+      'rent_land_camping_parking',
+
+      // Accommodation & Dining Category
+      'hotels_accommodations',
+      'cafes_restaurants',
+      'foods_beverages',
+
+      // Vehicles & Transport Category
+      'vehicle_rentals_hire',
+      'live_rides_carpooling',
+      'professional_drivers',
+      'vehicle_repairs_mechanics',
+
+      // Events & Management Category
+      'events_updates',
+      'event_planners_coordinators',
+      'creative_photographers',
+      'decorators_florists',
+      'salon_makeup_artists',
+      'fashion_designers',
+
+      // Professionals & Services Category
+      'expert_doctors',
+      'professional_lawyers',
+      'advisors_counselors',
+      'language_translators',
+      'expert_architects',
+      'trusted_astrologists',
+      'delivery_partners',
+      'graphics_it_tech_repair',
+      'educational_tutoring',
+      'currency_exchange',
+      'other_professionals_services',
+
+      // Caring & Donations Category
+      'caregivers_time_currency',
+      'babysitters_childcare',
+      'pet_care_animal_services',
+      'donations_raise_fund',
+
+      // Marketplace & Shopping Category
+      'rent_property_buying_selling',
+      'exclusive_gift_packs',
+      'souvenirs_collectibles',
+      'jewelry_gem_sellers',
+      'home_office_accessories_tech',
+      'fashion_beauty_clothing',
+      'daily_grocery_essentials',
+      'organic_herbal_products_spices',
+      'books_magazines_educational',
+      'other_items',
+      'create_link_own_store',
+
+      // Entertainment & Fitness Category
+      'exclusive_combo_packages',
+      'talented_entertainers_artists',
+      'fitness_health_spas_gym',
+      'cinema_movie_hub',
+      'social_media_promotions',
+
+      // Special Opportunities Category
+      'job_opportunities',
+      'crypto_consulting_signals',
+      'local_sim_mobile_data',
+      'custom_ads_campaigns',
+      'exclusive_offers_promotions',
+
+      // Essential Services Category
+      'emergency_services_insurance',
+
+      // Legacy categories for backward compatibility
+      'hotel', 'guide', 'vehicle', 'restaurant', 'other'
+    ],
     required: true
+  },
+  slotType: {
+    type: String,
+    enum: ['home_banner', 'category_slot'],
+    default: 'category_slot'
   },
   title: {
     type: String,

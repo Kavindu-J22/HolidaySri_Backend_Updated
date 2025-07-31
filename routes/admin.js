@@ -5,6 +5,7 @@ const { HSCConfig, HSCTransaction, HSCPackage } = require('../models/HSC');
 const { MembershipConfig, MembershipTransaction } = require('../models/Membership');
 const { CommercialPartnerConfig, CommercialPartner } = require('../models/CommercialPartner');
 const Advertisement = require('../models/Advertisement');
+const AdvertisementSlotCharges = require('../models/AdvertisementSlotCharges');
 const ClaimRequest = require('../models/ClaimRequest');
 const Earning = require('../models/Earning');
 const { verifyAdmin, verifyAdminToken } = require('../middleware/auth');
@@ -1165,6 +1166,182 @@ router.get('/commercial-partners', verifyAdminToken, async (req, res) => {
 
   } catch (error) {
     console.error('Get commercial partners error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Advertisement Slot Charges Management Routes
+
+// Get advertisement slot charges configuration
+router.get('/advertisement-slot-charges', verifyAdminToken, async (req, res) => {
+  try {
+    console.log('Admin advertisement slot charges config request received');
+    let slotCharges = await AdvertisementSlotCharges.findOne({ isActive: true });
+
+    if (!slotCharges) {
+      console.log('No advertisement slot charges config found, creating default');
+      // Create default configuration if none exists
+      slotCharges = new AdvertisementSlotCharges({
+        updatedBy: req.admin.username || 'admin'
+      });
+      await slotCharges.save();
+      console.log('Default advertisement slot charges config created');
+    }
+
+    console.log('Returning advertisement slot charges config');
+    res.json({
+      success: true,
+      config: slotCharges
+    });
+
+  } catch (error) {
+    console.error('Get advertisement slot charges config error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update advertisement slot charges configuration
+router.put('/advertisement-slot-charges', verifyAdminToken, async (req, res) => {
+  try {
+    console.log('Admin advertisement slot charges config update request received');
+    const updateData = req.body;
+
+    if (!updateData) {
+      return res.status(400).json({ message: 'Update data is required' });
+    }
+
+    let slotCharges = await AdvertisementSlotCharges.findOne({ isActive: true });
+
+    if (!slotCharges) {
+      slotCharges = new AdvertisementSlotCharges({
+        ...updateData,
+        updatedBy: req.admin.username || 'admin'
+      });
+    } else {
+      // Update all provided fields
+      Object.keys(updateData).forEach(key => {
+        if (key !== '_id' && key !== 'createdAt' && key !== 'updatedAt') {
+          slotCharges[key] = updateData[key];
+        }
+      });
+      slotCharges.lastUpdated = new Date();
+      slotCharges.updatedBy = req.admin.username || 'admin';
+    }
+
+    await slotCharges.save();
+
+    res.json({
+      success: true,
+      message: 'Advertisement slot charges configuration updated successfully',
+      config: slotCharges
+    });
+
+  } catch (error) {
+    console.error('Update advertisement slot charges config error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get advertisement slot charges statistics
+router.get('/advertisement-slot-charges-stats', verifyAdminToken, async (req, res) => {
+  try {
+    console.log('Admin advertisement slot charges stats request received');
+
+    // Get current configuration
+    const slotCharges = await AdvertisementSlotCharges.findOne({ isActive: true });
+
+    if (!slotCharges) {
+      return res.status(404).json({ message: 'Advertisement slot charges configuration not found' });
+    }
+
+    // Calculate total slots and categories
+    const categories = [
+      'tourismTravel',
+      'accommodationDining',
+      'vehiclesTransport',
+      'eventsManagement',
+      'professionalsServices',
+      'caringDonations',
+      'marketplaceShopping',
+      'entertainmentFitness',
+      'specialOpportunities',
+      'essentialServices'
+    ];
+
+    let totalSlots = 1; // Home banner
+    let totalCategories = categories.length;
+
+    // Count slots in each category
+    categories.forEach(category => {
+      if (slotCharges[category]) {
+        totalSlots += Object.keys(slotCharges[category]).length;
+      }
+    });
+
+    // Get advertisement statistics by category
+    const adStats = await Advertisement.aggregate([
+      {
+        $group: {
+          _id: '$category',
+          count: { $sum: 1 },
+          activeCount: {
+            $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] }
+          }
+        }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      stats: {
+        totalSlots,
+        totalCategories,
+        lastUpdated: slotCharges.lastUpdated,
+        updatedBy: slotCharges.updatedBy,
+        currency: slotCharges.currency,
+        advertisementStats: adStats
+      }
+    });
+
+  } catch (error) {
+    console.error('Get advertisement slot charges stats error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get slot charges for a specific category and slot
+router.get('/advertisement-slot-charges/:category/:slot?', verifyAdminToken, async (req, res) => {
+  try {
+    const { category, slot } = req.params;
+
+    const slotCharges = await AdvertisementSlotCharges.findOne({ isActive: true });
+
+    if (!slotCharges) {
+      return res.status(404).json({ message: 'Advertisement slot charges configuration not found' });
+    }
+
+    let result;
+    if (category === 'homeBanner') {
+      result = slotCharges.homeBanner;
+    } else if (slotCharges[category]) {
+      if (slot) {
+        result = slotCharges[category][slot];
+      } else {
+        result = slotCharges[category];
+      }
+    }
+
+    if (!result) {
+      return res.status(404).json({ message: 'Category or slot not found' });
+    }
+
+    res.json({
+      success: true,
+      charges: result
+    });
+
+  } catch (error) {
+    console.error('Get specific slot charges error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
