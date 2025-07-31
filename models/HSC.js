@@ -296,6 +296,16 @@ const promoCodeConfigSchema = new mongoose.Schema({
       required: true,
       default: 50 // LKR
     },
+    hourlyAdDiscount: {
+      type: Number,
+      required: true,
+      default: 25 // LKR
+    },
+    yearlyAdDiscount: {
+      type: Number,
+      required: true,
+      default: 6000 // LKR
+    },
     purchaseDiscount: {
       type: Number,
       required: true,

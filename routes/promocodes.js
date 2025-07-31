@@ -193,6 +193,8 @@ router.get('/config', async (req, res) => {
       discounts: {
         monthlyAdDiscount: promoConfig.discounts.monthlyAdDiscount,
         dailyAdDiscount: promoConfig.discounts.dailyAdDiscount,
+        hourlyAdDiscount: promoConfig.discounts.hourlyAdDiscount,
+        yearlyAdDiscount: promoConfig.discounts.yearlyAdDiscount,
         purchaseDiscount: promoConfig.discounts.purchaseDiscount,
         purchaseDiscountInHSC: Math.round(promoConfig.discounts.purchaseDiscount / hscValue * 100) / 100
       }
