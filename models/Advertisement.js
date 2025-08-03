@@ -8,180 +8,70 @@ const advertisementSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: [
-      // Tourism And Travel Category
-      'travel_buddys',
-      'tour_guiders',
-      'local_tour_packages',
-      'customize_tour_package',
-      'travelsafe_help_professionals',
-      'rent_land_camping_parking',
-
-      // Accommodation & Dining Category
-      'hotels_accommodations',
-      'cafes_restaurants',
-      'foods_beverages',
-
-      // Vehicles & Transport Category
-      'vehicle_rentals_hire',
-      'live_rides_carpooling',
-      'professional_drivers',
-      'vehicle_repairs_mechanics',
-
-      // Events & Management Category
-      'events_updates',
-      'event_planners_coordinators',
-      'creative_photographers',
-      'decorators_florists',
-      'salon_makeup_artists',
-      'fashion_designers',
-
-      // Professionals & Services Category
-      'expert_doctors',
-      'professional_lawyers',
-      'advisors_counselors',
-      'language_translators',
-      'expert_architects',
-      'trusted_astrologists',
-      'delivery_partners',
-      'graphics_it_tech_repair',
-      'educational_tutoring',
-      'currency_exchange',
-      'other_professionals_services',
-
-      // Caring & Donations Category
-      'caregivers_time_currency',
-      'babysitters_childcare',
-      'pet_care_animal_services',
-      'donations_raise_fund',
-
-      // Marketplace & Shopping Category
-      'rent_property_buying_selling',
-      'exclusive_gift_packs',
-      'souvenirs_collectibles',
-      'jewelry_gem_sellers',
-      'home_office_accessories_tech',
-      'fashion_beauty_clothing',
-      'daily_grocery_essentials',
-      'organic_herbal_products_spices',
-      'books_magazines_educational',
-      'other_items',
-      'create_link_own_store',
-
-      // Entertainment & Fitness Category
-      'exclusive_combo_packages',
-      'talented_entertainers_artists',
-      'fitness_health_spas_gym',
-      'cinema_movie_hub',
-      'social_media_promotions',
-
-      // Special Opportunities Category
-      'job_opportunities',
-      'crypto_consulting_signals',
-      'local_sim_mobile_data',
-      'custom_ads_campaigns',
-      'exclusive_offers_promotions',
-
-      // Essential Services Category
-      'emergency_services_insurance',
-
-      // Legacy categories for backward compatibility
-      'hotel', 'guide', 'vehicle', 'restaurant', 'other'
-    ],
     required: true
   },
   slotType: {
     type: String,
-    enum: ['home_banner', 'category_slot'],
     default: 'category_slot'
   },
-  title: {
+
+  // Payment and Plan Information
+  selectedPlan: {
     type: String,
-    required: true,
-    trim: true,
-    maxlength: 100
+    enum: ['hourly', 'daily', 'monthly', 'yearly'],
+    required: true
   },
-  description: {
-    type: String,
-    required: true,
-    maxlength: 1000
-  },
-  images: [{
-    url: String,
-    alt: String
-  }],
-  location: {
-    address: {
-      type: String,
-      required: true
+  planDuration: {
+    hours: {
+      type: Number,
+      min: 1
     },
-    city: {
-      type: String,
-      required: true
-    },
-    district: {
-      type: String,
-      required: true
-    },
-    coordinates: {
-      latitude: Number,
-      longitude: Number
+    days: {
+      type: Number,
+      min: 1
     }
   },
-  contactInfo: {
-    phone: {
-      type: String,
-      required: true
-    },
-    email: {
-      type: String,
-      required: true
-    },
-    website: String,
-    whatsapp: String
+  paymentMethod: {
+    type: String,
+    enum: ['HSC', 'HSD', 'HSG'],
+    required: true
   },
-  pricing: {
-    currency: {
-      type: String,
-      default: 'LKR'
-    },
-    priceRange: {
-      min: Number,
-      max: Number
-    },
-    priceDescription: String
-  },
-  features: [{
-    type: String
-  }],
-  availability: {
-    isAvailable: {
-      type: Boolean,
-      default: true
-    },
-    availableDays: [{
-      type: String,
-      enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-    }],
-    availableHours: {
-      open: String,
-      close: String
-    }
-  },
-  hscCost: {
+  originalAmount: {
     type: Number,
     required: true,
-    min: 1
+    min: 0
   },
-  duration: {
-    type: Number, // Duration in days
+  discountAmount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  finalAmount: {
+    type: Number,
     required: true,
-    min: 1
+    min: 0
+  },
+
+  // Promo Code Information
+  usedPromoCode: {
+    type: String,
+    uppercase: true
+  },
+  usedPromoCodeOwner: {
+    type: String // Email of the promo code owner
+  },
+  usedPromoCodeOwnerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   },
   status: {
     type: String,
     enum: ['draft', 'active', 'paused', 'expired', 'rejected'],
     default: 'draft'
+  },
+  isActive: {
+    type: Boolean,
+    default: true
   },
   publishedAt: {
     type: Date
@@ -189,40 +79,6 @@ const advertisementSchema = new mongoose.Schema({
   expiresAt: {
     type: Date
   },
-  views: {
-    type: Number,
-    default: 0
-  },
-  clicks: {
-    type: Number,
-    default: 0
-  },
-  rating: {
-    average: {
-      type: Number,
-      default: 0
-    },
-    count: {
-      type: Number,
-      default: 0
-    }
-  },
-  reviews: [{
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    rating: {
-      type: Number,
-      min: 1,
-      max: 5
-    },
-    comment: String,
-    createdAt: {
-      type: Date,
-      default: Date.now
-    }
-  }],
   isPromoted: {
     type: Boolean,
     default: false
@@ -235,15 +91,32 @@ const advertisementSchema = new mongoose.Schema({
 });
 
 // Index for search functionality
-advertisementSchema.index({ title: 'text', description: 'text' });
 advertisementSchema.index({ category: 1, status: 1 });
-advertisementSchema.index({ 'location.city': 1, 'location.district': 1 });
 advertisementSchema.index({ userId: 1 });
 
 // Calculate expiry date before saving
 advertisementSchema.pre('save', function(next) {
   if (this.isNew && this.status === 'active' && !this.expiresAt) {
-    this.expiresAt = new Date(Date.now() + (this.duration * 24 * 60 * 60 * 1000));
+    let expirationTime;
+
+    switch (this.selectedPlan) {
+      case 'hourly':
+        expirationTime = (this.planDuration.hours || 1) * 60 * 60 * 1000; // hours to milliseconds
+        break;
+      case 'daily':
+        expirationTime = (this.planDuration.days || 1) * 24 * 60 * 60 * 1000; // days to milliseconds
+        break;
+      case 'monthly':
+        expirationTime = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+        break;
+      case 'yearly':
+        expirationTime = 365 * 24 * 60 * 60 * 1000; // 365 days in milliseconds
+        break;
+      default:
+        expirationTime = 24 * 60 * 60 * 1000; // fallback to 1 day
+    }
+
+    this.expiresAt = new Date(Date.now() + expirationTime);
     this.publishedAt = new Date();
   }
   next();
