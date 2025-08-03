@@ -5,8 +5,15 @@ const User = require('../models/User');
 const Agent = require('../models/Agent');
 const Earning = require('../models/Earning');
 const PaymentActivity = require('../models/PaymentActivity');
+const Notification = require('../models/Notification');
 const { PromoCodeConfig, HSCConfig } = require('../models/HSC');
 const { verifyToken, verifyEmailVerified } = require('../middleware/auth');
+const { sendAdvertisementPurchaseEmail } = require('../utils/emailService');
+
+// Helper function to format category names
+const formatCategoryName = (category) => {
+  return category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+};
 
 // Get promo code discount for advertisement
 router.post('/calculate-discount', verifyToken, verifyEmailVerified, async (req, res) => {
@@ -340,8 +347,64 @@ router.post('/process-payment', verifyToken, verifyEmailVerified, async (req, re
         // Update payment activity with earning amount
         paymentActivity.forEarns = earningAmount;
         await paymentActivity.save();
+
+        // Update the promo code owner's total earnings, referrals, and used count
+        if (promoCodeOwnerAgent) {
+          promoCodeOwnerAgent.totalEarnings += earningAmount;
+
+          // Check if this is a new unique buyer (referral) - exclude the current earning we just saved
+          const existingEarningCount = await Earning.countDocuments({
+            usedPromoCodeOwnerId: promoCodeOwnerAgent.userId,
+            buyerId: req.user._id
+          });
+
+          // Only increment totalReferrals if this is the first time this buyer used the promo code
+          // Since we just saved one earning, if count is 1, this is the first time
+          if (existingEarningCount === 1) {
+            promoCodeOwnerAgent.totalReferrals += 1;
+          }
+
+          promoCodeOwnerAgent.usedCount += 1; // Always increment used count (total times code was used)
+          await promoCodeOwnerAgent.save();
+        }
       }
     }
+
+    // Send professional email notification
+    try {
+      await sendAdvertisementPurchaseEmail(user, {
+        category: slot.category,
+        categoryName: slot.mainCategory || formatCategoryName(slot.category),
+        selectedPlan: plan.id,
+        planDuration: planDuration,
+        paymentMethod: paymentMethod.type,
+        originalAmount,
+        discountAmount: discountAmount || 0,
+        finalAmount,
+        usedPromoCode: appliedPromoCode,
+        transactionId: paymentActivity.transactionId,
+        expiresAt: advertisement.expiresAt
+      });
+    } catch (emailError) {
+      console.error('Error sending advertisement purchase email:', emailError);
+      // Don't fail the payment if email fails
+    }
+
+    // Create notification for user
+    await Notification.createNotification(
+      req.user._id,
+      '🎉 Advertisement Purchase Successful!',
+      `Your ${formatCategoryName(slot.category)} advertisement has been activated successfully and will run until ${new Date(advertisement.expiresAt).toLocaleDateString()}.`,
+      'advertisement',
+      {
+        advertisementId: advertisement._id,
+        category: slot.category,
+        plan: plan.id,
+        transactionId: paymentActivity.transactionId,
+        expiresAt: advertisement.expiresAt
+      },
+      'high'
+    );
 
     res.json({
       success: true,

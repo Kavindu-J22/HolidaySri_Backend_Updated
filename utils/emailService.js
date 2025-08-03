@@ -1421,6 +1421,165 @@ const sendNewsletterEmail = async (email, subject, htmlBody) => {
   }
 };
 
+// Send advertisement purchase success email
+const sendAdvertisementPurchaseEmail = async (user, advertisementData) => {
+  const transporter = createTransporter();
+
+  const formattedDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  const expirationDate = new Date(advertisementData.expiresAt).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  // Format plan duration display
+  let planDurationText = '';
+  if (advertisementData.selectedPlan === 'hourly') {
+    planDurationText = `${advertisementData.planDuration.hours || 1} hour${(advertisementData.planDuration.hours || 1) > 1 ? 's' : ''}`;
+  } else if (advertisementData.selectedPlan === 'daily') {
+    planDurationText = `${advertisementData.planDuration.days || 1} day${(advertisementData.planDuration.days || 1) > 1 ? 's' : ''}`;
+  } else if (advertisementData.selectedPlan === 'monthly') {
+    planDurationText = '30 days (1 month)';
+  } else if (advertisementData.selectedPlan === 'yearly') {
+    planDurationText = '365 days (1 year)';
+  }
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri.com',
+      address: process.env.EMAIL_USER
+    },
+    to: user.email,
+    subject: '🎉 Advertisement Purchase Successful - Your Ad is Now Live!',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Advertisement Active!</h1>
+              <p style="color: white; margin: 10px 0 0 0; font-size: 18px;">Your Advertisement is Now Live!</p>
+            </div>
+          </div>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Dear ${user.name},
+          </p>
+
+          <div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 5px;">
+            <h3 style="color: #059669; margin: 0 0 10px 0;">✅ Purchase Successful!</h3>
+            <p style="color: #059669; margin: 0; font-size: 16px;">
+              Congratulations! Your <strong>${advertisementData.categoryName}</strong> advertisement has been successfully purchased and is now active on our platform.
+            </p>
+          </div>
+
+          <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #374151; margin: 0 0 15px 0;">📋 Advertisement Details</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Category:</td>
+                <td style="padding: 8px 0; color: #374151; font-weight: 600; border-bottom: 1px solid #e5e7eb;">${advertisementData.categoryName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Plan:</td>
+                <td style="padding: 8px 0; color: #374151; font-weight: 600; border-bottom: 1px solid #e5e7eb;">${advertisementData.selectedPlan.charAt(0).toUpperCase() + advertisementData.selectedPlan.slice(1)} (${planDurationText})</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Payment Method:</td>
+                <td style="padding: 8px 0; color: #374151; font-weight: 600; border-bottom: 1px solid #e5e7eb;">${advertisementData.paymentMethod}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Transaction ID:</td>
+                <td style="padding: 8px 0; color: #374151; font-weight: 600; border-bottom: 1px solid #e5e7eb;">${advertisementData.transactionId}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Purchase Date:</td>
+                <td style="padding: 8px 0; color: #374151; font-weight: 600; border-bottom: 1px solid #e5e7eb;">${formattedDate}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280;">Expires On:</td>
+                <td style="padding: 8px 0; color: #374151; font-weight: 600;">${expirationDate}</td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="background: #fef3c7; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #92400e; margin: 0 0 15px 0;">💰 Payment Summary</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px 0; color: #92400e;">Original Amount:</td>
+                <td style="padding: 8px 0; color: #92400e; font-weight: 600; text-align: right;">${advertisementData.originalAmount} ${advertisementData.paymentMethod}</td>
+              </tr>
+              ${advertisementData.discountAmount > 0 ? `
+              <tr>
+                <td style="padding: 8px 0; color: #059669;">Discount Applied:</td>
+                <td style="padding: 8px 0; color: #059669; font-weight: 600; text-align: right;">-${advertisementData.discountAmount} ${advertisementData.paymentMethod}</td>
+              </tr>
+              ${advertisementData.usedPromoCode ? `
+              <tr>
+                <td style="padding: 8px 0; color: #059669; font-size: 14px;">Promo Code Used:</td>
+                <td style="padding: 8px 0; color: #059669; font-weight: 600; text-align: right; font-size: 14px;">${advertisementData.usedPromoCode}</td>
+              </tr>
+              ` : ''}
+              ` : ''}
+              <tr style="border-top: 2px solid #92400e;">
+                <td style="padding: 12px 0 8px 0; color: #92400e; font-weight: 700; font-size: 16px;">Total Paid:</td>
+                <td style="padding: 12px 0 8px 0; color: #92400e; font-weight: 700; text-align: right; font-size: 16px;">${advertisementData.finalAmount} ${advertisementData.paymentMethod}</td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="background: #dbeafe; border-left: 4px solid #3b82f6; padding: 20px; margin: 20px 0; border-radius: 5px;">
+            <h3 style="color: #1d4ed8; margin: 0 0 10px 0;">📈 What's Next?</h3>
+            <ul style="color: #1d4ed8; margin: 10px 0; padding-left: 20px;">
+              <li style="margin: 8px 0;">Your advertisement is now live and visible to visitors</li>
+              <li style="margin: 8px 0;">Monitor your advertisement performance in your profile</li>
+              <li style="margin: 8px 0;">Track engagement metrics and reach</li>
+              <li style="margin: 8px 0;">Renew before expiration to maintain visibility</li>
+            </ul>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="http://localhost:3000/profile" style="display: inline-block; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+              View My Advertisements
+            </a>
+          </div>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px;">
+            <p style="color: #888; font-size: 14px; line-height: 1.6; margin: 0;">
+              <strong>Need Help?</strong><br>
+              If you have any questions about your advertisement or need assistance, please contact our support team at support@holidaysri.com or visit our help center.
+            </p>
+          </div>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 20px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri.com. All rights reserved.<br>
+              This email was sent regarding your advertisement purchase on ${formattedDate}.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Advertisement purchase email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Export all functions including the newsletter ones
 module.exports = {
   generateOTP,
@@ -1440,5 +1599,6 @@ module.exports = {
   sendCommercialPartnerExpirationWarning,
   sendCommercialPartnerExpiredEmail,
   sendNewsletterSubscriptionConfirmation,
-  sendNewsletterEmail
+  sendNewsletterEmail,
+  sendAdvertisementPurchaseEmail
 };
