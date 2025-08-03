@@ -15,6 +15,106 @@ const formatCategoryName = (category) => {
   return category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 };
 
+// Helper function to generate unique slot ID
+const generateSlotId = async () => {
+  const prefix = 'AD';
+  let isUnique = false;
+  let slotId = '';
+
+  while (!isUnique) {
+    // Generate random 8-character alphanumeric string
+    const randomString = Math.random().toString(36).substring(2, 10).toUpperCase();
+    slotId = `${prefix}${randomString}`;
+
+    // Check if this ID already exists
+    const existingAd = await Advertisement.findOne({ slotId });
+    if (!existingAd) {
+      isUnique = true;
+    }
+  }
+
+  return slotId;
+};
+
+// Get user advertisements with search and filter
+router.get('/my-advertisements', verifyToken, verifyEmailVerified, async (req, res) => {
+  try {
+    const { search, status, plan, category, page = 1, limit = 10 } = req.query;
+
+    // Build query
+    let query = { userId: req.user._id };
+
+    // Add search by slot ID
+    if (search) {
+      query.slotId = { $regex: search.toUpperCase(), $options: 'i' };
+    }
+
+    // Add status filter
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+
+    // Add plan filter
+    if (plan && plan !== 'all') {
+      query.selectedPlan = plan;
+    }
+
+    // Add category filter
+    if (category && category !== 'all') {
+      query.category = category;
+    }
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get advertisements with pagination
+    const advertisements = await Advertisement.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Get total count for pagination
+    const totalCount = await Advertisement.countDocuments(query);
+    const totalPages = Math.ceil(totalCount / parseInt(limit));
+
+    // Get unique categories for filter options
+    const categories = await Advertisement.distinct('category', { userId: req.user._id });
+
+    res.json({
+      advertisements,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalCount,
+        hasNext: parseInt(page) < totalPages,
+        hasPrev: parseInt(page) > 1
+      },
+      filterOptions: {
+        categories: categories.map(cat => ({
+          value: cat,
+          label: formatCategoryName(cat)
+        })),
+        statuses: [
+          { value: 'active', label: 'Active' },
+          { value: 'paused', label: 'Paused' },
+          { value: 'expired', label: 'Expired' },
+          { value: 'draft', label: 'Draft' }
+        ],
+        plans: [
+          { value: 'hourly', label: 'Hourly' },
+          { value: 'daily', label: 'Daily' },
+          { value: 'monthly', label: 'Monthly' },
+          { value: 'yearly', label: 'Yearly' }
+        ]
+      }
+    });
+
+  } catch (error) {
+    console.error('Get user advertisements error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get promo code discount for advertisement
 router.post('/calculate-discount', verifyToken, verifyEmailVerified, async (req, res) => {
   try {
@@ -261,10 +361,14 @@ router.post('/process-payment', verifyToken, verifyEmailVerified, async (req, re
         break;
     }
 
+    // Generate unique slot ID
+    const uniqueSlotId = await generateSlotId();
+
     // Create advertisement record
     const advertisement = new Advertisement({
       userId: req.user._id,
       category: slot.category,
+      slotId: uniqueSlotId,
       selectedPlan: plan.id,
       planDuration,
       paymentMethod: paymentMethod.type,

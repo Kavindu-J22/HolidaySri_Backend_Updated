@@ -10,6 +10,12 @@ const advertisementSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  slotId: {
+    type: String,
+    required: true,
+    unique: true,
+    uppercase: true
+  },
   slotType: {
     type: String,
     default: 'category_slot'
