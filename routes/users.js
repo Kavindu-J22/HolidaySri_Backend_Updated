@@ -708,7 +708,7 @@ router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
         forEarns: earningAmount, // Use correct earning amount from promo config
         purchasedPromoCode: agent.promoCode,
         purchasedPromoCodeType: renewalType === 'upgrade' ? newTier : agent.promoCodeType,
-        paymentMethod: 'HSC Wallet',
+        paymentMethod: 'HSC',
         status: 'completed',
         transactionId: `RNW${Date.now()}${Math.floor(Math.random() * 1000)}`
       });

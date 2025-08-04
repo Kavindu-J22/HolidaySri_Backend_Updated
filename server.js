@@ -54,6 +54,7 @@ const commercialPartnerRoutes = require('./routes/commercialPartner');
 const newsletterRoutes = require('./routes/newsletter');
 const publicRoutes = require('./routes/public');
 const advertisementRoutes = require('./routes/advertisements');
+const paymentActivityRoutes = require('./routes/paymentActivities');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
 const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
 
@@ -75,6 +76,7 @@ app.use('/api/commercial-partner', commercialPartnerRoutes);
 app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/advertisements', advertisementRoutes);
+app.use('/api/payment-activities', paymentActivityRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
