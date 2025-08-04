@@ -55,8 +55,10 @@ const newsletterRoutes = require('./routes/newsletter');
 const publicRoutes = require('./routes/public');
 const advertisementRoutes = require('./routes/advertisements');
 const paymentActivityRoutes = require('./routes/paymentActivities');
+const hsdLeaderBoardRoutes = require('./routes/hsdLeaderBoard');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
 const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
+const { startHSDLeaderBoardJobs, runHSDStartupChecks } = require('./jobs/hsdLeaderBoardRewards');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -77,6 +79,7 @@ app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/advertisements', advertisementRoutes);
 app.use('/api/payment-activities', paymentActivityRoutes);
+app.use('/api/hsd-leaderboard', hsdLeaderBoardRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
@@ -104,4 +107,7 @@ app.listen(PORT, () => {
 
   // Start commercial partnership expiration jobs
   startCommercialPartnershipJobs();
+
+  // Start HSD Leader Board reward jobs
+  startHSDLeaderBoardJobs();
 });
