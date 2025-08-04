@@ -71,6 +71,19 @@ router.get('/', verifyToken, async (req, res) => {
       }
     ]);
 
+    // Get HSC-specific statistics
+    const hscStats = await PaymentActivity.aggregate([
+      { $match: { userId: req.user._id, paymentMethod: 'HSC' } },
+      {
+        $group: {
+          _id: null,
+          totalHSCAmount: { $sum: '$amount' },
+          totalHSCOriginalAmount: { $sum: '$originalAmount' },
+          totalHSCDiscountedAmount: { $sum: '$discountedAmount' }
+        }
+      }
+    ]);
+
     // Get category breakdown
     const categoryBreakdown = await PaymentActivity.aggregate([
       { $match: { userId: req.user._id } },
@@ -105,11 +118,18 @@ router.get('/', verifyToken, async (req, res) => {
         total,
         limit: parseInt(limit)
       },
-      stats: stats[0] || {
-        totalTransactions: 0,
-        totalAmount: 0,
-        totalOriginalAmount: 0,
-        totalDiscountedAmount: 0
+      stats: {
+        ...(stats[0] || {
+          totalTransactions: 0,
+          totalAmount: 0,
+          totalOriginalAmount: 0,
+          totalDiscountedAmount: 0
+        }),
+        ...(hscStats[0] || {
+          totalHSCAmount: 0,
+          totalHSCOriginalAmount: 0,
+          totalHSCDiscountedAmount: 0
+        })
       },
       categoryBreakdown,
       paymentMethodBreakdown
