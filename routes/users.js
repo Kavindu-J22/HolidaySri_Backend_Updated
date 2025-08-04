@@ -490,8 +490,8 @@ router.put('/agent-upgrade-tier', verifyToken, async (req, res) => {
 router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
   try {
     const {
-      renewalType, // 'renew', 'upgrade', or 'renewNextYear'
-      newTier, // Required if renewalType is 'upgrade'
+      renewalType, // 'renew', 'upgrade', 'renewNextYear', or 'downgrade'
+      newTier, // Required if renewalType is 'upgrade' or 'downgrade'
       finalAmount,
       appliedPromoCode,
       discountAmount
@@ -523,14 +523,14 @@ router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
     }
 
     // Validate renewal type and tier
-    const validRenewalTypes = ['renew', 'upgrade', 'renewNextYear'];
+    const validRenewalTypes = ['renew', 'upgrade', 'renewNextYear', 'downgrade'];
     if (!validRenewalTypes.includes(renewalType)) {
       return res.status(400).json({ message: 'Invalid renewal type specified' });
     }
 
-    if (renewalType === 'upgrade') {
+    if (renewalType === 'upgrade' || renewalType === 'downgrade') {
       if (!newTier) {
-        return res.status(400).json({ message: 'New tier is required for upgrade' });
+        return res.status(400).json({ message: `New tier is required for ${renewalType}` });
       }
 
       const validTiers = ['silver', 'gold', 'diamond'];
@@ -538,12 +538,21 @@ router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
         return res.status(400).json({ message: 'Invalid tier specified' });
       }
 
-      // Check if it's a valid upgrade path
+      // Check if it's a valid upgrade/downgrade path
       const currentTier = agent.promoCodeType;
       const tierHierarchy = { free: 0, silver: 1, gold: 2, diamond: 3 };
 
-      if (tierHierarchy[newTier] <= tierHierarchy[currentTier]) {
+      if (renewalType === 'upgrade' && tierHierarchy[newTier] <= tierHierarchy[currentTier]) {
         return res.status(400).json({ message: 'You can only upgrade to a higher tier' });
+      }
+
+      if (renewalType === 'downgrade' && tierHierarchy[newTier] >= tierHierarchy[currentTier]) {
+        return res.status(400).json({ message: 'You can only downgrade to a lower tier' });
+      }
+
+      // Don't allow downgrade to free tier
+      if (renewalType === 'downgrade' && newTier === 'free') {
+        return res.status(400).json({ message: 'Cannot downgrade to free tier' });
       }
     }
 
@@ -637,7 +646,7 @@ router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
         expiredNotificationEmailSent: false
       };
 
-      if (renewalType === 'upgrade') {
+      if (renewalType === 'upgrade' || renewalType === 'downgrade') {
         updateData.promoCodeType = newTier;
       }
 
@@ -728,8 +737,8 @@ router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
       // 6. Create notification
       await Notification.createNotification(
         user._id,
-        `🎉 Promo Code ${renewalType === 'upgrade' ? 'Upgraded & Renewed' : renewalType === 'renewNextYear' ? 'Renewed for Next Year' : 'Renewed'} Successfully!`,
-        `Your promo code ${agent.promoCode} has been ${renewalType === 'upgrade' ? `upgraded to ${newTier} and` : renewalType === 'renewNextYear' ? 'renewed for next year from your current expiration date' : ''} renewed for another year. Continue earning commissions!`,
+        `🎉 Promo Code ${renewalType === 'upgrade' ? 'Upgraded & Renewed' : renewalType === 'downgrade' ? 'Downgraded & Renewed' : renewalType === 'renewNextYear' ? 'Renewed for Next Year' : 'Renewed'} Successfully!`,
+        `Your promo code ${agent.promoCode} has been ${renewalType === 'upgrade' ? `upgraded to ${newTier} and` : renewalType === 'downgrade' ? `downgraded to ${newTier} and` : renewalType === 'renewNextYear' ? 'renewed for next year from your current expiration date' : ''} renewed for another year. Continue earning commissions!`,
         'purchase',
         {
           promoCode: agent.promoCode,
@@ -743,7 +752,7 @@ router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
 
       res.json({
         success: true,
-        message: `Promo code ${renewalType === 'upgrade' ? 'upgraded and renewed' : renewalType === 'renewNextYear' ? 'renewed for next year' : 'renewed'} successfully`,
+        message: `Promo code ${renewalType === 'upgrade' ? 'upgraded and renewed' : renewalType === 'downgrade' ? 'downgraded and renewed' : renewalType === 'renewNextYear' ? 'renewed for next year' : 'renewed'} successfully`,
         newBalance: user.hscBalance,
         transactionId: paymentActivity.transactionId,
         expirationDate: updateData.expirationDate,
