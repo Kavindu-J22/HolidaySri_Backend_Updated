@@ -490,7 +490,7 @@ router.put('/agent-upgrade-tier', verifyToken, async (req, res) => {
 router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
   try {
     const {
-      renewalType, // 'renew' or 'upgrade'
+      renewalType, // 'renew', 'upgrade', or 'renewNextYear'
       newTier, // Required if renewalType is 'upgrade'
       finalAmount,
       appliedPromoCode,
@@ -503,11 +503,18 @@ router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
       return res.status(403).json({ message: 'Access denied. User is not an agent.' });
     }
 
-    // Check if promo code is expired (required for renewal)
+    // Check expiration based on renewal type
     const now = new Date();
-    if (agent.expirationDate > now) {
+    if (renewalType === 'renew' && agent.expirationDate > now) {
       return res.status(400).json({ message: 'Promo code is not expired yet. You can only renew expired promo codes.' });
     }
+
+    // For renewNextYear, allow renewal before expiration
+    if (renewalType === 'renewNextYear' && agent.expirationDate <= now) {
+      return res.status(400).json({ message: 'Promo code has already expired. Use regular renewal option instead.' });
+    }
+
+    // For upgrade, allow anytime (remove expiration restriction)
 
     // Get user and check HSC balance
     const user = await User.findById(req.user._id);
@@ -516,6 +523,11 @@ router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
     }
 
     // Validate renewal type and tier
+    const validRenewalTypes = ['renew', 'upgrade', 'renewNextYear'];
+    if (!validRenewalTypes.includes(renewalType)) {
+      return res.status(400).json({ message: 'Invalid renewal type specified' });
+    }
+
     if (renewalType === 'upgrade') {
       if (!newTier) {
         return res.status(400).json({ message: 'New tier is required for upgrade' });
@@ -608,9 +620,19 @@ router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
     // Start transaction-like operations
     try {
       // 1. Update agent promo code
+      let newExpirationDate;
+
+      if (renewalType === 'renewNextYear') {
+        // For renewNextYear: current expiration date + 1 year
+        newExpirationDate = new Date(agent.expirationDate.getTime() + 365 * 24 * 60 * 60 * 1000);
+      } else {
+        // For renew and upgrade: current date + 1 year
+        newExpirationDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+      }
+
       const updateData = {
         isActive: true,
-        expirationDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // +1 year
+        expirationDate: newExpirationDate,
         expirationWarningEmailSent: false, // Reset email flags
         expiredNotificationEmailSent: false
       };
@@ -706,8 +728,8 @@ router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
       // 6. Create notification
       await Notification.createNotification(
         user._id,
-        `🎉 Promo Code ${renewalType === 'upgrade' ? 'Upgraded & Renewed' : 'Renewed'} Successfully!`,
-        `Your promo code ${agent.promoCode} has been ${renewalType === 'upgrade' ? `upgraded to ${newTier} and` : ''} renewed for another year. Continue earning commissions!`,
+        `🎉 Promo Code ${renewalType === 'upgrade' ? 'Upgraded & Renewed' : renewalType === 'renewNextYear' ? 'Renewed for Next Year' : 'Renewed'} Successfully!`,
+        `Your promo code ${agent.promoCode} has been ${renewalType === 'upgrade' ? `upgraded to ${newTier} and` : renewalType === 'renewNextYear' ? 'renewed for next year from your current expiration date' : ''} renewed for another year. Continue earning commissions!`,
         'purchase',
         {
           promoCode: agent.promoCode,
@@ -721,7 +743,7 @@ router.post('/agent-renew-promo-code', verifyToken, async (req, res) => {
 
       res.json({
         success: true,
-        message: `Promo code ${renewalType === 'upgrade' ? 'upgraded and renewed' : 'renewed'} successfully`,
+        message: `Promo code ${renewalType === 'upgrade' ? 'upgraded and renewed' : renewalType === 'renewNextYear' ? 'renewed for next year' : 'renewed'} successfully`,
         newBalance: user.hscBalance,
         transactionId: paymentActivity.transactionId,
         expirationDate: updateData.expirationDate,
