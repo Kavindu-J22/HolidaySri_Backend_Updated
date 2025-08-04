@@ -1580,6 +1580,140 @@ const sendAdvertisementPurchaseEmail = async (user, advertisementData) => {
   }
 };
 
+// Send token gift congratulations email
+const sendTokenGiftEmail = async (email, name, tokenType, amount, adminMessage, newBalance) => {
+  const transporter = createTransporter();
+
+  // Token specific configurations
+  const tokenConfig = {
+    HSC: {
+      name: 'HSC Tokens',
+      fullName: 'Holidaysri Coins',
+      color: '#3b82f6',
+      gradient: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+      icon: '🪙',
+      description: 'Use these tokens to publish advertisements and promote your tourism services!'
+    },
+    HSG: {
+      name: 'HSG Gems',
+      fullName: 'Holidaysri Gems',
+      color: '#10b981',
+      gradient: 'linear-gradient(135deg, #10b981, #059669)',
+      icon: '💎',
+      description: 'Special gift tokens to help you get started with advertising!'
+    },
+    HSD: {
+      name: 'HSD Diamonds',
+      fullName: 'Holidaysri Diamonds',
+      color: '#8b5cf6',
+      gradient: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+      icon: '💍',
+      description: 'Premium reward tokens for our valued users!'
+    }
+  };
+
+  const config = tokenConfig[tokenType] || tokenConfig.HSC;
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri.com',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: `🎉 Congratulations! You've Received ${amount} ${config.name}!`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <div style="text-align: center; margin-bottom: 30px;">
+            <div style="background: ${config.gradient}; padding: 25px; border-radius: 10px; margin-bottom: 20px;">
+              <div style="font-size: 48px; margin-bottom: 10px;">${config.icon}</div>
+              <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Congratulations!</h1>
+              <p style="color: white; margin: 10px 0 0 0; font-size: 18px;">You've received ${config.name}!</p>
+            </div>
+          </div>
+
+          <!-- Greeting -->
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px; font-size: 16px;">
+            Dear ${name},
+          </p>
+
+          <!-- Gift Details -->
+          <div style="background: linear-gradient(135deg, #f0f9ff, #e0f2fe); padding: 25px; border-radius: 10px; margin-bottom: 25px; border-left: 4px solid ${config.color};">
+            <div style="text-align: center;">
+              <div style="font-size: 36px; color: ${config.color}; font-weight: bold; margin-bottom: 10px;">
+                +${amount.toLocaleString()} ${tokenType}
+              </div>
+              <p style="color: #666; margin: 0; font-size: 14px;">
+                ${config.fullName} added to your wallet
+              </p>
+              <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.7); border-radius: 5px;">
+                <p style="margin: 0; color: #555; font-size: 14px;">
+                  <strong>New Balance:</strong> ${newBalance.toLocaleString()} ${tokenType}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Admin Message -->
+          <div style="background: #fef3c7; padding: 20px; border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #f59e0b;">
+            <div style="display: flex; align-items: flex-start;">
+              <div style="font-size: 20px; margin-right: 10px;">💌</div>
+              <div>
+                <h3 style="color: #92400e; margin: 0 0 10px 0; font-size: 16px;">Message from Admin:</h3>
+                <p style="color: #78350f; margin: 0; line-height: 1.6; font-style: italic;">
+                  "${adminMessage}"
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Token Usage Info -->
+          <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #22c55e;">
+            <h3 style="color: #15803d; margin: 0 0 15px 0; font-size: 16px;">
+              ${config.icon} How to Use Your ${config.name}:
+            </h3>
+            <p style="color: #166534; margin: 0 0 10px 0; line-height: 1.6;">
+              ${config.description}
+            </p>
+            <ul style="color: #166534; margin: 10px 0; padding-left: 20px;">
+              <li>Visit your wallet to see your updated balance</li>
+              <li>Use tokens when creating advertisements</li>
+              <li>Check our platform for the latest token values</li>
+            </ul>
+          </div>
+
+          <!-- Call to Action -->
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="http://localhost:3000/hsc"
+               style="display: inline-block; background: ${config.gradient}; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+              View My Wallet ${config.icon}
+            </a>
+          </div>
+
+          <!-- Footer -->
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri.com. All rights reserved.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
+              This is an automated message, please do not reply to this email.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Token gift email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Export all functions including the newsletter ones
 module.exports = {
   generateOTP,
@@ -1600,5 +1734,6 @@ module.exports = {
   sendCommercialPartnerExpiredEmail,
   sendNewsletterSubscriptionConfirmation,
   sendNewsletterEmail,
-  sendAdvertisementPurchaseEmail
+  sendAdvertisementPurchaseEmail,
+  sendTokenGiftEmail
 };

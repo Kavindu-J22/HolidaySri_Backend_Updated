@@ -8,8 +8,11 @@ const Advertisement = require('../models/Advertisement');
 const AdvertisementSlotCharges = require('../models/AdvertisementSlotCharges');
 const ClaimRequest = require('../models/ClaimRequest');
 const Earning = require('../models/Earning');
+const TokenDistribution = require('../models/TokenDistribution');
+const Notification = require('../models/Notification');
 const { verifyAdmin, verifyAdminToken } = require('../middleware/auth');
 const { checkExpiredMemberships, checkExpiringMemberships } = require('../jobs/membershipExpiration');
+const { sendTokenGiftEmail } = require('../utils/emailService');
 
 const router = express.Router();
 
@@ -1342,6 +1345,288 @@ router.get('/advertisement-slot-charges/:category/:slot?', verifyAdminToken, asy
 
   } catch (error) {
     console.error('Get specific slot charges error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Token Distribution Management Routes
+
+// Get users list for token distribution
+router.get('/users-for-distribution', verifyAdminToken, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const search = req.query.search || '';
+    const skip = (page - 1) * limit;
+
+    // Build search query
+    let query = { isActive: true };
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const users = await User.find(query)
+      .select('name email hscBalance hsgBalance hsdBalance isEmailVerified createdAt')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await User.countDocuments(query);
+
+    res.json({
+      success: true,
+      users,
+      pagination: {
+        current: page,
+        pages: Math.ceil(total / limit),
+        total
+      }
+    });
+
+  } catch (error) {
+    console.error('Get users for distribution error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Distribute tokens to selected users
+router.post('/distribute-tokens', verifyAdminToken, async (req, res) => {
+  try {
+    const { userIds, tokenType, amount, adminMessage } = req.body;
+
+    // Validation
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ message: 'User IDs are required' });
+    }
+
+    if (!tokenType || !['HSC', 'HSG', 'HSD'].includes(tokenType)) {
+      return res.status(400).json({ message: 'Valid token type is required (HSC, HSG, or HSD)' });
+    }
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: 'Valid amount is required' });
+    }
+
+    if (!adminMessage || adminMessage.trim().length === 0) {
+      return res.status(400).json({ message: 'Admin message is required' });
+    }
+
+    const recipients = [];
+    const failedRecipients = [];
+    const transactions = [];
+
+    // Process each user
+    for (const userId of userIds) {
+      try {
+        const user = await User.findById(userId);
+        if (!user) {
+          failedRecipients.push({
+            userId,
+            userName: 'Unknown',
+            userEmail: 'Unknown',
+            error: 'User not found'
+          });
+          continue;
+        }
+
+        // Get balance before update
+        const balanceField = `${tokenType.toLowerCase()}Balance`;
+        const balanceBefore = user[balanceField] || 0;
+
+        // Update user balance
+        user[balanceField] = balanceBefore + amount;
+        await user.save();
+
+        const balanceAfter = user[balanceField];
+
+        // Create transaction record
+        const transaction = new HSCTransaction({
+          userId: user._id,
+          tokenType,
+          type: 'gift',
+          amount,
+          description: `Admin gift: ${amount} ${tokenType} - ${adminMessage}`,
+          paymentMethod: 'admin_credit',
+          paymentDetails: {
+            paymentStatus: 'completed',
+            adminGift: true,
+            adminMessage: adminMessage.trim()
+          },
+          balanceBefore,
+          balanceAfter
+        });
+
+        await transaction.save();
+        transactions.push(transaction);
+
+        // Add to recipients list
+        recipients.push({
+          userId: user._id,
+          userName: user.name,
+          userEmail: user.email,
+          balanceBefore,
+          balanceAfter,
+          transactionId: transaction._id
+        });
+
+        // Create notification
+        await Notification.createNotification(
+          user._id,
+          `🎉 You've Received ${amount} ${tokenType}!`,
+          `Congratulations! You've received ${amount} ${tokenType} tokens as a gift from our admin team. ${adminMessage}`,
+          'system',
+          {
+            tokenType,
+            amount,
+            adminMessage: adminMessage.trim(),
+            newBalance: balanceAfter,
+            isAdminGift: true
+          },
+          'high'
+        );
+
+        // Send email notification
+        try {
+          await sendTokenGiftEmail(
+            user.email,
+            user.name,
+            tokenType,
+            amount,
+            adminMessage.trim(),
+            balanceAfter
+          );
+        } catch (emailError) {
+          console.error(`Failed to send email to ${user.email}:`, emailError);
+          // Don't fail the entire operation for email errors
+        }
+
+      } catch (userError) {
+        console.error(`Error processing user ${userId}:`, userError);
+        failedRecipients.push({
+          userId,
+          userName: 'Unknown',
+          userEmail: 'Unknown',
+          error: userError.message
+        });
+      }
+    }
+
+    // Create distribution record
+    const distributionStatus = failedRecipients.length === 0 ? 'completed' :
+                              recipients.length === 0 ? 'failed' : 'partial';
+
+    const distribution = await TokenDistribution.createDistribution({
+      adminUsername: req.admin.username,
+      tokenType,
+      amount,
+      adminMessage: adminMessage.trim(),
+      recipients,
+      totalRecipients: userIds.length,
+      totalAmountDistributed: recipients.length * amount,
+      distributionStatus,
+      failedRecipients
+    });
+
+    res.json({
+      success: true,
+      message: `Token distribution ${distributionStatus}`,
+      distribution: {
+        id: distribution._id,
+        successfulRecipients: recipients.length,
+        failedRecipients: failedRecipients.length,
+        totalAmountDistributed: recipients.length * amount,
+        status: distributionStatus
+      }
+    });
+
+  } catch (error) {
+    console.error('Token distribution error:', error);
+    res.status(500).json({ message: 'Server error during token distribution' });
+  }
+});
+
+// Get token distribution history
+router.get('/distribution-history', verifyAdminToken, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const tokenType = req.query.tokenType || 'all';
+    const status = req.query.status || 'all';
+    const skip = (page - 1) * limit;
+
+    // Build query
+    let query = {};
+    if (tokenType !== 'all') query.tokenType = tokenType;
+    if (status !== 'all') query.distributionStatus = status;
+
+    const distributions = await TokenDistribution.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('recipients.userId', 'name email')
+      .populate('recipients.transactionId', 'createdAt');
+
+    const total = await TokenDistribution.countDocuments(query);
+
+    // Get summary statistics
+    const stats = await TokenDistribution.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: null,
+          totalDistributions: { $sum: 1 },
+          totalAmountDistributed: { $sum: '$totalAmountDistributed' },
+          totalRecipients: { $sum: '$totalRecipients' },
+          avgRecipientsPerDistribution: { $avg: '$totalRecipients' }
+        }
+      }
+    ]);
+
+    const summary = stats[0] || {
+      totalDistributions: 0,
+      totalAmountDistributed: 0,
+      totalRecipients: 0,
+      avgRecipientsPerDistribution: 0
+    };
+
+    res.json({
+      success: true,
+      distributions,
+      pagination: {
+        current: page,
+        pages: Math.ceil(total / limit),
+        total
+      },
+      summary
+    });
+
+  } catch (error) {
+    console.error('Get distribution history error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get distribution details by ID
+router.get('/distribution-history/:id', verifyAdminToken, async (req, res) => {
+  try {
+    const distribution = await TokenDistribution.findById(req.params.id)
+      .populate('recipients.userId', 'name email contactNumber')
+      .populate('recipients.transactionId', 'createdAt paymentDetails');
+
+    if (!distribution) {
+      return res.status(404).json({ message: 'Distribution not found' });
+    }
+
+    res.json({
+      success: true,
+      distribution
+    });
+
+  } catch (error) {
+    console.error('Get distribution details error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
