@@ -115,6 +115,42 @@ router.get('/my-advertisements', verifyToken, verifyEmailVerified, async (req, r
   }
 });
 
+// Pause advertisement expiration (clear expiresAt field)
+router.put('/pause-expiration/:adId', verifyToken, verifyEmailVerified, async (req, res) => {
+  try {
+    const { adId } = req.params;
+
+    // Find the advertisement and verify ownership
+    const advertisement = await Advertisement.findOne({
+      _id: adId,
+      userId: req.user._id
+    });
+
+    if (!advertisement) {
+      return res.status(404).json({ message: 'Advertisement not found or access denied' });
+    }
+
+    // Check if advertisement is active
+    if (advertisement.status !== 'active') {
+      return res.status(400).json({ message: 'Only active advertisements can have their expiration paused' });
+    }
+
+    // Clear the expiresAt field to pause expiration
+    advertisement.expiresAt = null;
+    await advertisement.save();
+
+    res.json({
+      success: true,
+      message: 'Advertisement expiration paused successfully',
+      advertisement
+    });
+
+  } catch (error) {
+    console.error('Pause advertisement expiration error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get promo code discount for advertisement
 router.post('/calculate-discount', verifyToken, verifyEmailVerified, async (req, res) => {
   try {
