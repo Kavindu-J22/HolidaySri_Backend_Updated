@@ -332,7 +332,9 @@ router.get('/platform', async (req, res) => {
           publishedAt: 1,
           'advertisement.expiresAt': 1,
           'advertisement.slotId': 1,
-          'user.isMember': 1
+          'user.isMember': 1,
+          'user.isPartner': 1,
+          'user.isVerified': 1
         }
       },
       {
@@ -406,7 +408,7 @@ router.get('/:id', async (req, res) => {
     .populate({
       path: 'userId',
       model: 'User',
-      select: 'name isMember'
+      select: 'name isMember isPartner isVerified'
     });
 
     if (!travelBuddy || !travelBuddy.publishedAdId) {
@@ -461,6 +463,8 @@ router.get('/:id', async (req, res) => {
       },
       user: {
         isMember: travelBuddy.userId.isMember,
+        isPartner: travelBuddy.userId.isPartner,
+        isVerified: travelBuddy.userId.isVerified,
         name: travelBuddy.userId.name
       }
     };
