@@ -91,6 +91,15 @@ const advertisementSchema = new mongoose.Schema({
   },
   promotionExpires: {
     type: Date
+  },
+  // Reference to published content (e.g., TravelBuddy profile)
+  publishedAdId: {
+    type: mongoose.Schema.Types.ObjectId,
+    refPath: 'publishedAdModel'
+  },
+  publishedAdModel: {
+    type: String,
+    enum: ['TravelBuddy'] // Can be extended for other ad types in the future
   }
 }, {
   timestamps: true
@@ -99,6 +108,7 @@ const advertisementSchema = new mongoose.Schema({
 // Index for search functionality
 advertisementSchema.index({ category: 1, status: 1 });
 advertisementSchema.index({ userId: 1 });
+advertisementSchema.index({ publishedAdId: 1 });
 
 // Calculate expiry date before saving
 advertisementSchema.pre('save', function(next) {
