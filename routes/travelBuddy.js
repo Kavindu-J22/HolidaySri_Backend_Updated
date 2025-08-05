@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const TravelBuddy = require('../models/TravelBuddy');
 const TravelBuddyReview = require('../models/TravelBuddyReview');
 const TravelBuddyFavorite = require('../models/TravelBuddyFavorite');
+const TravelBuddyReport = require('../models/TravelBuddyReport');
 const Advertisement = require('../models/Advertisement');
 const User = require('../models/User');
 const { verifyToken } = require('../middleware/auth');
@@ -452,6 +453,7 @@ router.get('/:id', async (req, res) => {
       contactCount: travelBuddy.contactCount,
       averageRating: travelBuddy.averageRating,
       totalReviews: travelBuddy.totalReviews,
+      reportCount: travelBuddy.reportCount,
       publishedAt: travelBuddy.publishedAt,
       advertisement: {
         expiresAt: travelBuddy.publishedAdId.expiresAt,
@@ -749,6 +751,66 @@ router.get('/:id/favorite-status', verifyToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to check favorite status'
+    });
+  }
+});
+
+// POST /api/travel-buddy/:id/report - Report a travel buddy
+router.post('/:id/report', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason = 'other', description = '' } = req.body;
+
+    // Validate ObjectId
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid travel buddy ID'
+      });
+    }
+
+    // Check if travel buddy exists
+    const travelBuddy = await TravelBuddy.findById(id);
+    if (!travelBuddy) {
+      return res.status(404).json({
+        success: false,
+        message: 'Travel buddy not found'
+      });
+    }
+
+    // Check if user already reported this travel buddy
+    const existingReport = await TravelBuddyReport.findOne({
+      travelBuddyId: id,
+      reportedBy: req.user._id
+    });
+
+    if (existingReport) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already reported this travel buddy'
+      });
+    }
+
+    // Create new report
+    const report = new TravelBuddyReport({
+      travelBuddyId: id,
+      reportedBy: req.user._id,
+      reason: reason,
+      description: description.trim()
+    });
+
+    await report.save();
+
+    res.json({
+      success: true,
+      message: 'Report submitted successfully. Thank you for helping keep our community safe.'
+    });
+
+  } catch (error) {
+    console.error('Error reporting travel buddy:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to submit report'
     });
   }
 });
