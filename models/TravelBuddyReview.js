@@ -39,8 +39,14 @@ const travelBuddyReviewSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Compound index to ensure one review per user per travel buddy
-travelBuddyReviewSchema.index({ travelBuddyId: 1, userId: 1 }, { unique: true });
+// Compound index to ensure one active review per user per travel buddy
+travelBuddyReviewSchema.index(
+  { travelBuddyId: 1, userId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { isActive: true }
+  }
+);
 
 // Index for efficient queries
 travelBuddyReviewSchema.index({ travelBuddyId: 1, createdAt: -1 });

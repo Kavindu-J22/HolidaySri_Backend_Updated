@@ -588,10 +588,11 @@ router.post('/:id/reviews', verifyToken, async (req, res) => {
       });
     }
 
-    // Check if user already reviewed this travel buddy
+    // Check if user already has an active review for this travel buddy
     const existingReview = await TravelBuddyReview.findOne({
       travelBuddyId: id,
-      userId: req.user._id
+      userId: req.user._id,
+      isActive: true
     });
 
     if (existingReview) {
@@ -712,8 +713,9 @@ router.delete('/reviews/:reviewId', verifyToken, async (req, res) => {
       });
     }
 
-    // Hard delete the review to allow user to create a new one
-    await TravelBuddyReview.findByIdAndDelete(reviewId);
+    // Soft delete by setting isActive to false
+    review.isActive = false;
+    await review.save();
 
     res.json({
       success: true,

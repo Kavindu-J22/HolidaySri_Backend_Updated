@@ -120,10 +120,11 @@ router.post('/', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'Location not found' });
     }
 
-    // Check if user already reviewed this location
+    // Check if user already has an active review for this location
     const existingReview = await LocationReview.findOne({
       locationId,
-      userId: req.user.id
+      userId: req.user.id,
+      isActive: true
     });
 
     if (existingReview) {

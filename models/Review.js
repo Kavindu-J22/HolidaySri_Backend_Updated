@@ -53,8 +53,14 @@ const reviewSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Compound index to ensure one review per user per destination
-reviewSchema.index({ destinationId: 1, userId: 1 }, { unique: true });
+// Compound index to ensure one active review per user per destination
+reviewSchema.index(
+  { destinationId: 1, userId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { isActive: true }
+  }
+);
 
 // Index for efficient queries
 reviewSchema.index({ destinationId: 1, createdAt: -1 });
