@@ -346,7 +346,10 @@ router.get('/me', verifyToken, async (req, res) => {
         membershipExpirationDate: req.user.membershipExpirationDate || null,
         // Commercial Partner fields
         isPartner: req.user.isPartner || false,
-        partnerExpirationDate: req.user.partnerExpirationDate || null
+        partnerExpirationDate: req.user.partnerExpirationDate || null,
+        // User Verification fields
+        isVerified: req.user.isVerified || false,
+        verificationStatus: req.user.verificationStatus || 'pending'
       }
     });
   } catch (error) {
