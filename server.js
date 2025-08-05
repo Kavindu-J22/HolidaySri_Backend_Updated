@@ -59,6 +59,7 @@ const hsdLeaderBoardRoutes = require('./routes/hsdLeaderBoard');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
 const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
 const { startHSDLeaderBoardJobs, runHSDStartupChecks } = require('./jobs/hsdLeaderBoardRewards');
+const { startAdvertisementJobs } = require('./jobs/advertisementExpiration');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -107,6 +108,9 @@ app.listen(PORT, () => {
 
   // Start commercial partnership expiration jobs
   startCommercialPartnershipJobs();
+
+  // Start advertisement expiration jobs
+  startAdvertisementJobs();
 
   // Start HSD Leader Board reward jobs
   startHSDLeaderBoardJobs();

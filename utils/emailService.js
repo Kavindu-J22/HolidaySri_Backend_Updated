@@ -1715,6 +1715,177 @@ const sendTokenGiftEmail = async (email, name, tokenType, amount, adminMessage, 
 };
 
 // Export all functions including the newsletter ones
+// Send advertisement expiration warning email
+const sendAdvertisementExpiringWarning = async (email, name, slotId, categoryName, expirationDate) => {
+  const transporter = createTransporter();
+
+  const formattedExpirationDate = expirationDate.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const formattedExpirationTime = expirationDate.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+
+  const hoursLeft = Math.ceil((expirationDate - new Date()) / (1000 * 60 * 60));
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri.com',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: `⚠️ Advertisement Expiring Soon - ${hoursLeft}h Left | ${slotId}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #f59e0b; margin: 0;">⚠️ Advertisement Expiring Soon</h1>
+            <p style="color: #666; margin: 5px 0;">Take action to prevent expiration</p>
+          </div>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Dear ${name},
+          </p>
+
+          <div style="background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); color: white; padding: 25px; border-radius: 10px; text-align: center; margin: 20px 0;">
+            <h2 style="margin: 0 0 10px 0; font-size: 24px;">⏰ ${hoursLeft} Hours Left</h2>
+            <p style="margin: 0; font-size: 18px; font-weight: bold;">Your ${categoryName} advertisement slot</p>
+            <p style="margin: 5px 0; opacity: 0.9; font-size: 16px; font-family: monospace;">${slotId}</p>
+            <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 14px;">Expires on ${formattedExpirationDate} at ${formattedExpirationTime}</p>
+          </div>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Your advertisement slot is about to expire. To prevent losing your slot, you can:
+          </p>
+
+          <div style="background-color: #e3f2fd; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #2196f3;">
+            <h3 style="margin: 0 0 10px 0; color: #1976d2;">💡 Available Actions:</h3>
+            <ul style="margin: 0; padding-left: 20px; color: #1565c0;">
+              <li style="margin-bottom: 8px;"><strong>Pause Expiration:</strong> Stop the countdown and publish later</li>
+              <li style="margin-bottom: 8px;"><strong>Renew Slot:</strong> Extend your advertisement duration</li>
+              <li><strong>Publish Now:</strong> If you're ready to go live</li>
+            </ul>
+          </div>
+
+          <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #ffc107;">
+            <p style="margin: 0; color: #856404;"><strong>Important:</strong> Once expired, you'll need to purchase a new slot to advertise in this category.</p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <p style="color: #6c757d; margin: 0;">Manage your advertisements at</p>
+            <h3 style="color: #495057; margin: 10px 0;">🏝️ Holidaysri</h3>
+          </div>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri.com. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Advertisement expiration warning email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Send advertisement expired email
+const sendAdvertisementExpiredEmail = async (email, name, slotId, categoryName, expiredDate) => {
+  const transporter = createTransporter();
+
+  const formattedExpiredDate = expiredDate.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const formattedExpiredTime = expiredDate.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri.com',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: `❌ Advertisement Expired - Action Required | ${slotId}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #dc2626; margin: 0;">❌ Advertisement Expired</h1>
+            <p style="color: #666; margin: 5px 0;">Your slot is no longer active</p>
+          </div>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Dear ${name},
+          </p>
+
+          <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; padding: 25px; border-radius: 10px; text-align: center; margin: 20px 0;">
+            <h2 style="margin: 0 0 10px 0; font-size: 24px;">⏰ Slot Expired</h2>
+            <p style="margin: 0; font-size: 18px; font-weight: bold;">Your ${categoryName} advertisement slot</p>
+            <p style="margin: 5px 0; opacity: 0.9; font-size: 16px; font-family: monospace;">${slotId}</p>
+            <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 14px;">Expired on ${formattedExpiredDate} at ${formattedExpiredTime}</p>
+          </div>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Your advertisement slot has expired and is no longer active on our platform. Don't worry - you can easily renew this slot to continue advertising your business.
+          </p>
+
+          <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #ef4444;">
+            <h3 style="margin: 0 0 10px 0; color: #dc2626;">🔄 Renew Your Slot</h3>
+            <p style="margin: 0; color: #991b1b;">
+              Click the <strong>"Expired Slot Renew Now"</strong> button in your dashboard to reactivate this advertisement slot and continue reaching your target audience.
+            </p>
+          </div>
+
+          <div style="background-color: #f0f9ff; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #0ea5e9;">
+            <h3 style="margin: 0 0 10px 0; color: #0369a1;">💡 Why Renew?</h3>
+            <ul style="margin: 0; padding-left: 20px; color: #075985;">
+              <li style="margin-bottom: 8px;">Continue advertising in the ${categoryName} category</li>
+              <li style="margin-bottom: 8px;">Maintain your business visibility on Holidaysri</li>
+              <li>Keep attracting potential customers to your services</li>
+            </ul>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <p style="color: #6c757d; margin: 0;">Manage your advertisements at</p>
+            <h3 style="color: #495057; margin: 10px 0;">🏝️ Holidaysri</h3>
+          </div>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri.com. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Advertisement expired email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   generateOTP,
   sendEmailVerificationOTP,
@@ -1735,5 +1906,7 @@ module.exports = {
   sendNewsletterSubscriptionConfirmation,
   sendNewsletterEmail,
   sendAdvertisementPurchaseEmail,
-  sendTokenGiftEmail
+  sendTokenGiftEmail,
+  sendAdvertisementExpiringWarning,
+  sendAdvertisementExpiredEmail
 };
