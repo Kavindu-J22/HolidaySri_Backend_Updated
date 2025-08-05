@@ -72,7 +72,7 @@ const advertisementSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['draft', 'active', 'paused', 'expired', 'rejected'],
+    enum: ['draft', 'active', 'paused', 'expired', 'rejected', 'Published'],
     default: 'draft'
   },
   isActive: {
