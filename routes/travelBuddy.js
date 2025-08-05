@@ -11,6 +11,9 @@ const moment = require('moment-timezone');
 
 const router = express.Router();
 
+// Simple in-memory cache to prevent rapid duplicate view increments
+const viewCache = new Map();
+
 // Configure Cloudinary
 cloudinary.config({
   cloud_name: 'daa9e83as',
@@ -376,6 +379,7 @@ router.get('/platform', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const clientIP = req.ip || req.connection.remoteAddress;
 
     // Validate ObjectId
     if (!mongoose.isValidObjectId(id)) {
@@ -384,6 +388,8 @@ router.get('/:id', async (req, res) => {
         message: 'Invalid travel buddy ID'
       });
     }
+
+    console.log(`[VIEW COUNT] Request from IP: ${clientIP} for buddy: ${id}`);
 
     // Find travel buddy with populated data
     const travelBuddy = await TravelBuddy.findOne({
@@ -409,12 +415,25 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    // Increment view count and get updated document
-    const updatedBuddy = await TravelBuddy.findByIdAndUpdate(
-      id,
-      { $inc: { viewCount: 1 } },
-      { new: true } // Return the updated document
-    );
+    // Increment view count with rate limiting
+    const cacheKey = `${clientIP}-${id}`;
+    const now = Date.now();
+    const lastView = viewCache.get(cacheKey);
+
+    let updatedBuddy;
+    if (!lastView || (now - lastView) > 30000) { // 30 seconds cooldown
+      console.log(`[VIEW COUNT] Incrementing view count for travel buddy: ${id} from IP: ${clientIP}`);
+      updatedBuddy = await TravelBuddy.findByIdAndUpdate(
+        id,
+        { $inc: { viewCount: 1 } },
+        { new: true } // Return the updated document
+      );
+      viewCache.set(cacheKey, now);
+      console.log(`[VIEW COUNT] Updated view count: ${updatedBuddy.viewCount}`);
+    } else {
+      console.log(`[VIEW COUNT] Skipping increment for ${id} - too recent (${now - lastView}ms ago)`);
+      updatedBuddy = await TravelBuddy.findById(id);
+    }
 
     // Format response data
     const responseData = {
