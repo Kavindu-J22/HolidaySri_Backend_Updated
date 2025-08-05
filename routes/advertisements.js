@@ -441,15 +441,15 @@ router.post('/process-payment', verifyToken, verifyEmailVerified, async (req, re
     await paymentActivity.save();
 
     // If promo code was used, create earning record
-    if (appliedPromoCode && promoCodeOwnerAgent) {
+    if (appliedPromoCode && promoCodeOwnerAgent && discountAmount > 0) {
       // Get promo code configuration to determine earning amount
       const promoConfig = await PromoCodeConfig.findOne().sort({ createdAt: -1 });
       let earningAmount = 0;
-      
+
       if (promoConfig && promoCodeOwnerAgent.promoCodeType) {
         const promoType = promoCodeOwnerAgent.promoCodeType.toLowerCase();
         const configType = promoConfig[promoType];
-        
+
         if (configType) {
           switch (plan.id) {
             case 'hourly':
@@ -468,6 +468,7 @@ router.post('/process-payment', verifyToken, verifyEmailVerified, async (req, re
         }
       }
 
+      // Only create earning record if earning amount is greater than 0
       if (earningAmount > 0) {
         const earning = new Earning({
           buyerEmail: user.email,
@@ -489,24 +490,22 @@ router.post('/process-payment', verifyToken, verifyEmailVerified, async (req, re
         await paymentActivity.save();
 
         // Update the promo code owner's total earnings, referrals, and used count
-        if (promoCodeOwnerAgent) {
-          promoCodeOwnerAgent.totalEarnings += earningAmount;
+        promoCodeOwnerAgent.totalEarnings += earningAmount;
 
-          // Check if this is a new unique buyer (referral) - exclude the current earning we just saved
-          const existingEarningCount = await Earning.countDocuments({
-            usedPromoCodeOwnerId: promoCodeOwnerAgent.userId,
-            buyerId: req.user._id
-          });
+        // Check if this is a new unique buyer (referral) - exclude the current earning we just saved
+        const existingEarningCount = await Earning.countDocuments({
+          usedPromoCodeOwnerId: promoCodeOwnerAgent.userId,
+          buyerId: req.user._id
+        });
 
-          // Only increment totalReferrals if this is the first time this buyer used the promo code
-          // Since we just saved one earning, if count is 1, this is the first time
-          if (existingEarningCount === 1) {
-            promoCodeOwnerAgent.totalReferrals += 1;
-          }
-
-          promoCodeOwnerAgent.usedCount += 1; // Always increment used count (total times code was used)
-          await promoCodeOwnerAgent.save();
+        // Only increment totalReferrals if this is the first time this buyer used the promo code
+        // Since we just saved one earning, if count is 1, this is the first time
+        if (existingEarningCount === 1) {
+          promoCodeOwnerAgent.totalReferrals += 1;
         }
+
+        promoCodeOwnerAgent.usedCount += 1; // Always increment used count (total times code was used)
+        await promoCodeOwnerAgent.save();
       }
     }
 

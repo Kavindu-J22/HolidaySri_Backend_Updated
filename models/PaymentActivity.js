@@ -22,7 +22,7 @@ const paymentActivitySchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['Promo Codes', 'Membership', 'HSC Purchase', 'Advertisement', 'Advertisement Fee - Selling Promocode', 'Commercial Partnership', 'Access Fee', 'Promo Code Renewal'],
+    enum: ['Promo Codes', 'Membership', 'HSC Purchase', 'Advertisement', 'Advertisement Fee - Selling Promocode', 'Commercial Partnership', 'Access Fee', 'Promo Code Renewal', 'Promocode', 'Promotion Fee'],
     default: 'Promo Codes'
   },
   originalAmount: {
