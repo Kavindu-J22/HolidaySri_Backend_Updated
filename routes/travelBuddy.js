@@ -295,12 +295,18 @@ router.get('/platform', async (req, res) => {
         }
       },
       {
-        $unwind: '$advertisement'
+        $unwind: {
+          path: '$advertisement',
+          preserveNullAndEmptyArrays: true
+        }
       },
       {
         $match: {
           ...matchConditions,
-          'advertisement.status': { $ne: 'expired' }
+          $or: [
+            { 'advertisement.status': { $ne: 'expired' } },
+            { 'advertisement': null }
+          ]
         }
       },
       {
