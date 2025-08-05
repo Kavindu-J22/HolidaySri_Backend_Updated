@@ -401,6 +401,86 @@ router.get('/agent-verification-status', verifyToken, async (req, res) => {
   }
 });
 
+// Submit user verification documents
+router.post('/user-verification', verifyToken, async (req, res) => {
+  try {
+    const { documentType, documentUrl } = req.body;
+
+    if (!documentType || !documentUrl) {
+      return res.status(400).json({ message: 'Document type and URL are required' });
+    }
+
+    // Update verification documents
+    const updateData = {
+      verificationSubmittedAt: new Date(),
+      verificationStatus: 'pending'
+    };
+
+    // Set the specific document URL
+    if (documentType === 'NIC_FRONT') {
+      updateData['verificationDocuments.nicFront'] = documentUrl;
+    } else if (documentType === 'NIC_BACK') {
+      updateData['verificationDocuments.nicBack'] = documentUrl;
+    } else if (documentType === 'PASSPORT') {
+      updateData['verificationDocuments.passport'] = documentUrl;
+    } else {
+      return res.status(400).json({ message: 'Invalid document type' });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    // Check if user has submitted enough documents for verification
+    const hasNIC = updatedUser.verificationDocuments.nicFront && updatedUser.verificationDocuments.nicBack;
+    const hasPassport = updatedUser.verificationDocuments.passport;
+
+    if (hasNIC || hasPassport) {
+      // Auto-verify for demo purposes (in production, this would be manual admin review)
+      await User.findByIdAndUpdate(req.user._id, {
+        isVerified: true,
+        verificationStatus: 'verified',
+        verificationCompletedAt: new Date(),
+        verificationNotes: 'Auto-verified for demo purposes'
+      });
+    }
+
+    res.json({
+      message: 'Verification document uploaded successfully',
+      verificationStatus: hasNIC || hasPassport ? 'verified' : 'pending'
+    });
+
+  } catch (error) {
+    console.error('Submit user verification error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get user verification status
+router.get('/user-verification-status', verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      isVerified: user.isVerified,
+      verificationStatus: user.verificationStatus,
+      verificationDocuments: user.verificationDocuments,
+      verificationSubmittedAt: user.verificationSubmittedAt,
+      verificationCompletedAt: user.verificationCompletedAt
+    });
+
+  } catch (error) {
+    console.error('Get user verification status error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Toggle agent promo code active status
 router.put('/agent-toggle-status', verifyToken, async (req, res) => {
   try {

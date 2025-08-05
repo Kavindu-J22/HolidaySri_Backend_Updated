@@ -130,6 +130,36 @@ const userSchema = new mongoose.Schema({
   partnerExpirationDate: {
     type: Date,
     default: null
+  },
+  // User Verification fields (similar to Agent verification)
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  verificationStatus: {
+    type: String,
+    enum: ['pending', 'verified', 'rejected'],
+    default: 'pending'
+  },
+  verificationDocuments: {
+    nicFront: {
+      type: String // Cloudinary URL
+    },
+    nicBack: {
+      type: String // Cloudinary URL
+    },
+    passport: {
+      type: String // Cloudinary URL
+    }
+  },
+  verificationSubmittedAt: {
+    type: Date
+  },
+  verificationCompletedAt: {
+    type: Date
+  },
+  verificationNotes: {
+    type: String // Admin notes for verification
   }
 }, {
   timestamps: true
