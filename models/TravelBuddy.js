@@ -88,6 +88,20 @@ const travelBuddySchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  contactCount: {
+    type: Number,
+    default: 0
+  },
+  averageRating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
+  },
+  totalReviews: {
+    type: Number,
+    default: 0
+  },
 }, {
   timestamps: true
 });
@@ -113,6 +127,32 @@ travelBuddySchema.methods.incrementViewCount = function() {
 // Method to increment contact count
 travelBuddySchema.methods.incrementContactCount = function() {
   this.contactCount += 1;
+  return this.save();
+};
+
+// Method to update average rating
+travelBuddySchema.methods.updateAverageRating = async function() {
+  const TravelBuddyReview = require('./TravelBuddyReview');
+
+  const stats = await TravelBuddyReview.aggregate([
+    { $match: { travelBuddyId: this._id, isActive: true } },
+    {
+      $group: {
+        _id: null,
+        averageRating: { $avg: '$rating' },
+        totalReviews: { $sum: 1 }
+      }
+    }
+  ]);
+
+  if (stats.length > 0) {
+    this.averageRating = Math.round(stats[0].averageRating * 10) / 10; // Round to 1 decimal place
+    this.totalReviews = stats[0].totalReviews;
+  } else {
+    this.averageRating = 0;
+    this.totalReviews = 0;
+  }
+
   return this.save();
 };
 
