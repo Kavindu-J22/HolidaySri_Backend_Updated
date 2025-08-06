@@ -256,7 +256,7 @@ router.get('/check-eligibility', verifyToken, async (req, res) => {
         canAccess: false,
         reason: 'expired',
         message: 'Your Travel Buddy profile has expired. Please renew your advertisement to continue.',
-        redirectTo: '/my-advertisements'
+        redirectTo: '/profile'
       });
     }
 
@@ -267,7 +267,7 @@ router.get('/check-eligibility', verifyToken, async (req, res) => {
         canAccess: false,
         reason: 'inactive',
         message: 'Your Travel Buddy advertisement is not active. Please publish your profile first.',
-        redirectTo: '/my-advertisements'
+        redirectTo: '/profile'
       });
     }
 
