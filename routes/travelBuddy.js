@@ -68,6 +68,7 @@ router.post('/publish', verifyToken, async (req, res) => {
       description,
       gender,
       interests,
+      socialMedia,
       coverPhoto,
       avatarImage
     } = req.body;
@@ -150,6 +151,7 @@ router.post('/publish', verifyToken, async (req, res) => {
       description,
       gender,
       interests: interests || [],
+      socialMedia: socialMedia || {},
       coverPhoto,
       avatarImage
     });
@@ -416,6 +418,7 @@ router.get('/platform', async (req, res) => {
           description: 1,
           gender: 1,
           interests: 1,
+          socialMedia: 1,
           coverPhoto: 1,
           avatarImage: 1,
           viewCount: 1,
