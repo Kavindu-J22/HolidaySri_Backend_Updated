@@ -44,7 +44,7 @@ router.get('/countries', (req, res) => {
   try {
     res.json({
       success: true,
-      countries: countries.sort()
+      data: countries.sort()
     });
   } catch (error) {
     console.error('Error fetching countries:', error);
