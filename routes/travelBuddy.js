@@ -558,6 +558,7 @@ router.get('/:id', async (req, res) => {
       socialMedia: travelBuddy.socialMedia,
       coverPhoto: travelBuddy.coverPhoto,
       avatarImage: travelBuddy.avatarImage,
+      isAvailable: travelBuddy.isAvailable,
       viewCount: updatedBuddy.viewCount, // Use the updated view count
       contactCount: travelBuddy.contactCount,
       averageRating: travelBuddy.averageRating,
@@ -575,6 +576,8 @@ router.get('/:id', async (req, res) => {
         name: travelBuddy.userId.name
       }
     };
+
+    console.log(`[AVAILABILITY] Travel buddy ${id} availability: ${travelBuddy.isAvailable}`);
 
     res.json({
       success: true,
@@ -1240,6 +1243,8 @@ router.patch('/manage/:advertisementId/availability', verifyToken, async (req, r
     }
 
     // Update availability status
+    console.log(`[AVAILABILITY] Updating availability for ad ${advertisementId} to ${isAvailable}`);
+
     const updatedTravelBuddy = await TravelBuddy.findOneAndUpdate(
       {
         publishedAdId: advertisementId,
@@ -1261,11 +1266,14 @@ router.patch('/manage/:advertisementId/availability', verifyToken, async (req, r
       });
     }
 
+    console.log(`[AVAILABILITY] Updated successfully. New availability: ${updatedTravelBuddy.isAvailable}`);
+
     res.json({
       success: true,
       message: `Travel buddy profile ${isAvailable ? 'marked as available' : 'marked as unavailable'}`,
       data: {
-        isAvailable: updatedTravelBuddy.isAvailable
+        isAvailable: updatedTravelBuddy.isAvailable,
+        travelBuddyId: updatedTravelBuddy._id
       }
     });
 
