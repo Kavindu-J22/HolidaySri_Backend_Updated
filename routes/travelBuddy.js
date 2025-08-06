@@ -215,6 +215,87 @@ router.post('/publish', verifyToken, async (req, res) => {
   }
 });
 
+// GET /api/travel-buddy/check-eligibility - Check if user can access travel buddy platform
+router.get('/check-eligibility', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Check if user has a travel buddy profile
+    const travelBuddy = await TravelBuddy.findOne({
+      userId: userId,
+      isActive: true
+    }).populate('publishedAdId');
+
+    if (!travelBuddy) {
+      return res.json({
+        success: false,
+        canAccess: false,
+        reason: 'no_profile',
+        message: 'You need to purchase a Travel Buddy advertisement slot first.',
+        redirectTo: '/post-advertisement'
+      });
+    }
+
+    // Check if the associated advertisement exists and its status
+    if (!travelBuddy.publishedAdId) {
+      return res.json({
+        success: false,
+        canAccess: false,
+        reason: 'no_ad',
+        message: 'Your Travel Buddy profile is not associated with an active advertisement.',
+        redirectTo: '/my-advertisements'
+      });
+    }
+
+    const advertisement = travelBuddy.publishedAdId;
+
+    // Check if advertisement is expired
+    if (advertisement.status === 'expired') {
+      return res.json({
+        success: false,
+        canAccess: false,
+        reason: 'expired',
+        message: 'Your Travel Buddy profile has expired. Please renew your advertisement to continue.',
+        redirectTo: '/my-advertisements'
+      });
+    }
+
+    // Check if advertisement is not active
+    if (advertisement.status !== 'active' && advertisement.status !== 'Published') {
+      return res.json({
+        success: false,
+        canAccess: false,
+        reason: 'inactive',
+        message: 'Your Travel Buddy advertisement is not active. Please publish your profile first.',
+        redirectTo: '/my-advertisements'
+      });
+    }
+
+    // User can access the platform
+    return res.json({
+      success: true,
+      canAccess: true,
+      travelBuddy: {
+        _id: travelBuddy._id,
+        userName: travelBuddy.userName,
+        publishedAt: travelBuddy.publishedAt
+      },
+      advertisement: {
+        _id: advertisement._id,
+        status: advertisement.status,
+        expiresAt: advertisement.expiresAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Error checking travel buddy eligibility:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check eligibility. Please try again.'
+    });
+  }
+});
+
 // GET /api/travel-buddy/platform - Get all active travel buddies for the platform (excluding expired ads)
 router.get('/platform', async (req, res) => {
   try {
