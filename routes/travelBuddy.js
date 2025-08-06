@@ -554,6 +554,7 @@ router.get('/:id', async (req, res) => {
       description: travelBuddy.description,
       gender: travelBuddy.gender,
       interests: travelBuddy.interests,
+      socialMedia: travelBuddy.socialMedia,
       coverPhoto: travelBuddy.coverPhoto,
       avatarImage: travelBuddy.avatarImage,
       viewCount: updatedBuddy.viewCount, // Use the updated view count
