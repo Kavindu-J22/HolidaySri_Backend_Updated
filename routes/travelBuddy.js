@@ -421,6 +421,7 @@ router.get('/platform', async (req, res) => {
           socialMedia: 1,
           coverPhoto: 1,
           avatarImage: 1,
+          isAvailable: 1,
           viewCount: 1,
           averageRating: 1,
           totalReviews: 1,
@@ -1023,6 +1024,256 @@ router.post('/:id/report', verifyToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to submit report'
+    });
+  }
+});
+
+// GET /api/travel-buddy/manage/:advertisementId - Get travel buddy profile by advertisement ID for management
+router.get('/manage/:advertisementId', verifyToken, async (req, res) => {
+  try {
+    const { advertisementId } = req.params;
+    const userId = req.user._id;
+
+    // Validate ObjectId
+    if (!mongoose.isValidObjectId(advertisementId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid advertisement ID'
+      });
+    }
+
+    // Find the advertisement and verify ownership
+    const advertisement = await Advertisement.findOne({
+      _id: advertisementId,
+      userId: userId,
+      category: 'travel_buddys'
+    });
+
+    if (!advertisement) {
+      return res.status(404).json({
+        success: false,
+        message: 'Advertisement not found or you do not have permission to manage it'
+      });
+    }
+
+    // Find the travel buddy profile
+    const travelBuddy = await TravelBuddy.findOne({
+      publishedAdId: advertisementId,
+      userId: userId,
+      isActive: true
+    }).populate({
+      path: 'publishedAdId',
+      model: 'Advertisement',
+      select: 'slotId status expiresAt'
+    });
+
+    if (!travelBuddy) {
+      return res.status(404).json({
+        success: false,
+        message: 'Travel buddy profile not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        travelBuddy,
+        advertisement: {
+          _id: advertisement._id,
+          slotId: advertisement.slotId,
+          status: advertisement.status,
+          expiresAt: advertisement.expiresAt
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching travel buddy for management:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// PUT /api/travel-buddy/manage/:advertisementId - Update travel buddy profile
+router.put('/manage/:advertisementId', verifyToken, async (req, res) => {
+  try {
+    const { advertisementId } = req.params;
+    const userId = req.user._id;
+    const {
+      userName,
+      nickName,
+      age,
+      whatsappNumber,
+      country,
+      description,
+      gender,
+      interests,
+      coverPhoto,
+      avatarImage,
+      socialMedia
+    } = req.body;
+
+    // Validate ObjectId
+    if (!mongoose.isValidObjectId(advertisementId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid advertisement ID'
+      });
+    }
+
+    // Validate required fields
+    if (!userName || !age || !whatsappNumber || !country || !description || !gender) {
+      return res.status(400).json({
+        success: false,
+        message: 'All required fields must be provided'
+      });
+    }
+
+    // Validate age
+    if (age < 18 || age > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'Age must be between 18 and 100'
+      });
+    }
+
+    // Find and verify ownership
+    const advertisement = await Advertisement.findOne({
+      _id: advertisementId,
+      userId: userId,
+      category: 'travel_buddys'
+    });
+
+    if (!advertisement) {
+      return res.status(404).json({
+        success: false,
+        message: 'Advertisement not found or you do not have permission to manage it'
+      });
+    }
+
+    // Update the travel buddy profile
+    const updatedTravelBuddy = await TravelBuddy.findOneAndUpdate(
+      {
+        publishedAdId: advertisementId,
+        userId: userId,
+        isActive: true
+      },
+      {
+        userName,
+        nickName,
+        age,
+        whatsappNumber,
+        country,
+        description,
+        gender,
+        interests,
+        socialMedia,
+        ...(coverPhoto && { coverPhoto }),
+        ...(avatarImage && { avatarImage })
+      },
+      { new: true, runValidators: true }
+    ).populate({
+      path: 'publishedAdId',
+      model: 'Advertisement',
+      select: 'slotId status expiresAt'
+    });
+
+    if (!updatedTravelBuddy) {
+      return res.status(404).json({
+        success: false,
+        message: 'Travel buddy profile not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Travel buddy profile updated successfully',
+      data: updatedTravelBuddy
+    });
+
+  } catch (error) {
+    console.error('Error updating travel buddy profile:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// PATCH /api/travel-buddy/manage/:advertisementId/availability - Toggle availability status
+router.patch('/manage/:advertisementId/availability', verifyToken, async (req, res) => {
+  try {
+    const { advertisementId } = req.params;
+    const userId = req.user._id;
+    const { isAvailable } = req.body;
+
+    // Validate ObjectId
+    if (!mongoose.isValidObjectId(advertisementId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid advertisement ID'
+      });
+    }
+
+    // Validate isAvailable field
+    if (typeof isAvailable !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: 'isAvailable must be a boolean value'
+      });
+    }
+
+    // Find and verify ownership
+    const advertisement = await Advertisement.findOne({
+      _id: advertisementId,
+      userId: userId,
+      category: 'travel_buddys'
+    });
+
+    if (!advertisement) {
+      return res.status(404).json({
+        success: false,
+        message: 'Advertisement not found or you do not have permission to manage it'
+      });
+    }
+
+    // Update availability status
+    const updatedTravelBuddy = await TravelBuddy.findOneAndUpdate(
+      {
+        publishedAdId: advertisementId,
+        userId: userId,
+        isActive: true
+      },
+      { isAvailable },
+      { new: true }
+    ).populate({
+      path: 'publishedAdId',
+      model: 'Advertisement',
+      select: 'slotId status expiresAt'
+    });
+
+    if (!updatedTravelBuddy) {
+      return res.status(404).json({
+        success: false,
+        message: 'Travel buddy profile not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Travel buddy profile ${isAvailable ? 'marked as available' : 'marked as unavailable'}`,
+      data: {
+        isAvailable: updatedTravelBuddy.isAvailable
+      }
+    });
+
+  } catch (error) {
+    console.error('Error updating availability status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
     });
   }
 });

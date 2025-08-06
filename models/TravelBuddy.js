@@ -115,6 +115,10 @@ const travelBuddySchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  isAvailable: {
+    type: Boolean,
+    default: true
+  },
   publishedAt: {
     type: Date,
     default: Date.now
