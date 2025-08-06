@@ -349,6 +349,8 @@ router.get('/platform', async (req, res) => {
 
     // Build sort conditions
     let sortConditions = {};
+    let useRandomSort = false;
+
     switch (sortBy) {
       case 'rating':
         sortConditions = { averageRating: -1, totalReviews: -1, publishedAt: -1 };
@@ -360,8 +362,11 @@ router.get('/platform', async (req, res) => {
         sortConditions = { publishedAt: 1 };
         break;
       case 'newest':
-      default:
         sortConditions = { publishedAt: -1 };
+        break;
+      case 'random':
+      default:
+        useRandomSort = true;
         break;
     }
 
@@ -424,9 +429,6 @@ router.get('/platform', async (req, res) => {
           'user.isVerified': 1
         }
       },
-      {
-        $sort: sortConditions
-      }
     ];
 
     // Get total count for pagination
@@ -434,12 +436,25 @@ router.get('/platform', async (req, res) => {
     const totalResult = await TravelBuddy.aggregate(totalPipeline);
     const total = totalResult.length > 0 ? totalResult[0].total : 0;
 
-    // Get paginated results
-    const travelBuddies = await TravelBuddy.aggregate([
-      ...pipeline,
-      { $skip: skip },
-      { $limit: limitNum }
-    ]);
+    // Add sorting/sampling stage and get paginated results
+    let travelBuddies;
+    if (useRandomSort) {
+      // For random sort, get all results first, then randomize and paginate
+      const allResults = await TravelBuddy.aggregate(pipeline);
+      // Shuffle the array using Fisher-Yates algorithm
+      for (let i = allResults.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allResults[i], allResults[j]] = [allResults[j], allResults[i]];
+      }
+      travelBuddies = allResults.slice(skip, skip + limitNum);
+    } else {
+      travelBuddies = await TravelBuddy.aggregate([
+        ...pipeline,
+        { $sort: sortConditions },
+        { $skip: skip },
+        { $limit: limitNum }
+      ]);
+    }
 
     res.json({
       success: true,
