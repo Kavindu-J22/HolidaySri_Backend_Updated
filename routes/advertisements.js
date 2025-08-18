@@ -751,46 +751,47 @@ router.post('/process-renewal-payment', verifyToken, verifyEmailVerified, async 
 
     await paymentActivity.save();
 
-    // Handle promo code earnings if applicable
-    if (promoCodeOwnerAgent && discountAmount > 0) {
-      // Calculate earning amount (same logic as original purchase)
-      const hscConfig = await HSCConfig.findOne({ isActive: true });
-      if (!hscConfig) {
-        console.error('HSC configuration not found');
-      } else {
-        let earningAmount = 0;
+    // If promo code was used, create earning record (same logic as original advertisement payment)
+    if (appliedPromoCode && promoCodeOwnerAgent && discountAmount > 0) {
+      // Get promo code configuration to determine earning amount
+      const promoConfig = await PromoCodeConfig.findOne().sort({ createdAt: -1 });
+      let earningAmount = 0;
 
-        // Calculate earning based on promo code type and payment method
-        const discountLKR = discountAmount;
+      if (promoConfig && promoCodeOwnerAgent.promoCodeType) {
+        const promoType = promoCodeOwnerAgent.promoCodeType.toLowerCase();
+        const configType = promoConfig[promoType];
 
-        switch (promoCodeOwnerAgent.promoCodeType) {
-          case 'silver':
-            earningAmount = discountLKR * 0.10; // 10% of discount
-            break;
-          case 'gold':
-            earningAmount = discountLKR * 0.15; // 15% of discount
-            break;
-          case 'diamond':
-            earningAmount = discountLKR * 0.20; // 20% of discount
-            break;
-          case 'free':
-            earningAmount = discountLKR * 0.05; // 5% of discount
-            break;
+        if (configType) {
+          switch (plan.id) {
+            case 'hourly':
+              earningAmount = configType.earningForHourlyAd * (hours || 1);
+              break;
+            case 'daily':
+              earningAmount = configType.earningForDailyAd;
+              break;
+            case 'monthly':
+              earningAmount = configType.earningForMonthlyAd;
+              break;
+            case 'yearly':
+              earningAmount = configType.earningForYearlyAd;
+              break;
+          }
         }
+      }
 
-        // Create earning record
+      // Only create earning record if earning amount is greater than 0
+      if (earningAmount > 0) {
         const earning = new Earning({
-          usedPromoCodeOwnerId: promoCodeOwnerAgent.userId,
-          usedPromoCodeOwnerEmail: promoCodeOwnerAgent.email,
-          buyerId: req.user._id,
           buyerEmail: user.email,
+          buyerId: req.user._id,
           category: 'Advertisement Renewal',
-          item: `Advertisement Renewal - ${slot.name || slot.categoryName}`,
-          originalAmount,
-          discountAmount,
-          earningAmount,
+          amount: earningAmount,
           usedPromoCode: appliedPromoCode,
-          paymentMethod: paymentMethod.type
+          usedPromoCodeOwner: promoCodeOwnerAgent.email,
+          usedPromoCodeOwnerId: promoCodeOwnerAgent.userId,
+          item: `Advertisement Renewal - ${slot.name || slot.categoryName}`,
+          itemType: 'Advertisement Slot Renewal',
+          status: 'pending'
         });
 
         await earning.save();
@@ -799,21 +800,22 @@ router.post('/process-renewal-payment', verifyToken, verifyEmailVerified, async 
         paymentActivity.forEarns = earningAmount;
         await paymentActivity.save();
 
-        // Update the promo code owner's total earnings and used count
+        // Update the promo code owner's total earnings, referrals, and used count
         promoCodeOwnerAgent.totalEarnings += earningAmount;
 
-        // Check if this is a new unique buyer (referral)
+        // Check if this is a new unique buyer (referral) - exclude the current earning we just saved
         const existingEarningCount = await Earning.countDocuments({
           usedPromoCodeOwnerId: promoCodeOwnerAgent.userId,
           buyerId: req.user._id
         });
 
         // Only increment totalReferrals if this is the first time this buyer used the promo code
+        // Since we just saved one earning, if count is 1, this is the first time
         if (existingEarningCount === 1) {
           promoCodeOwnerAgent.totalReferrals += 1;
         }
 
-        promoCodeOwnerAgent.usedCount += 1;
+        promoCodeOwnerAgent.usedCount += 1; // Always increment used count (total times code was used)
         await promoCodeOwnerAgent.save();
       }
     }
