@@ -564,4 +564,281 @@ router.post('/process-payment', verifyToken, verifyEmailVerified, async (req, re
   }
 });
 
+// Process advertisement renewal payment
+router.post('/process-renewal-payment', verifyToken, verifyEmailVerified, async (req, res) => {
+  try {
+    const {
+      advertisementId,
+      renewalType,
+      slot,
+      plan,
+      hours,
+      paymentMethod,
+      originalAmount,
+      discountAmount,
+      finalAmount,
+      appliedPromoCode,
+      promoCodeAgent
+    } = req.body;
+
+    // Validate required fields
+    if (!advertisementId || !renewalType || !slot || !plan || !paymentMethod || !originalAmount || finalAmount === undefined) {
+      return res.status(400).json({ message: 'Missing required renewal payment information' });
+    }
+
+    // Find the advertisement to renew
+    const advertisement = await Advertisement.findOne({
+      _id: advertisementId,
+      userId: req.user._id
+    });
+
+    if (!advertisement) {
+      return res.status(404).json({ message: 'Advertisement not found or access denied' });
+    }
+
+    // Get user details
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check user balance
+    let currentBalance;
+    switch (paymentMethod.type) {
+      case 'HSC':
+        currentBalance = user.hscBalance;
+        break;
+      case 'HSD':
+        currentBalance = user.hsdBalance;
+        break;
+      case 'HSG':
+        currentBalance = user.hsgBalance;
+        break;
+      default:
+        return res.status(400).json({ message: 'Invalid payment method' });
+    }
+
+    if (currentBalance < finalAmount) {
+      return res.status(400).json({ message: 'Insufficient balance' });
+    }
+
+    // Get promo code owner details if promo code was used
+    let promoCodeOwnerAgent = null;
+    if (appliedPromoCode && promoCodeAgent) {
+      promoCodeOwnerAgent = await Agent.findOne({
+        promoCode: appliedPromoCode,
+        isActive: true
+      });
+    }
+
+    // Deduct amount from user's balance
+    switch (paymentMethod.type) {
+      case 'HSC':
+        user.hscBalance -= finalAmount;
+        break;
+      case 'HSD':
+        user.hsdBalance -= finalAmount;
+        break;
+      case 'HSG':
+        user.hsgBalance -= finalAmount;
+        break;
+    }
+    await user.save();
+
+    // Calculate plan duration
+    let planDuration = {};
+
+    switch (plan.id) {
+      case 'hourly':
+        planDuration.hours = hours || 1;
+        break;
+      case 'daily':
+        planDuration.days = 1;
+        break;
+      case 'monthly':
+        planDuration.days = 30;
+        break;
+      case 'yearly':
+        planDuration.days = 365;
+        break;
+    }
+
+    // Calculate new expiration date
+    let newExpiresAt;
+    const now = new Date();
+
+    if (renewalType === 'expired' || advertisement.status === 'expired') {
+      // For expired advertisements, start from current date/time
+      let expirationTime;
+      switch (plan.id) {
+        case 'hourly':
+          expirationTime = (planDuration.hours || 1) * 60 * 60 * 1000;
+          break;
+        case 'daily':
+          expirationTime = (planDuration.days || 1) * 24 * 60 * 60 * 1000;
+          break;
+        case 'monthly':
+          expirationTime = 30 * 24 * 60 * 60 * 1000;
+          break;
+        case 'yearly':
+          expirationTime = 365 * 24 * 60 * 60 * 1000;
+          break;
+        default:
+          expirationTime = 24 * 60 * 60 * 1000;
+      }
+      newExpiresAt = new Date(now.getTime() + expirationTime);
+    } else {
+      // For active advertisements, extend from current expiration date
+      const currentExpiresAt = advertisement.expiresAt ? new Date(advertisement.expiresAt) : now;
+      let expirationTime;
+      switch (plan.id) {
+        case 'hourly':
+          expirationTime = (planDuration.hours || 1) * 60 * 60 * 1000;
+          break;
+        case 'daily':
+          expirationTime = (planDuration.days || 1) * 24 * 60 * 60 * 1000;
+          break;
+        case 'monthly':
+          expirationTime = 30 * 24 * 60 * 60 * 1000;
+          break;
+        case 'yearly':
+          expirationTime = 365 * 24 * 60 * 60 * 1000;
+          break;
+        default:
+          expirationTime = 24 * 60 * 60 * 1000;
+      }
+      newExpiresAt = new Date(currentExpiresAt.getTime() + expirationTime);
+    }
+
+    // Update advertisement with renewal information
+    advertisement.selectedPlan = plan.id;
+    advertisement.planDuration = planDuration;
+    advertisement.paymentMethod = paymentMethod.type;
+    advertisement.originalAmount = originalAmount;
+    advertisement.discountAmount = discountAmount || 0;
+    advertisement.finalAmount = finalAmount;
+    advertisement.usedPromoCode = appliedPromoCode || null;
+    advertisement.usedPromoCodeOwner = promoCodeOwnerAgent ? promoCodeOwnerAgent.email : null;
+    advertisement.usedPromoCodeOwnerId = promoCodeOwnerAgent ? promoCodeOwnerAgent.userId : null;
+    advertisement.expiresAt = newExpiresAt;
+
+    // Update status based on whether advertisement has published content
+    if (advertisement.publishedAdId && advertisement.publishedAdModel) {
+      advertisement.status = 'Published';
+    } else {
+      advertisement.status = 'active';
+    }
+
+    await advertisement.save();
+
+    // Create payment activity record
+    const paymentActivity = new PaymentActivity({
+      userId: req.user._id,
+      buyerEmail: user.email,
+      item: `Advertisement Renewal - ${slot.name || slot.categoryName}`,
+      quantity: 1,
+      category: 'Advertisement Renewal',
+      originalAmount,
+      amount: finalAmount,
+      discountedAmount: discountAmount || 0,
+      promoCode: appliedPromoCode || null,
+      promoCodeOwner: promoCodeOwnerAgent ? promoCodeOwnerAgent.email : null,
+      promoCodeOwnerId: promoCodeOwnerAgent ? promoCodeOwnerAgent.userId : null,
+      forEarns: 0, // Will be calculated if promo code was used
+      paymentMethod: paymentMethod.type,
+      status: 'completed'
+    });
+
+    await paymentActivity.save();
+
+    // Handle promo code earnings if applicable
+    if (promoCodeOwnerAgent && discountAmount > 0) {
+      // Calculate earning amount (same logic as original purchase)
+      const hscConfig = await HSCConfig.findOne({ isActive: true });
+      if (!hscConfig) {
+        console.error('HSC configuration not found');
+      } else {
+        let earningAmount = 0;
+
+        // Calculate earning based on promo code type and payment method
+        const discountLKR = discountAmount;
+
+        switch (promoCodeOwnerAgent.promoCodeType) {
+          case 'silver':
+            earningAmount = discountLKR * 0.10; // 10% of discount
+            break;
+          case 'gold':
+            earningAmount = discountLKR * 0.15; // 15% of discount
+            break;
+          case 'diamond':
+            earningAmount = discountLKR * 0.20; // 20% of discount
+            break;
+          case 'free':
+            earningAmount = discountLKR * 0.05; // 5% of discount
+            break;
+        }
+
+        // Create earning record
+        const earning = new Earning({
+          usedPromoCodeOwnerId: promoCodeOwnerAgent.userId,
+          usedPromoCodeOwnerEmail: promoCodeOwnerAgent.email,
+          buyerId: req.user._id,
+          buyerEmail: user.email,
+          category: 'Advertisement Renewal',
+          item: `Advertisement Renewal - ${slot.name || slot.categoryName}`,
+          originalAmount,
+          discountAmount,
+          earningAmount,
+          usedPromoCode: appliedPromoCode,
+          paymentMethod: paymentMethod.type
+        });
+
+        await earning.save();
+
+        // Update payment activity with earning amount
+        paymentActivity.forEarns = earningAmount;
+        await paymentActivity.save();
+
+        // Update the promo code owner's total earnings and used count
+        promoCodeOwnerAgent.totalEarnings += earningAmount;
+
+        // Check if this is a new unique buyer (referral)
+        const existingEarningCount = await Earning.countDocuments({
+          usedPromoCodeOwnerId: promoCodeOwnerAgent.userId,
+          buyerId: req.user._id
+        });
+
+        // Only increment totalReferrals if this is the first time this buyer used the promo code
+        if (existingEarningCount === 1) {
+          promoCodeOwnerAgent.totalReferrals += 1;
+        }
+
+        promoCodeOwnerAgent.usedCount += 1;
+        await promoCodeOwnerAgent.save();
+      }
+    }
+
+    // Send renewal notification (optional - can be implemented later)
+    // await sendAdvertisementRenewalEmail(user, advertisement, paymentActivity);
+
+    res.json({
+      success: true,
+      message: 'Advertisement renewed successfully',
+      advertisement: {
+        id: advertisement._id,
+        category: advertisement.category,
+        plan: advertisement.selectedPlan,
+        expiresAt: advertisement.expiresAt,
+        status: advertisement.status
+      },
+      newBalance: currentBalance - finalAmount,
+      transactionId: paymentActivity.transactionId
+    });
+
+  } catch (error) {
+    console.error('Process advertisement renewal payment error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;
