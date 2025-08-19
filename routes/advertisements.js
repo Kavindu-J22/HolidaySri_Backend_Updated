@@ -8,7 +8,7 @@ const PaymentActivity = require('../models/PaymentActivity');
 const Notification = require('../models/Notification');
 const { PromoCodeConfig, HSCConfig } = require('../models/HSC');
 const { verifyToken, verifyEmailVerified } = require('../middleware/auth');
-const { sendAdvertisementPurchaseEmail } = require('../utils/emailService');
+const { sendAdvertisementPurchaseEmail, sendAdvertisementRenewalEmail } = require('../utils/emailService');
 
 // Helper function to format category names
 const formatCategoryName = (category) => {
@@ -820,8 +820,48 @@ router.post('/process-renewal-payment', verifyToken, verifyEmailVerified, async 
       }
     }
 
-    // Send renewal notification (optional - can be implemented later)
-    // await sendAdvertisementRenewalEmail(user, advertisement, paymentActivity);
+    // Send professional renewal email notification
+    try {
+      await sendAdvertisementRenewalEmail(user, {
+        category: advertisement.category,
+        categoryName: slot.name || slot.categoryName || formatCategoryName(advertisement.category),
+        selectedPlan: plan.id,
+        planDuration: planDuration,
+        paymentMethod: paymentMethod.type,
+        originalAmount,
+        discountAmount: discountAmount || 0,
+        finalAmount,
+        usedPromoCode: appliedPromoCode,
+        transactionId: paymentActivity.transactionId,
+        expiresAt: advertisement.expiresAt,
+        renewalType: renewalType
+      });
+    } catch (emailError) {
+      console.error('Error sending advertisement renewal email:', emailError);
+      // Don't fail the renewal if email fails
+    }
+
+    // Create notification for user
+    const renewalTypeText = renewalType === 'expired' ? 'Expired Slot Renewal' : 'Advertisement Renewal';
+    const notificationMessage = renewalType === 'expired'
+      ? `Your ${formatCategoryName(advertisement.category)} advertisement slot has been successfully reactivated and will run until ${new Date(advertisement.expiresAt).toLocaleDateString()}.`
+      : `Your ${formatCategoryName(advertisement.category)} advertisement has been successfully renewed and will run until ${new Date(advertisement.expiresAt).toLocaleDateString()}.`;
+
+    await Notification.createNotification(
+      req.user._id,
+      `🔄 ${renewalTypeText} Successful!`,
+      notificationMessage,
+      'advertisement',
+      {
+        advertisementId: advertisement._id,
+        category: advertisement.category,
+        plan: plan.id,
+        transactionId: paymentActivity.transactionId,
+        expiresAt: advertisement.expiresAt,
+        renewalType: renewalType
+      },
+      'high'
+    );
 
     res.json({
       success: true,
