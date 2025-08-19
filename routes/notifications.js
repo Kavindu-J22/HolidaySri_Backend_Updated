@@ -70,6 +70,35 @@ router.put('/mark-read', verifyToken, async (req, res) => {
   }
 });
 
+// Bulk delete notifications (must come before /:id route)
+router.delete('/bulk', verifyToken, async (req, res) => {
+  try {
+    const { notificationIds } = req.body; // Array of notification IDs
+
+    if (!notificationIds || !Array.isArray(notificationIds) || notificationIds.length === 0) {
+      return res.status(400).json({ message: 'Invalid notification IDs provided' });
+    }
+
+    // Delete notifications that belong to the user
+    const result = await Notification.deleteMany({
+      _id: { $in: notificationIds },
+      userId: req.user._id
+    });
+
+    const unreadCount = await Notification.getUnreadCount(req.user._id);
+
+    res.json({
+      message: `${result.deletedCount} notification(s) deleted successfully`,
+      deletedCount: result.deletedCount,
+      unreadCount
+    });
+
+  } catch (error) {
+    console.error('Bulk delete notifications error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Delete notification
 router.delete('/:id', verifyToken, async (req, res) => {
   try {

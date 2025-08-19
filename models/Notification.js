@@ -86,10 +86,25 @@ notificationSchema.statics.markAsRead = async function(userId, notificationIds) 
     if (notificationIds && notificationIds.length > 0) {
       query._id = { $in: notificationIds };
     }
-    
+
     return await this.updateMany(query, { isRead: true });
   } catch (error) {
     console.error('Error marking notifications as read:', error);
+    throw error;
+  }
+};
+
+// Static method to bulk delete notifications
+notificationSchema.statics.bulkDelete = async function(userId, notificationIds) {
+  try {
+    const query = { userId };
+    if (notificationIds && notificationIds.length > 0) {
+      query._id = { $in: notificationIds };
+    }
+
+    return await this.deleteMany(query);
+  } catch (error) {
+    console.error('Error bulk deleting notifications:', error);
     throw error;
   }
 };
