@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const TourGuider = require('../models/TourGuider');
+const TourGuiderReview = require('../models/TourGuiderReview');
 const Advertisement = require('../models/Advertisement');
 const User = require('../models/User');
 const { verifyToken } = require('../middleware/auth');
@@ -293,28 +294,34 @@ router.get('/list/all', async (req, res) => {
       filter.province = province;
     }
 
+    // Get all tour guiders matching the filter
+    const allTourGuiders = await TourGuider.find(filter)
+      .populate('userId', 'name email avatar')
+      .populate('publishedAdId', 'status');
+
+    // Filter out tour guiders with expired advertisements
+    const activeTourGuiders = allTourGuiders.filter(tg => {
+      return tg.publishedAdId && tg.publishedAdId.status !== 'expired';
+    });
+
+    // Randomize the results
+    const shuffled = activeTourGuiders.sort(() => Math.random() - 0.5);
+
     // Calculate pagination
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
 
-    // Fetch tour guiders
-    const tourGuiders = await TourGuider.find(filter)
-      .populate('userId', 'name email avatar')
-      .sort({ publishedAt: -1 })
-      .skip(skip)
-      .limit(limitNum);
-
-    // Get total count for pagination
-    const total = await TourGuider.countDocuments(filter);
+    // Apply pagination to shuffled results
+    const paginatedTourGuiders = shuffled.slice(skip, skip + limitNum);
 
     res.json({
       success: true,
-      data: tourGuiders,
+      data: paginatedTourGuiders,
       pagination: {
         currentPage: pageNum,
-        totalPages: Math.ceil(total / limitNum),
-        totalItems: total,
+        totalPages: Math.ceil(shuffled.length / limitNum),
+        totalItems: shuffled.length,
         itemsPerPage: limitNum
       }
     });
@@ -398,6 +405,210 @@ router.put('/:id', verifyToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update tour guider profile'
+    });
+  }
+});
+
+// POST /api/tour-guider/:id/review - Submit a review for tour guider
+router.post('/:id/review', verifyToken, async (req, res) => {
+  try {
+    const { rating, review } = req.body;
+    const tourGuiderId = req.params.id;
+    const userId = req.user.id;
+
+    // Validate input
+    if (!rating || !review || !review.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rating and review are required'
+      });
+    }
+
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rating must be between 1 and 5'
+      });
+    }
+
+    // Check if tour guider exists
+    const tourGuider = await TourGuider.findById(tourGuiderId);
+    if (!tourGuider) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tour guider not found'
+      });
+    }
+
+    // Check if user already has an active review
+    const existingReview = await TourGuiderReview.findOne({
+      tourGuiderId,
+      userId,
+      isActive: true
+    });
+
+    if (existingReview) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already reviewed this tour guide. You can update your review instead.'
+      });
+    }
+
+    // Create new review
+    const newReview = new TourGuiderReview({
+      tourGuiderId,
+      userId,
+      rating,
+      review: review.trim()
+    });
+
+    await newReview.save();
+
+    // Populate user details
+    await newReview.populate('userId', 'name email avatar');
+
+    // Update tour guider's average rating and total reviews
+    const allReviews = await TourGuiderReview.find({
+      tourGuiderId,
+      isActive: true
+    });
+
+    const totalRating = allReviews.reduce((sum, rev) => sum + rev.rating, 0);
+    const averageRating = totalRating / allReviews.length;
+
+    await TourGuider.findByIdAndUpdate(tourGuiderId, {
+      averageRating: Math.round(averageRating * 10) / 10,
+      totalReviews: allReviews.length
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Review submitted successfully',
+      data: newReview
+    });
+  } catch (error) {
+    console.error('Error submitting review:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to submit review'
+    });
+  }
+});
+
+// GET /api/tour-guider/:id/reviews - Get all reviews for a tour guider
+router.get('/:id/reviews', async (req, res) => {
+  try {
+    const tourGuiderId = req.params.id;
+    const { page = 1, limit = 10 } = req.query;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const reviews = await TourGuiderReview.find({
+      tourGuiderId,
+      isActive: true
+    })
+      .populate('userId', 'name email avatar')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    const total = await TourGuiderReview.countDocuments({
+      tourGuiderId,
+      isActive: true
+    });
+
+    res.json({
+      success: true,
+      data: reviews,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: Math.ceil(total / limitNum),
+        totalItems: total,
+        itemsPerPage: limitNum
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch reviews'
+    });
+  }
+});
+
+// PUT /api/tour-guider/reviews/:reviewId - Update a review
+router.put('/reviews/:reviewId', verifyToken, async (req, res) => {
+  try {
+    const { rating, review } = req.body;
+    const reviewId = req.params.reviewId;
+    const userId = req.user.id;
+
+    // Validate input
+    if (!rating || !review || !review.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rating and review are required'
+      });
+    }
+
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rating must be between 1 and 5'
+      });
+    }
+
+    // Find review
+    const existingReview = await TourGuiderReview.findById(reviewId);
+    if (!existingReview) {
+      return res.status(404).json({
+        success: false,
+        message: 'Review not found'
+      });
+    }
+
+    // Check authorization
+    if (existingReview.userId.toString() !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to update this review'
+      });
+    }
+
+    // Update review
+    existingReview.rating = rating;
+    existingReview.review = review.trim();
+    await existingReview.save();
+
+    await existingReview.populate('userId', 'name email avatar');
+
+    // Update tour guider's average rating
+    const tourGuiderId = existingReview.tourGuiderId;
+    const allReviews = await TourGuiderReview.find({
+      tourGuiderId,
+      isActive: true
+    });
+
+    const totalRating = allReviews.reduce((sum, rev) => sum + rev.rating, 0);
+    const averageRating = totalRating / allReviews.length;
+
+    await TourGuider.findByIdAndUpdate(tourGuiderId, {
+      averageRating: Math.round(averageRating * 10) / 10,
+      totalReviews: allReviews.length
+    });
+
+    res.json({
+      success: true,
+      message: 'Review updated successfully',
+      data: existingReview
+    });
+  } catch (error) {
+    console.error('Error updating review:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update review'
     });
   }
 });
