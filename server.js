@@ -58,6 +58,7 @@ const paymentActivityRoutes = require('./routes/paymentActivities');
 const hsdLeaderBoardRoutes = require('./routes/hsdLeaderBoard');
 const travelBuddyRoutes = require('./routes/travelBuddy');
 const tourGuiderRoutes = require('./routes/tourGuider');
+const localTourPackageRoutes = require('./routes/localTourPackage');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
 const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
 const { startHSDLeaderBoardJobs, runHSDStartupChecks } = require('./jobs/hsdLeaderBoardRewards');
@@ -85,6 +86,7 @@ app.use('/api/payment-activities', paymentActivityRoutes);
 app.use('/api/hsd-leaderboard', hsdLeaderBoardRoutes);
 app.use('/api/travel-buddy', travelBuddyRoutes);
 app.use('/api/tour-guider', tourGuiderRoutes);
+app.use('/api/local-tour-package', localTourPackageRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
