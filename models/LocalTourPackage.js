@@ -178,7 +178,33 @@ const localTourPackageSchema = new mongoose.Schema({
   reportCount: {
     type: Number,
     default: 0
-  }
+  },
+  reviews: [{
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    userName: {
+      type: String,
+      required: true
+    },
+    rating: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 5
+    },
+    reviewText: {
+      type: String,
+      trim: true,
+      maxlength: 1000
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }]
 }, {
   timestamps: true
 });
@@ -201,6 +227,23 @@ localTourPackageSchema.methods.incrementViewCount = function() {
 // Method to increment contact count
 localTourPackageSchema.methods.incrementContactCount = function() {
   this.contactCount += 1;
+  return this.save();
+};
+
+// Method to add review and update average rating
+localTourPackageSchema.methods.addReview = function(userId, userName, rating, reviewText) {
+  this.reviews.push({
+    userId,
+    userName,
+    rating,
+    reviewText
+  });
+
+  // Calculate average rating
+  const totalRating = this.reviews.reduce((sum, review) => sum + review.rating, 0);
+  this.averageRating = totalRating / this.reviews.length;
+  this.totalReviews = this.reviews.length;
+
   return this.save();
 };
 

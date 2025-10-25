@@ -205,5 +205,232 @@ router.get('/provinces', (req, res) => {
   });
 });
 
+// GET /api/local-tour-package/:id - Get single local tour package
+router.get('/:id', async (req, res) => {
+  try {
+    const localTourPackage = await LocalTourPackage.findById(req.params.id)
+      .populate('userId', 'name email')
+      .populate('reviews.userId', 'name');
+
+    if (!localTourPackage) {
+      return res.status(404).json({
+        success: false,
+        message: 'Local tour package not found'
+      });
+    }
+
+    // Increment view count
+    await localTourPackage.incrementViewCount();
+
+    res.json({
+      success: true,
+      data: localTourPackage
+    });
+  } catch (error) {
+    console.error('Error fetching local tour package:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch local tour package',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/local-tour-package/browse/all - Get all local tour packages with filters
+router.get('/browse/all', async (req, res) => {
+  try {
+    const { province, city, adventureType, categoryType, page = 1, limit = 12 } = req.query;
+
+    // Build filter query
+    const filter = { isActive: true };
+
+    if (province) filter['location.province'] = province;
+    if (city) filter['location.city'] = city;
+    if (adventureType) filter.adventureType = adventureType;
+    if (categoryType) filter.categoryType = categoryType;
+
+    // Get total count
+    const total = await LocalTourPackage.countDocuments(filter);
+
+    // Fetch packages with pagination and random sort
+    const packages = await LocalTourPackage.find(filter)
+      .populate('userId', 'name')
+      .sort({ _id: 1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    // Shuffle the results randomly
+    const shuffled = packages.sort(() => Math.random() - 0.5);
+
+    res.json({
+      success: true,
+      data: shuffled,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching local tour packages:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch local tour packages',
+      error: error.message
+    });
+  }
+});
+
+// PUT /api/local-tour-package/:id - Update local tour package
+router.put('/:id', verifyToken, async (req, res) => {
+  try {
+    const { title, adventureType, location, description, images, pax, availableDates, includes, price, provider, facebook, website } = req.body;
+
+    // Find package and verify ownership
+    const localTourPackage = await LocalTourPackage.findById(req.params.id);
+
+    if (!localTourPackage) {
+      return res.status(404).json({
+        success: false,
+        message: 'Local tour package not found'
+      });
+    }
+
+    if (localTourPackage.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have permission to update this package'
+      });
+    }
+
+    // Update fields
+    if (title) localTourPackage.title = title;
+    if (adventureType) localTourPackage.adventureType = adventureType;
+    if (location) localTourPackage.location = location;
+    if (description) localTourPackage.description = description;
+    if (images && images.length > 0 && images.length <= 4) localTourPackage.images = images;
+    if (pax) localTourPackage.pax = pax;
+    if (availableDates) localTourPackage.availableDates = availableDates.map(date => new Date(date));
+    if (includes) localTourPackage.includes = includes;
+    if (price) localTourPackage.price = price;
+    if (provider) localTourPackage.provider = provider;
+    if (facebook !== undefined) localTourPackage.facebook = facebook || null;
+    if (website !== undefined) localTourPackage.website = website || null;
+
+    await localTourPackage.save();
+
+    res.json({
+      success: true,
+      message: 'Local tour package updated successfully!',
+      data: localTourPackage
+    });
+  } catch (error) {
+    console.error('Error updating local tour package:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update local tour package',
+      error: error.message
+    });
+  }
+});
+
+// POST /api/local-tour-package/:id/review - Add review
+router.post('/:id/review', verifyToken, async (req, res) => {
+  try {
+    const { rating, reviewText } = req.body;
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rating must be between 1 and 5'
+      });
+    }
+
+    const localTourPackage = await LocalTourPackage.findById(req.params.id);
+
+    if (!localTourPackage) {
+      return res.status(404).json({
+        success: false,
+        message: 'Local tour package not found'
+      });
+    }
+
+    // Check if user already reviewed
+    const existingReview = localTourPackage.reviews.find(r => r.userId.toString() === req.user._id.toString());
+
+    if (existingReview) {
+      // Update existing review
+      existingReview.rating = rating;
+      existingReview.reviewText = reviewText || '';
+      existingReview.createdAt = new Date();
+    } else {
+      // Add new review
+      localTourPackage.reviews.push({
+        userId: req.user._id,
+        userName: req.user.name,
+        rating,
+        reviewText: reviewText || ''
+      });
+    }
+
+    // Recalculate average rating
+    const totalRating = localTourPackage.reviews.reduce((sum, review) => sum + review.rating, 0);
+    localTourPackage.averageRating = totalRating / localTourPackage.reviews.length;
+    localTourPackage.totalReviews = localTourPackage.reviews.length;
+
+    await localTourPackage.save();
+
+    res.json({
+      success: true,
+      message: 'Review added successfully!',
+      data: {
+        averageRating: localTourPackage.averageRating,
+        totalReviews: localTourPackage.totalReviews,
+        reviews: localTourPackage.reviews
+      }
+    });
+  } catch (error) {
+    console.error('Error adding review:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add review',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/local-tour-package/:id/reviews - Get reviews for a package
+router.get('/:id/reviews', async (req, res) => {
+  try {
+    const localTourPackage = await LocalTourPackage.findById(req.params.id)
+      .select('reviews averageRating totalReviews')
+      .populate('reviews.userId', 'name');
+
+    if (!localTourPackage) {
+      return res.status(404).json({
+        success: false,
+        message: 'Local tour package not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        averageRating: localTourPackage.averageRating,
+        totalReviews: localTourPackage.totalReviews,
+        reviews: localTourPackage.reviews
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch reviews',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
 
