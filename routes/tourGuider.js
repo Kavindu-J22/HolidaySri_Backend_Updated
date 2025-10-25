@@ -118,12 +118,13 @@ router.post('/publish', verifyToken, async (req, res) => {
       });
     }
 
-    // Validate contact number format
-    const contactRegex = /^\+?[1-9]\d{1,14}$/;
-    if (!contactRegex.test(contact)) {
+    // Validate contact number format - accept all types of contact numbers
+    // Allow digits, spaces, hyphens, parentheses, and + symbol
+    const contactRegex = /^[\d\s\-\+\(\)]{7,}$/;
+    if (!contactRegex.test(contact.trim())) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid contact number format'
+        message: 'Invalid contact number format. Please enter a valid contact number.'
       });
     }
 

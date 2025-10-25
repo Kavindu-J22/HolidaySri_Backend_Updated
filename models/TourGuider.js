@@ -62,7 +62,7 @@ const tourGuiderSchema = new mongoose.Schema({
     type: String,
     required: true,
     trim: true,
-    match: [/^\+?[1-9]\d{1,14}$/, 'Please enter a valid contact number']
+    match: [/^[\d\s\-\+\(\)]{7,}$/, 'Please enter a valid contact number']
   },
   facilitiesProvided: {
     type: [String],
