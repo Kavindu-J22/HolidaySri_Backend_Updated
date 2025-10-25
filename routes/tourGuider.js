@@ -256,9 +256,31 @@ router.get('/:id', async (req, res) => {
       });
     }
 
+    // Get rating distribution
+    const ratingStats = await TourGuiderReview.aggregate([
+      { $match: { tourGuiderId: tourGuider._id, isActive: true } },
+      {
+        $group: {
+          _id: '$rating',
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: -1 } }
+    ]);
+
+    // Build rating distribution object
+    const ratingDistribution = {};
+    for (let i = 1; i <= 5; i++) {
+      ratingDistribution[i] = 0;
+    }
+    ratingStats.forEach(stat => {
+      ratingDistribution[stat._id] = stat.count;
+    });
+
     res.json({
       success: true,
-      data: tourGuider
+      data: tourGuider,
+      ratingDistribution: ratingDistribution
     });
   } catch (error) {
     console.error('Error fetching tour guider:', error);
