@@ -99,7 +99,7 @@ const advertisementSchema = new mongoose.Schema({
   },
   publishedAdModel: {
     type: String,
-    enum: ['TravelBuddy', 'TourGuider', 'LocalTourPackage'] // Can be extended for other ad types in the future
+    enum: ['TravelBuddy', 'TourGuider', 'LocalTourPackage', 'TravelSafeHelpProfessional'] // Can be extended for other ad types in the future
   }
 }, {
   timestamps: true

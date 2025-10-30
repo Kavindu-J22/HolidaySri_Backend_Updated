@@ -241,23 +241,99 @@ router.get('/browse/all', async (req, res) => {
   try {
     const { province, city, adventureType, categoryType, page = 1, limit = 12 } = req.query;
 
-    // Build filter query
-    const filter = { isActive: true };
+    // Build match conditions for local tour packages
+    const matchConditions = { isActive: true };
 
-    if (province) filter['location.province'] = province;
-    if (city) filter['location.city'] = city;
-    if (adventureType) filter.adventureType = adventureType;
-    if (categoryType) filter.categoryType = categoryType;
+    if (province) matchConditions['location.province'] = province;
+    if (city) matchConditions['location.city'] = city;
+    if (adventureType) matchConditions.adventureType = adventureType;
+    if (categoryType) matchConditions.categoryType = categoryType;
+
+    // Use aggregation pipeline to filter by advertisement status
+    const pipeline = [
+      {
+        $match: matchConditions
+      },
+      {
+        $lookup: {
+          from: 'advertisements',
+          localField: 'publishedAdId',
+          foreignField: '_id',
+          as: 'advertisement'
+        }
+      },
+      {
+        $unwind: {
+          path: '$advertisement',
+          preserveNullAndEmptyArrays: false
+        }
+      },
+      {
+        $match: {
+          'advertisement.status': { $ne: 'expired' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      {
+        $unwind: {
+          path: '$user',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          userId: 1,
+          publishedAdId: 1,
+          title: 1,
+          categoryType: 1,
+          adventureType: 1,
+          location: 1,
+          description: 1,
+          images: 1,
+          pax: 1,
+          availableDates: 1,
+          includes: 1,
+          price: 1,
+          provider: 1,
+          facebook: 1,
+          website: 1,
+          isActive: 1,
+          publishedAt: 1,
+          viewCount: 1,
+          contactCount: 1,
+          averageRating: 1,
+          totalReviews: 1,
+          reportCount: 1,
+          reviews: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          'user.name': 1
+        }
+      }
+    ];
 
     // Get total count
-    const total = await LocalTourPackage.countDocuments(filter);
+    const countPipeline = [...pipeline, { $count: 'total' }];
+    const countResult = await LocalTourPackage.aggregate(countPipeline);
+    const total = countResult.length > 0 ? countResult[0].total : 0;
 
-    // Fetch packages with pagination and random sort
-    const packages = await LocalTourPackage.find(filter)
-      .populate('userId', 'name')
-      .sort({ _id: 1 })
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
+    // Add pagination and sorting
+    pipeline.push(
+      { $sort: { _id: 1 } },
+      { $skip: (parseInt(page) - 1) * parseInt(limit) },
+      { $limit: parseInt(limit) }
+    );
+
+    // Fetch packages
+    const packages = await LocalTourPackage.aggregate(pipeline);
 
     // Shuffle the results randomly
     const shuffled = packages.sort(() => Math.random() - 0.5);
