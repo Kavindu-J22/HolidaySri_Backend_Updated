@@ -60,6 +60,7 @@ const travelBuddyRoutes = require('./routes/travelBuddy');
 const tourGuiderRoutes = require('./routes/tourGuider');
 const localTourPackageRoutes = require('./routes/localTourPackage');
 const travelSafeHelpProfessionalRoutes = require('./routes/travelSafeHelpProfessional');
+const rentLandCampingParkingRoutes = require('./routes/rentLandCampingParking');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
 const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
 const { startHSDLeaderBoardJobs, runHSDStartupChecks } = require('./jobs/hsdLeaderBoardRewards');
@@ -89,6 +90,7 @@ app.use('/api/travel-buddy', travelBuddyRoutes);
 app.use('/api/tour-guider', tourGuiderRoutes);
 app.use('/api/local-tour-package', localTourPackageRoutes);
 app.use('/api/travel-safe-help-professional', travelSafeHelpProfessionalRoutes);
+app.use('/api/rent-land-camping-parking', rentLandCampingParkingRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
