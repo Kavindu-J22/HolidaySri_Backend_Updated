@@ -182,6 +182,23 @@ router.post('/publish', verifyToken, async (req, res) => {
   }
 });
 
+// GET /api/cafes-restaurants/provinces - Get provinces and districts
+router.get('/provinces', (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: provincesAndDistricts
+    });
+  } catch (error) {
+    console.error('Error fetching provinces:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching provinces',
+      error: error.message
+    });
+  }
+});
+
 // GET /api/cafes-restaurants/browse - Get all published cafes/restaurants with filters
 router.get('/browse', async (req, res) => {
   try {
@@ -444,23 +461,6 @@ router.put('/:id', verifyToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error updating cafe/restaurant',
-      error: error.message
-    });
-  }
-});
-
-// GET /api/cafes-restaurants/provinces - Get provinces and districts
-router.get('/provinces', (req, res) => {
-  try {
-    res.json({
-      success: true,
-      data: provincesAndDistricts
-    });
-  } catch (error) {
-    console.error('Error fetching provinces:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching provinces',
       error: error.message
     });
   }
