@@ -325,22 +325,35 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// GET /api/vehicle-rentals-hire/manage/:advertisementId - Get vehicle rentals hire for editing
-router.get('/manage/:advertisementId', verifyToken, async (req, res) => {
+// GET /api/vehicle-rentals-hire/manage/:publishedAdId - Get vehicle rentals hire for editing
+router.get('/manage/:publishedAdId', verifyToken, async (req, res) => {
   try {
-    const { advertisementId } = req.params;
+    const { publishedAdId } = req.params;
     const userId = req.user._id;
 
-    if (!mongoose.isValidObjectId(advertisementId)) {
+    if (!mongoose.isValidObjectId(publishedAdId)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid advertisement ID'
+        message: 'Invalid listing ID'
       });
     }
 
-    // Find the advertisement and verify ownership
+    // Find the vehicle rentals hire profile by its own ID
+    const vehicleRentalsHire = await VehicleRentalsHire.findOne({
+      _id: publishedAdId,
+      userId: userId
+    });
+
+    if (!vehicleRentalsHire) {
+      return res.status(404).json({
+        success: false,
+        message: 'Advertisement not found or access denied'
+      });
+    }
+
+    // Verify the advertisement exists and is not expired
     const advertisement = await Advertisement.findOne({
-      _id: advertisementId,
+      _id: vehicleRentalsHire.publishedAdId,
       userId: userId,
       category: 'vehicle_rentals_hire'
     });
@@ -349,19 +362,6 @@ router.get('/manage/:advertisementId', verifyToken, async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Advertisement not found or access denied'
-      });
-    }
-
-    // Find the vehicle rentals hire profile
-    const vehicleRentalsHire = await VehicleRentalsHire.findOne({
-      publishedAdId: advertisementId,
-      userId: userId
-    });
-
-    if (!vehicleRentalsHire) {
-      return res.status(404).json({
-        success: false,
-        message: 'Vehicle rentals hire profile not found'
       });
     }
 
