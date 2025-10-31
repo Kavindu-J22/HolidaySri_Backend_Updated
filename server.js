@@ -62,6 +62,8 @@ const localTourPackageRoutes = require('./routes/localTourPackage');
 const travelSafeHelpProfessionalRoutes = require('./routes/travelSafeHelpProfessional');
 const rentLandCampingParkingRoutes = require('./routes/rentLandCampingParking');
 const cafesRestaurantsRoutes = require('./routes/cafesRestaurants');
+const foodsBeveragesRoutes = require('./routes/foodsBeverages');
+const vehicleRentalsHireRoutes = require('./routes/vehicleRentalsHire');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
 const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
 const { startHSDLeaderBoardJobs, runHSDStartupChecks } = require('./jobs/hsdLeaderBoardRewards');
@@ -93,6 +95,8 @@ app.use('/api/local-tour-package', localTourPackageRoutes);
 app.use('/api/travel-safe-help-professional', travelSafeHelpProfessionalRoutes);
 app.use('/api/rent-land-camping-parking', rentLandCampingParkingRoutes);
 app.use('/api/cafes-restaurants', cafesRestaurantsRoutes);
+app.use('/api/foods-beverages', foodsBeveragesRoutes);
+app.use('/api/vehicle-rentals-hire', vehicleRentalsHireRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
