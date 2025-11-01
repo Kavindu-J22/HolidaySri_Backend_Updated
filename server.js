@@ -66,6 +66,7 @@ const foodsBeveragesRoutes = require('./routes/foodsBeverages');
 const vehicleRentalsHireRoutes = require('./routes/vehicleRentalsHire');
 const professionalDriversRoutes = require('./routes/professionalDrivers');
 const vehicleRepairsMechanicsRoutes = require('./routes/vehicleRepairsMechanics');
+const eventPlannersCoordinatorsRoutes = require('./routes/eventPlannersCoordinators');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
 const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
 const { startHSDLeaderBoardJobs, runHSDStartupChecks } = require('./jobs/hsdLeaderBoardRewards');
@@ -101,6 +102,7 @@ app.use('/api/foods-beverages', foodsBeveragesRoutes);
 app.use('/api/vehicle-rentals-hire', vehicleRentalsHireRoutes);
 app.use('/api/professional-drivers', professionalDriversRoutes);
 app.use('/api/vehicle-repairs-mechanics', vehicleRepairsMechanicsRoutes);
+app.use('/api/event-planners-coordinators', eventPlannersCoordinatorsRoutes);
 
 // Basic route
 app.get('/', (req, res) => {

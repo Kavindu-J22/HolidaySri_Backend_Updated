@@ -99,7 +99,7 @@ const advertisementSchema = new mongoose.Schema({
   },
   publishedAdModel: {
     type: String,
-    enum: ['TravelBuddy', 'TourGuider', 'LocalTourPackage', 'TravelSafeHelpProfessional', 'RentLandCampingParking', 'CafesRestaurants', 'FoodsBeverages', 'VehicleRentalsHire', 'ProfessionalDrivers', 'VehicleRepairsMechanics'] // Can be extended for other ad types in the future
+    enum: ['TravelBuddy', 'TourGuider', 'LocalTourPackage', 'TravelSafeHelpProfessional', 'RentLandCampingParking', 'CafesRestaurants', 'FoodsBeverages', 'VehicleRentalsHire', 'ProfessionalDrivers', 'VehicleRepairsMechanics', 'EventPlannersCoordinators'] // Can be extended for other ad types in the future
   }
 }, {
   timestamps: true
