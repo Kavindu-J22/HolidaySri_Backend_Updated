@@ -68,6 +68,9 @@ const professionalDriversRoutes = require('./routes/professionalDrivers');
 const vehicleRepairsMechanicsRoutes = require('./routes/vehicleRepairsMechanics');
 const eventPlannersCoordinatorsRoutes = require('./routes/eventPlannersCoordinators');
 const creativePhotographersRoutes = require('./routes/creativePhotographers');
+const decoratorsFloristsRoutes = require('./routes/decoratorsFlorists');
+const salonMakeupArtistsRoutes = require('./routes/salonMakeupArtists');
+const fashionDesignersRoutes = require('./routes/fashionDesigners');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
 const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
 const { startHSDLeaderBoardJobs, runHSDStartupChecks } = require('./jobs/hsdLeaderBoardRewards');
@@ -105,6 +108,9 @@ app.use('/api/professional-drivers', professionalDriversRoutes);
 app.use('/api/vehicle-repairs-mechanics', vehicleRepairsMechanicsRoutes);
 app.use('/api/event-planners-coordinators', eventPlannersCoordinatorsRoutes);
 app.use('/api/creative-photographers', creativePhotographersRoutes);
+app.use('/api/decorators-florists', decoratorsFloristsRoutes);
+app.use('/api/salon-makeup-artists', salonMakeupArtistsRoutes);
+app.use('/api/fashion-designers', fashionDesignersRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
