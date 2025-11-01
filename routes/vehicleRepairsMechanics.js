@@ -20,6 +20,22 @@ const provincesAndDistricts = {
   "Sabaragamuwa Province": ["Kegalle", "Ratnapura"]
 };
 
+// GET /api/vehicle-repairs-mechanics/provinces - Get all provinces and cities
+router.get('/provinces', async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: provincesAndDistricts
+    });
+  } catch (error) {
+    console.error('Error fetching provinces:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch provinces'
+    });
+  }
+});
+
 // POST /api/vehicle-repairs-mechanics/publish - Create vehicle repairs mechanics profile and publish advertisement
 router.post('/publish', verifyToken, async (req, res) => {
   try {
@@ -183,18 +199,43 @@ router.post('/publish', verifyToken, async (req, res) => {
 router.get('/browse', async (req, res) => {
   try {
     const { province, city, specialization, category, search } = req.query;
-    let filter = {};
 
-    if (province) filter['location.province'] = province;
-    if (city) filter['location.city'] = city;
-    if (specialization) filter.specialization = { $regex: specialization, $options: 'i' };
-    if (category) filter.category = { $regex: category, $options: 'i' };
+    // Build filter object
+    const filter = {};
+    const andConditions = [];
+
+    // Add location filters
+    if (province) {
+      andConditions.push({ 'location.province': province });
+    }
+    if (city) {
+      andConditions.push({ 'location.city': city });
+    }
+
+    // Add specialization filter
+    if (specialization) {
+      andConditions.push({ specialization: { $regex: specialization, $options: 'i' } });
+    }
+
+    // Add category filter
+    if (category) {
+      andConditions.push({ category: { $regex: category, $options: 'i' } });
+    }
+
+    // Add search filter
     if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { specialization: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
-      ];
+      andConditions.push({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { specialization: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+
+    // Combine all conditions with $and
+    if (andConditions.length > 0) {
+      filter.$and = andConditions;
     }
 
     // Fetch mechanics
@@ -502,23 +543,6 @@ router.get('/:id/reviews', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch reviews'
-    });
-  }
-});
-
-// GET /api/vehicle-repairs-mechanics/provinces - Get provinces and districts
-router.get('/provinces', async (req, res) => {
-  try {
-    res.json({
-      success: true,
-      data: provincesAndDistricts
-    });
-  } catch (error) {
-    console.error('Error fetching provinces:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching provinces',
-      error: error.message
     });
   }
 });
