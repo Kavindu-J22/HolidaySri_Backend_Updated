@@ -154,5 +154,26 @@ const creativePhotographersSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Method to update average rating based on reviews
+creativePhotographersSchema.methods.updateAverageRating = async function() {
+  const CreativePhotographersReview = mongoose.model('CreativePhotographersReview');
+
+  const reviews = await CreativePhotographersReview.find({
+    photographerId: this._id,
+    isActive: true
+  });
+
+  if (reviews.length === 0) {
+    this.averageRating = 0;
+    this.totalReviews = 0;
+  } else {
+    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+    this.averageRating = totalRating / reviews.length;
+    this.totalReviews = reviews.length;
+  }
+
+  await this.save();
+};
+
 module.exports = mongoose.model('CreativePhotographers', creativePhotographersSchema);
 

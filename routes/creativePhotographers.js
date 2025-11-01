@@ -3,6 +3,7 @@ const router = express.Router();
 const moment = require('moment-timezone');
 const { verifyToken } = require('../middleware/auth');
 const CreativePhotographers = require('../models/CreativePhotographers');
+const CreativePhotographersReview = require('../models/CreativePhotographersReview');
 const Advertisement = require('../models/Advertisement');
 
 // Sri Lankan provinces and districts mapping
@@ -322,6 +323,195 @@ router.put('/:id', verifyToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update profile. Please try again.'
+    });
+  }
+});
+
+// POST /api/creative-photographers/:id/reviews - Add review
+router.post('/:id/reviews', verifyToken, async (req, res) => {
+  try {
+    const { rating, title, comment } = req.body;
+
+    // Validate required fields
+    if (!rating || !title || !comment) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rating, title, and comment are required'
+      });
+    }
+
+    // Validate rating
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rating must be between 1 and 5'
+      });
+    }
+
+    // Check if photographer exists
+    const photographer = await CreativePhotographers.findById(req.params.id);
+    if (!photographer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Photographer not found'
+      });
+    }
+
+    // Check if user already has an active review
+    const existingReview = await CreativePhotographersReview.findOne({
+      photographerId: req.params.id,
+      userId: req.user._id,
+      isActive: true
+    });
+
+    if (existingReview) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already reviewed this photographer'
+      });
+    }
+
+    // Create review
+    const review = new CreativePhotographersReview({
+      photographerId: req.params.id,
+      userId: req.user._id,
+      rating,
+      title,
+      comment
+    });
+
+    await review.save();
+
+    // Update photographer average rating
+    await photographer.updateAverageRating();
+
+    res.json({
+      success: true,
+      message: 'Review added successfully',
+      data: review
+    });
+  } catch (error) {
+    console.error('Error adding review:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add review'
+    });
+  }
+});
+
+// GET /api/creative-photographers/:id/reviews - Get reviews
+router.get('/:id/reviews', async (req, res) => {
+  try {
+    const reviews = await CreativePhotographersReview.find({
+      photographerId: req.params.id,
+      isActive: true
+    })
+      .populate('userId', 'name avatar')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: reviews
+    });
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch reviews'
+    });
+  }
+});
+
+// PUT /api/creative-photographers/:id/reviews/:reviewId - Update review
+router.put('/:id/reviews/:reviewId', verifyToken, async (req, res) => {
+  try {
+    const { rating, title, comment } = req.body;
+
+    // Validate required fields
+    if (!rating || !title || !comment) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rating, title, and comment are required'
+      });
+    }
+
+    // Validate rating
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rating must be between 1 and 5'
+      });
+    }
+
+    // Find and update review
+    const review = await CreativePhotographersReview.findOneAndUpdate(
+      {
+        _id: req.params.reviewId,
+        photographerId: req.params.id,
+        userId: req.user._id
+      },
+      { rating, title, comment },
+      { new: true }
+    );
+
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: 'Review not found'
+      });
+    }
+
+    // Update photographer average rating
+    const photographer = await CreativePhotographers.findById(req.params.id);
+    if (photographer) {
+      await photographer.updateAverageRating();
+    }
+
+    res.json({
+      success: true,
+      message: 'Review updated successfully',
+      data: review
+    });
+  } catch (error) {
+    console.error('Error updating review:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update review'
+    });
+  }
+});
+
+// DELETE /api/creative-photographers/:id/reviews/:reviewId - Delete review
+router.delete('/:id/reviews/:reviewId', verifyToken, async (req, res) => {
+  try {
+    const review = await CreativePhotographersReview.findOneAndDelete({
+      _id: req.params.reviewId,
+      photographerId: req.params.id,
+      userId: req.user._id
+    });
+
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: 'Review not found'
+      });
+    }
+
+    // Update photographer average rating
+    const photographer = await CreativePhotographers.findById(req.params.id);
+    if (photographer) {
+      await photographer.updateAverageRating();
+    }
+
+    res.json({
+      success: true,
+      message: 'Review deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting review:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete review'
     });
   }
 });
