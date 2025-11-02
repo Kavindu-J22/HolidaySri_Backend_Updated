@@ -82,6 +82,8 @@ const graphicsITTechRepairRoutes = require('./routes/graphicsITTechRepair');
 const educationalTutoringRoutes = require('./routes/educationalTutoring');
 const currencyExchangeRoutes = require('./routes/currencyExchange');
 const otherProfessionalsServicesRoutes = require('./routes/otherProfessionalsServices');
+const babysittersChildcareRoutes = require('./routes/babysittersChildcare');
+const babysittersChildcareReviewsRoutes = require('./routes/babysittersChildcareReviews');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
 const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
 const { startHSDLeaderBoardJobs, runHSDStartupChecks } = require('./jobs/hsdLeaderBoardRewards');
@@ -133,6 +135,8 @@ app.use('/api/graphics-it-tech-repair', graphicsITTechRepairRoutes);
 app.use('/api/educational-tutoring', educationalTutoringRoutes);
 app.use('/api/currency-exchange', currencyExchangeRoutes);
 app.use('/api/other-professionals-services', otherProfessionalsServicesRoutes);
+app.use('/api/babysitters-childcare', babysittersChildcareRoutes);
+app.use('/api/babysitters-childcare-reviews', babysittersChildcareReviewsRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
