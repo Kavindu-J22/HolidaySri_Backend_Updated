@@ -78,6 +78,7 @@ const languageTranslatorsRoutes = require('./routes/languageTranslators');
 const expertArchitectsRoutes = require('./routes/expertArchitects');
 const trustedAstrologistsRoutes = require('./routes/trustedAstrologists');
 const deliveryPartnersRoutes = require('./routes/deliveryPartners');
+const graphicsITTechRepairRoutes = require('./routes/graphicsITTechRepair');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
 const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
 const { startHSDLeaderBoardJobs, runHSDStartupChecks } = require('./jobs/hsdLeaderBoardRewards');
@@ -125,6 +126,7 @@ app.use('/api/language-translators', languageTranslatorsRoutes);
 app.use('/api/expert-architects', expertArchitectsRoutes);
 app.use('/api/trusted-astrologists', trustedAstrologistsRoutes);
 app.use('/api/delivery-partners', deliveryPartnersRoutes);
+app.use('/api/graphics-it-tech-repair', graphicsITTechRepairRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
