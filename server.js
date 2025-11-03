@@ -86,6 +86,7 @@ const babysittersChildcareRoutes = require('./routes/babysittersChildcare');
 const babysittersChildcareReviewsRoutes = require('./routes/babysittersChildcareReviews');
 const petCareAnimalServicesRoutes = require('./routes/petCareAnimalServices');
 const petCareAnimalServicesReviewsRoutes = require('./routes/petCareAnimalServicesReviews');
+const rentPropertyBuyingSellingRoutes = require('./routes/rentPropertyBuyingSelling');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
 const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
 const { startHSDLeaderBoardJobs, runHSDStartupChecks } = require('./jobs/hsdLeaderBoardRewards');
@@ -141,6 +142,7 @@ app.use('/api/babysitters-childcare', babysittersChildcareRoutes);
 app.use('/api/babysitters-childcare-reviews', babysittersChildcareReviewsRoutes);
 app.use('/api/pet-care-animal-services', petCareAnimalServicesRoutes);
 app.use('/api/pet-care-animal-services-reviews', petCareAnimalServicesReviewsRoutes);
+app.use('/api/rent-property-buying-selling', rentPropertyBuyingSellingRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
