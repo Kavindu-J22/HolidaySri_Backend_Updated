@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const { verifyToken } = require('../middleware/auth');
 const FitnessHealthSpasGymReview = require('../models/FitnessHealthSpasGymReview');
 const FitnessHealthSpasGym = require('../models/FitnessHealthSpasGym');
@@ -98,7 +99,7 @@ router.get('/:fitnessProfileId/reviews', async (req, res) => {
 
     // Calculate average rating
     const ratingData = await FitnessHealthSpasGymReview.aggregate([
-      { $match: { fitnessProfileId: mongoose.Types.ObjectId(fitnessProfileId) } },
+      { $match: { fitnessProfileId: new mongoose.Types.ObjectId(fitnessProfileId) } },
       {
         $group: {
           _id: null,
@@ -153,10 +154,9 @@ router.get('/:fitnessProfileId/reviews', async (req, res) => {
 router.get('/:fitnessProfileId/rating', async (req, res) => {
   try {
     const { fitnessProfileId } = req.params;
-    const mongoose = require('mongoose');
 
     const ratingData = await FitnessHealthSpasGymReview.aggregate([
-      { $match: { fitnessProfileId: mongoose.Types.ObjectId(fitnessProfileId) } },
+      { $match: { fitnessProfileId: new mongoose.Types.ObjectId(fitnessProfileId) } },
       {
         $group: {
           _id: null,
