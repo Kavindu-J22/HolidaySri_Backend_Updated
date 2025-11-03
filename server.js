@@ -95,6 +95,7 @@ const fashionBeautyClothingRoutes = require('./routes/fashionBeautyClothing');
 const dailyGroceryEssentialsRoutes = require('./routes/dailyGroceryEssentials');
 const organicHerbalProductsSpicesRoutes = require('./routes/organicHerbalProductsSpices');
 const booksAndMagazinesEducationalRoutes = require('./routes/booksAndMagazinesEducational');
+const otherItemsRoutes = require('./routes/otherItems');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
 const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
 const { startHSDLeaderBoardJobs, runHSDStartupChecks } = require('./jobs/hsdLeaderBoardRewards');
@@ -159,6 +160,7 @@ app.use('/api/fashion-beauty-clothing', fashionBeautyClothingRoutes);
 app.use('/api/daily-grocery-essentials', dailyGroceryEssentialsRoutes);
 app.use('/api/organic-herbal-products-spices', organicHerbalProductsSpicesRoutes);
 app.use('/api/books-magazines-educational', booksAndMagazinesEducationalRoutes);
+app.use('/api/other-items', otherItemsRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
