@@ -98,6 +98,8 @@ const booksAndMagazinesEducationalRoutes = require('./routes/booksAndMagazinesEd
 const otherItemsRoutes = require('./routes/otherItems');
 const exclusiveComboPackagesRoutes = require('./routes/exclusiveComboPackages');
 const talentedEntertainersArtistsRoutes = require('./routes/talentedEntertainersArtists');
+const fitnessHealthSpasGymRoutes = require('./routes/fitnessHealthSpasGym');
+const fitnessHealthSpasGymReviewsRoutes = require('./routes/fitnessHealthSpasGymReviews');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
 const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
 const { startHSDLeaderBoardJobs, runHSDStartupChecks } = require('./jobs/hsdLeaderBoardRewards');
@@ -165,6 +167,8 @@ app.use('/api/books-magazines-educational', booksAndMagazinesEducationalRoutes);
 app.use('/api/other-items', otherItemsRoutes);
 app.use('/api/exclusive-combo-packages', exclusiveComboPackagesRoutes);
 app.use('/api/talented-entertainers-artists', talentedEntertainersArtistsRoutes);
+app.use('/api/fitness-health-spas-gym', fitnessHealthSpasGymRoutes);
+app.use('/api/fitness-health-spas-gym-reviews', fitnessHealthSpasGymReviewsRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
