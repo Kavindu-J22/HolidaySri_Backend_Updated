@@ -89,6 +89,7 @@ const petCareAnimalServicesReviewsRoutes = require('./routes/petCareAnimalServic
 const rentPropertyBuyingSellingRoutes = require('./routes/rentPropertyBuyingSelling');
 const exclusiveGiftPacksRoutes = require('./routes/exclusiveGiftPacks');
 const souvenirsCollectiblesRoutes = require('./routes/souvenirsCollectibles');
+const jewelryGemSellersRoutes = require('./routes/jewelryGemSellers');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
 const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
 const { startHSDLeaderBoardJobs, runHSDStartupChecks } = require('./jobs/hsdLeaderBoardRewards');
@@ -147,6 +148,7 @@ app.use('/api/pet-care-animal-services-reviews', petCareAnimalServicesReviewsRou
 app.use('/api/rent-property-buying-selling', rentPropertyBuyingSellingRoutes);
 app.use('/api/exclusive-gift-packs', exclusiveGiftPacksRoutes);
 app.use('/api/souvenirs-collectibles', souvenirsCollectiblesRoutes);
+app.use('/api/jewelry-gem-sellers', jewelryGemSellersRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
