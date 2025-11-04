@@ -68,7 +68,7 @@ const customizeTourPackageSchema = new mongoose.Schema({
   // Request Status
   status: {
     type: String,
-    enum: ['pending', 'under-review', 'approved', 'rejected', 'show-partners'],
+    enum: ['pending', 'under-review', 'approved', 'rejected', 'show-partners', 'partner-approved'],
     default: 'pending'
   },
 

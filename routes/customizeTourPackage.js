@@ -458,6 +458,7 @@ router.put('/partner/request/:id/approve', verifyToken, verifyEmailVerified, asy
     request.partnerApprovedBy = req.user._id;
     request.partnerApprovedAt = new Date();
     request.partnerEmail = user.email;
+    request.status = 'partner-approved'; // Change status to partner-approved
 
     // Update admin note to include partner information
     const partnerNote = `\n\n[Partner Approved]\nPartner: ${user.name}\nEmail: ${user.email}\nApproved At: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}`;
