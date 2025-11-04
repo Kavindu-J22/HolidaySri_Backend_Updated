@@ -4,7 +4,9 @@ const CustomizeTourPackage = require('../models/CustomizeTourPackage');
 const PaymentActivity = require('../models/PaymentActivity');
 const User = require('../models/User');
 const { HSCConfig } = require('../models/HSC');
+const { CommercialPartner } = require('../models/CommercialPartner');
 const { verifyToken, verifyEmailVerified, verifyAdminToken } = require('../middleware/auth');
+const { sendCustomizeTourPartnerNotification } = require('../utils/emailService');
 
 // Submit customize tour package request
 router.post('/submit', verifyToken, verifyEmailVerified, async (req, res) => {
@@ -294,7 +296,7 @@ router.put('/admin/request/:id/status', verifyAdminToken, async (req, res) => {
   try {
     const { status, adminNote } = req.body;
 
-    if (!['pending', 'under-review', 'approved', 'rejected'].includes(status)) {
+    if (!['pending', 'under-review', 'approved', 'rejected', 'show-partners'].includes(status)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
 
@@ -311,6 +313,34 @@ router.put('/admin/request/:id/status', verifyAdminToken, async (req, res) => {
     request.processedAt = new Date();
 
     await request.save();
+
+    // If status is changed to 'show-partners', send email to all commercial partners
+    if (status === 'show-partners') {
+      try {
+        // Get all active commercial partners
+        const activePartners = await CommercialPartner.find({
+          status: 'active',
+          isActive: true
+        }).populate('userId', 'email name');
+
+        // Send email to each partner
+        const emailPromises = activePartners.map(partner => {
+          if (partner.userId && partner.userId.email) {
+            return sendCustomizeTourPartnerNotification(
+              partner.userId.email,
+              partner.userId.name
+            );
+          }
+          return Promise.resolve();
+        });
+
+        await Promise.all(emailPromises);
+        console.log(`Sent notification emails to ${activePartners.length} commercial partners`);
+      } catch (emailError) {
+        console.error('Error sending partner notification emails:', emailError);
+        // Don't fail the request if email sending fails
+      }
+    }
 
     res.json({
       success: true,
@@ -341,6 +371,108 @@ router.get('/admin/request/:id', verifyAdminToken, async (req, res) => {
 
   } catch (error) {
     console.error('Admin get request details error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ============ PARTNER ROUTES ============
+
+// Get partner requests (requests with status 'show-partners')
+router.get('/partner/requests', verifyToken, verifyEmailVerified, async (req, res) => {
+  try {
+    // Check if user is a partner
+    const user = await User.findById(req.user._id);
+    if (!user.isPartner || !user.partnerExpirationDate || new Date(user.partnerExpirationDate) < new Date()) {
+      return res.status(403).json({ message: 'Access denied. Active commercial partnership required.' });
+    }
+
+    const { page = 1, limit = 10 } = req.query;
+    const skip = (page - 1) * limit;
+
+    // Get requests with status 'show-partners'
+    const requests = await CustomizeTourPackage.find({ status: 'show-partners' })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await CustomizeTourPackage.countDocuments({ status: 'show-partners' });
+
+    res.json({
+      success: true,
+      data: requests,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get partner requests error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get partner request count
+router.get('/partner/requests/count', verifyToken, verifyEmailVerified, async (req, res) => {
+  try {
+    // Check if user is a partner
+    const user = await User.findById(req.user._id);
+    if (!user.isPartner || !user.partnerExpirationDate || new Date(user.partnerExpirationDate) < new Date()) {
+      return res.status(403).json({ message: 'Access denied. Active commercial partnership required.' });
+    }
+
+    const count = await CustomizeTourPackage.countDocuments({ status: 'show-partners' });
+
+    res.json({
+      success: true,
+      count
+    });
+
+  } catch (error) {
+    console.error('Get partner request count error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Approve partner request
+router.put('/partner/request/:id/approve', verifyToken, verifyEmailVerified, async (req, res) => {
+  try {
+    // Check if user is a partner
+    const user = await User.findById(req.user._id);
+    if (!user.isPartner || !user.partnerExpirationDate || new Date(user.partnerExpirationDate) < new Date()) {
+      return res.status(403).json({ message: 'Access denied. Active commercial partnership required.' });
+    }
+
+    const request = await CustomizeTourPackage.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+
+    if (request.status !== 'show-partners') {
+      return res.status(400).json({ message: 'This request is not available for partner approval' });
+    }
+
+    // Update request with partner approval
+    request.partnerApprovedBy = req.user._id;
+    request.partnerApprovedAt = new Date();
+    request.partnerEmail = user.email;
+
+    // Update admin note to include partner information
+    const partnerNote = `\n\n[Partner Approved]\nPartner: ${user.name}\nEmail: ${user.email}\nApproved At: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}`;
+    request.adminNote = (request.adminNote || '') + partnerNote;
+
+    await request.save();
+
+    res.json({
+      success: true,
+      message: 'Request approved successfully',
+      data: request
+    });
+
+  } catch (error) {
+    console.error('Partner approve request error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

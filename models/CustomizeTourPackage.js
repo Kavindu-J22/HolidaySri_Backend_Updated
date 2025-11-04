@@ -68,8 +68,21 @@ const customizeTourPackageSchema = new mongoose.Schema({
   // Request Status
   status: {
     type: String,
-    enum: ['pending', 'under-review', 'approved', 'rejected'],
+    enum: ['pending', 'under-review', 'approved', 'rejected', 'show-partners'],
     default: 'pending'
+  },
+
+  // Partner Information (when status is 'show-partners')
+  partnerApprovedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  partnerApprovedAt: {
+    type: Date
+  },
+  partnerEmail: {
+    type: String,
+    trim: true
   },
   
   // HSC Charge Information

@@ -2052,6 +2052,99 @@ const sendAdvertisementRenewalEmail = async (user, advertisementData) => {
   }
 };
 
+// Send customize tour partner notification email
+const sendCustomizeTourPartnerNotification = async (email, name) => {
+  const transporter = createTransporter();
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri.com',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: '🎯 New Customize Tour Request Available - Partner Opportunity!',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <div style="background: linear-gradient(135deg, #f97316, #fb923c); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">🎯 New Tour Request!</h1>
+              <p style="color: white; margin: 10px 0 0 0; font-size: 18px;">Partner Opportunity Available</p>
+            </div>
+          </div>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Dear ${name},
+          </p>
+
+          <div style="background: #fff7ed; border-left: 4px solid #f97316; padding: 20px; margin: 20px 0; border-radius: 5px;">
+            <h3 style="color: #ea580c; margin: 0 0 10px 0;">🌟 New Opportunity!</h3>
+            <p style="color: #ea580c; margin: 0; font-size: 16px;">
+              A new customize tour package request has been made available for commercial partners. Check the CUSTOMIZE YOUR SRI LANKAN ADVENTURE page to view and approve this request!
+            </p>
+          </div>
+
+          <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #374151; margin: 0 0 15px 0;">📋 What You Can Do</h3>
+            <ul style="color: #6b7280; margin: 10px 0; padding-left: 20px; line-height: 1.8;">
+              <li style="margin: 8px 0;">View detailed tour customization requests</li>
+              <li style="margin: 8px 0;">Review customer requirements and preferences</li>
+              <li style="margin: 8px 0;">Approve requests that match your services</li>
+              <li style="margin: 8px 0;">Connect with potential customers</li>
+            </ul>
+          </div>
+
+          <div style="background: #dbeafe; border-left: 4px solid #3b82f6; padding: 20px; margin: 20px 0; border-radius: 5px;">
+            <h3 style="color: #1d4ed8; margin: 0 0 10px 0;">💡 How to Access</h3>
+            <ol style="color: #1d4ed8; margin: 10px 0; padding-left: 20px; line-height: 1.8;">
+              <li style="margin: 8px 0;">Log in to your Holidaysri.com account</li>
+              <li style="margin: 8px 0;">Navigate to <strong>Tourism And Travel → Customize Tour Package</strong></li>
+              <li style="margin: 8px 0;">Click on the <strong>"Partner Requests"</strong> tab</li>
+              <li style="margin: 8px 0;">Review and approve requests that interest you</li>
+            </ol>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="http://localhost:3000/customize-tour-package" style="display: inline-block; background: linear-gradient(135deg, #f97316, #fb923c); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+              View Customize Requests
+            </a>
+          </div>
+
+          <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="color: #92400e; margin: 0; font-size: 14px; line-height: 1.6;">
+              <strong>⚡ Act Fast!</strong> Other partners can also view and approve these requests. Be the first to connect with potential customers!
+            </p>
+          </div>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px;">
+            <p style="color: #888; font-size: 14px; line-height: 1.6; margin: 0;">
+              <strong>Need Help?</strong><br>
+              If you have any questions about the customize tour requests or need assistance, please contact our support team at support@holidaysri.com
+            </p>
+          </div>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 20px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri.com. All rights reserved.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
+              This email was sent to you as an active commercial partner.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Customize tour partner notification email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   generateOTP,
   sendEmailVerificationOTP,
@@ -2075,5 +2168,6 @@ module.exports = {
   sendAdvertisementRenewalEmail,
   sendTokenGiftEmail,
   sendAdvertisementExpiringWarning,
-  sendAdvertisementExpiredEmail
+  sendAdvertisementExpiredEmail,
+  sendCustomizeTourPartnerNotification
 };
