@@ -324,6 +324,12 @@ const promoCodeConfigSchema = new mongoose.Schema({
     required: true,
     default: 50 // HSC - one-time payment to access promo code viewing page
   },
+  // Customize Tour Package Request Charge (HSC)
+  customizeTourPackageCharge: {
+    type: Number,
+    required: true,
+    default: 100 // HSC - charge for submitting customize tour package request
+  },
   lastUpdated: {
     type: Date,
     default: Date.now

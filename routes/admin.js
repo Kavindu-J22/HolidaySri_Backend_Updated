@@ -101,13 +101,18 @@ router.get('/dashboard', verifyAdminToken, async (req, res) => {
 router.get('/hsc-config', verifyAdminToken, async (req, res) => {
   try {
     const hscConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
-    
+
+    console.log('Fetching HSC config, found:', hscConfig);
+
     if (!hscConfig) {
       return res.json({
         hscValue: 100,
         hsgValue: 1,
         hsdValue: 1,
         currency: 'LKR',
+        customizeTourPackageCharge: 100,
+        sellAdFee: 100,
+        accessPromoCodeViewAmount: 50,
         lastUpdated: null,
         updatedBy: null
       });
@@ -124,20 +129,31 @@ router.get('/hsc-config', verifyAdminToken, async (req, res) => {
 // Update token configuration
 router.put('/hsc-config', verifyAdminToken, async (req, res) => {
   try {
-    const { hscValue, hsgValue, hsdValue, currency = 'LKR' } = req.body;
+    const { hscValue, hsgValue, hsdValue, currency, customizeTourPackageCharge, sellAdFee, accessPromoCodeViewAmount } = req.body;
+
+    console.log('Received update request:', req.body);
 
     // Get current config to preserve existing values
     const currentConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
 
+    console.log('Current config:', currentConfig);
+
     const newConfig = new HSCConfig({
-      hscValue: hscValue || (currentConfig ? currentConfig.hscValue : 100),
-      hsgValue: hsgValue || (currentConfig ? currentConfig.hsgValue : 1),
-      hsdValue: hsdValue || (currentConfig ? currentConfig.hsdValue : 1),
-      currency,
+      hscValue: hscValue !== undefined ? hscValue : (currentConfig ? currentConfig.hscValue : 100),
+      hsgValue: hsgValue !== undefined ? hsgValue : (currentConfig ? currentConfig.hsgValue : 1),
+      hsdValue: hsdValue !== undefined ? hsdValue : (currentConfig ? currentConfig.hsdValue : 1),
+      customizeTourPackageCharge: customizeTourPackageCharge !== undefined ? customizeTourPackageCharge : (currentConfig ? currentConfig.customizeTourPackageCharge : 100),
+      sellAdFee: sellAdFee !== undefined ? sellAdFee : (currentConfig ? currentConfig.sellAdFee : 100),
+      accessPromoCodeViewAmount: accessPromoCodeViewAmount !== undefined ? accessPromoCodeViewAmount : (currentConfig ? currentConfig.accessPromoCodeViewAmount : 50),
+      currency: currency !== undefined ? currency : (currentConfig ? currentConfig.currency : 'LKR'),
       updatedBy: req.admin.username
     });
 
+    console.log('New config to save:', newConfig);
+
     await newConfig.save();
+
+    console.log('Config saved successfully:', newConfig._id);
 
     res.json({
       message: 'Token configuration updated successfully',
