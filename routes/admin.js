@@ -100,9 +100,22 @@ router.get('/dashboard', verifyAdminToken, async (req, res) => {
 // Get HSC configuration
 router.get('/hsc-config', verifyAdminToken, async (req, res) => {
   try {
+    // Get all configs to debug
+    const allConfigs = await HSCConfig.find().sort({ createdAt: -1 }).limit(5);
+    console.log('All HSC configs (latest 5):', allConfigs.map(c => ({
+      id: c._id,
+      customizeTourPackageCharge: c.customizeTourPackageCharge,
+      createdAt: c.createdAt
+    })));
+
     const hscConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
 
-    console.log('Fetching HSC config, found:', hscConfig);
+    console.log('Fetching HSC config, found:', {
+      id: hscConfig?._id,
+      customizeTourPackageCharge: hscConfig?.customizeTourPackageCharge,
+      hscValue: hscConfig?.hscValue,
+      createdAt: hscConfig?.createdAt
+    });
 
     if (!hscConfig) {
       return res.json({
@@ -131,14 +144,22 @@ router.put('/hsc-config', verifyAdminToken, async (req, res) => {
   try {
     const { hscValue, hsgValue, hsdValue, currency, customizeTourPackageCharge, sellAdFee, accessPromoCodeViewAmount } = req.body;
 
+    console.log('========== UPDATE REQUEST ==========');
     console.log('Received update request:', req.body);
+    console.log('customizeTourPackageCharge value:', customizeTourPackageCharge);
+    console.log('customizeTourPackageCharge type:', typeof customizeTourPackageCharge);
+    console.log('customizeTourPackageCharge !== undefined:', customizeTourPackageCharge !== undefined);
 
     // Get current config to preserve existing values
     const currentConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
 
-    console.log('Current config:', currentConfig);
+    console.log('Current config:', {
+      id: currentConfig?._id,
+      customizeTourPackageCharge: currentConfig?.customizeTourPackageCharge,
+      hscValue: currentConfig?.hscValue
+    });
 
-    const newConfig = new HSCConfig({
+    const configData = {
       hscValue: hscValue !== undefined ? hscValue : (currentConfig ? currentConfig.hscValue : 100),
       hsgValue: hsgValue !== undefined ? hsgValue : (currentConfig ? currentConfig.hsgValue : 1),
       hsdValue: hsdValue !== undefined ? hsdValue : (currentConfig ? currentConfig.hsdValue : 1),
@@ -147,13 +168,22 @@ router.put('/hsc-config', verifyAdminToken, async (req, res) => {
       accessPromoCodeViewAmount: accessPromoCodeViewAmount !== undefined ? accessPromoCodeViewAmount : (currentConfig ? currentConfig.accessPromoCodeViewAmount : 50),
       currency: currency !== undefined ? currency : (currentConfig ? currentConfig.currency : 'LKR'),
       updatedBy: req.admin.username
-    });
+    };
 
-    console.log('New config to save:', newConfig);
+    console.log('Config data to save:', configData);
+
+    const newConfig = new HSCConfig(configData);
 
     await newConfig.save();
 
-    console.log('Config saved successfully:', newConfig._id);
+    console.log('Config saved successfully!');
+    console.log('Saved config:', {
+      id: newConfig._id,
+      customizeTourPackageCharge: newConfig.customizeTourPackageCharge,
+      hscValue: newConfig.hscValue,
+      createdAt: newConfig.createdAt
+    });
+    console.log('====================================');
 
     res.json({
       message: 'Token configuration updated successfully',

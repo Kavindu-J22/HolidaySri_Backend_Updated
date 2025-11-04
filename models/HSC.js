@@ -20,6 +20,24 @@ const hscConfigSchema = new mongoose.Schema({
     type: String,
     default: 'LKR'
   },
+  // Customize Tour Package Request Charge (HSC)
+  customizeTourPackageCharge: {
+    type: Number,
+    required: true,
+    default: 100 // HSC - charge for submitting customize tour package request
+  },
+  // Selling advertisement fee
+  sellAdFee: {
+    type: Number,
+    required: true,
+    default: 100 // HSC
+  },
+  // Access Promo Code View page amount (HSC) - one-time payment for non-agents
+  accessPromoCodeViewAmount: {
+    type: Number,
+    required: true,
+    default: 50 // HSC - one-time payment to access promo code viewing page
+  },
   lastUpdated: {
     type: Date,
     default: Date.now
@@ -323,12 +341,6 @@ const promoCodeConfigSchema = new mongoose.Schema({
     type: Number,
     required: true,
     default: 50 // HSC - one-time payment to access promo code viewing page
-  },
-  // Customize Tour Package Request Charge (HSC)
-  customizeTourPackageCharge: {
-    type: Number,
-    required: true,
-    default: 100 // HSC - charge for submitting customize tour package request
   },
   lastUpdated: {
     type: Date,
