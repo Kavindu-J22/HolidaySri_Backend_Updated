@@ -177,7 +177,7 @@ router.get('/provinces', (req, res) => {
 // GET /api/emergency-services-insurance/browse - Browse all active profiles with filters
 router.get('/browse', async (req, res) => {
   try {
-    const { search, category, province, city, type, page = 1, limit = 12 } = req.query;
+    const { search, category, province, city, page = 1, limit = 12 } = req.query;
 
     // Build filter query
     let filter = { isActive: true };
@@ -223,19 +223,6 @@ router.get('/browse', async (req, res) => {
 
     // Remove null entries (expired ads)
     profiles = profilesWithAds.filter(p => p !== null);
-
-    // Filter by type if specified
-    if (type) {
-      profiles = profiles.filter(profile => {
-        const categoryLower = profile.category.toLowerCase();
-        if (type === 'Service') {
-          return categoryLower.includes('insurance') || categoryLower.includes('assistance');
-        } else if (type === 'Professionals') {
-          return categoryLower.includes('emergency') || categoryLower.includes('response') || categoryLower.includes('evacuation');
-        }
-        return true;
-      });
-    }
 
     // Shuffle profiles randomly
     profiles = profiles.sort(() => Math.random() - 0.5);
