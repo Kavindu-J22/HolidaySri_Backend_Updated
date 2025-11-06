@@ -98,6 +98,7 @@ const organicHerbalProductsSpicesRoutes = require('./routes/organicHerbalProduct
 const booksAndMagazinesEducationalRoutes = require('./routes/booksAndMagazinesEducational');
 const otherItemsRoutes = require('./routes/otherItems');
 const exclusiveComboPackagesRoutes = require('./routes/exclusiveComboPackages');
+const hotelsAccommodationsRoutes = require('./routes/hotelsAccommodations');
 const talentedEntertainersArtistsRoutes = require('./routes/talentedEntertainersArtists');
 const fitnessHealthSpasGymRoutes = require('./routes/fitnessHealthSpasGym');
 const fitnessHealthSpasGymReviewsRoutes = require('./routes/fitnessHealthSpasGymReviews');
@@ -177,6 +178,7 @@ app.use('/api/fitness-health-spas-gym-reviews', fitnessHealthSpasGymReviewsRoute
 app.use('/api/job-opportunities', jobOpportunitiesRoutes);
 app.use('/api/local-sim-mobile-data', localSimMobileDataRoutes);
 app.use('/api/emergency-services-insurance', emergencyServicesInsuranceRoutes);
+app.use('/api/hotels-accommodations', hotelsAccommodationsRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
