@@ -523,5 +523,267 @@ router.post('/:id/review', verifyToken, async (req, res) => {
   }
 });
 
+// POST /api/hotels-accommodations/:id/rooms - Add a room (max 3 free rooms)
+router.post('/:id/rooms', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      roomName,
+      type,
+      capacity,
+      beds,
+      roomDescription,
+      pricePerNight,
+      pricePerFullDay,
+      pricing,
+      isAvailable,
+      amenities,
+      images,
+      noOfRooms,
+      roomOpenForAgents,
+      discountForPromo,
+      earnRateForPromo
+    } = req.body;
+
+    // Validate hotel ID
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid hotel ID'
+      });
+    }
+
+    const hotel = await HotelsAccommodations.findById(id);
+
+    if (!hotel) {
+      return res.status(404).json({
+        success: false,
+        message: 'Hotel not found'
+      });
+    }
+
+    // Check ownership
+    if (hotel.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to add rooms to this hotel'
+      });
+    }
+
+    // Check room limit (max 3 free rooms)
+    if (hotel.rooms && hotel.rooms.length >= 3) {
+      return res.status(400).json({
+        success: false,
+        message: 'Maximum 3 rooms allowed. You have already added 3 rooms.'
+      });
+    }
+
+    // Validate required fields
+    if (!roomName || !type || !capacity || !beds || !roomDescription ||
+        pricePerNight === undefined || pricePerFullDay === undefined || !noOfRooms) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide all required room details'
+      });
+    }
+
+    // Validate images (max 5)
+    if (images && images.length > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Maximum 5 images allowed per room'
+      });
+    }
+
+    // Validate promo fields if roomOpenForAgents is true
+    if (roomOpenForAgents) {
+      if (discountForPromo === undefined || earnRateForPromo === undefined) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please provide discount and earn rate for agent promotion'
+        });
+      }
+    }
+
+    // Create new room
+    const newRoom = {
+      roomName,
+      type,
+      capacity,
+      beds,
+      roomDescription,
+      pricePerNight,
+      pricePerFullDay,
+      pricing: pricing || {},
+      isAvailable: isAvailable !== undefined ? isAvailable : true,
+      amenities: amenities || [],
+      images: images || [],
+      noOfRooms,
+      roomOpenForAgents: roomOpenForAgents || false,
+      discountForPromo: discountForPromo || 0,
+      earnRateForPromo: earnRateForPromo || 0,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    hotel.rooms.push(newRoom);
+    await hotel.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Room added successfully',
+      data: hotel.rooms[hotel.rooms.length - 1]
+    });
+  } catch (error) {
+    console.error('Error adding room:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add room',
+      error: error.message
+    });
+  }
+});
+
+// PUT /api/hotels-accommodations/:id/rooms/:roomId - Update a room
+router.put('/:id/rooms/:roomId', verifyToken, async (req, res) => {
+  try {
+    const { id, roomId } = req.params;
+    const updateData = req.body;
+
+    // Validate hotel ID
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid hotel ID'
+      });
+    }
+
+    const hotel = await HotelsAccommodations.findById(id);
+
+    if (!hotel) {
+      return res.status(404).json({
+        success: false,
+        message: 'Hotel not found'
+      });
+    }
+
+    // Check ownership
+    if (hotel.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to update rooms for this hotel'
+      });
+    }
+
+    // Find room
+    const roomIndex = hotel.rooms.findIndex(room => room._id.toString() === roomId);
+
+    if (roomIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
+      });
+    }
+
+    // Validate images if provided (max 5)
+    if (updateData.images && updateData.images.length > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Maximum 5 images allowed per room'
+      });
+    }
+
+    // Validate promo fields if roomOpenForAgents is true
+    if (updateData.roomOpenForAgents) {
+      if (updateData.discountForPromo === undefined || updateData.earnRateForPromo === undefined) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please provide discount and earn rate for agent promotion'
+        });
+      }
+    }
+
+    // Update room fields
+    Object.keys(updateData).forEach(key => {
+      if (key !== '_id' && key !== 'createdAt') {
+        hotel.rooms[roomIndex][key] = updateData[key];
+      }
+    });
+
+    hotel.rooms[roomIndex].updatedAt = new Date();
+    await hotel.save();
+
+    res.json({
+      success: true,
+      message: 'Room updated successfully',
+      data: hotel.rooms[roomIndex]
+    });
+  } catch (error) {
+    console.error('Error updating room:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update room',
+      error: error.message
+    });
+  }
+});
+
+// DELETE /api/hotels-accommodations/:id/rooms/:roomId - Delete a room
+router.delete('/:id/rooms/:roomId', verifyToken, async (req, res) => {
+  try {
+    const { id, roomId } = req.params;
+
+    // Validate hotel ID
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid hotel ID'
+      });
+    }
+
+    const hotel = await HotelsAccommodations.findById(id);
+
+    if (!hotel) {
+      return res.status(404).json({
+        success: false,
+        message: 'Hotel not found'
+      });
+    }
+
+    // Check ownership
+    if (hotel.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to delete rooms from this hotel'
+      });
+    }
+
+    // Find and remove room
+    const roomIndex = hotel.rooms.findIndex(room => room._id.toString() === roomId);
+
+    if (roomIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
+      });
+    }
+
+    hotel.rooms.splice(roomIndex, 1);
+    await hotel.save();
+
+    res.json({
+      success: true,
+      message: 'Room deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting room:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete room',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
 

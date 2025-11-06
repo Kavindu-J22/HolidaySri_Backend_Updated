@@ -239,6 +239,123 @@ const hotelsAccommodationsSchema = new mongoose.Schema({
     default: Date.now
   },
 
+  // Rooms (max 3 free rooms)
+  rooms: {
+    type: [{
+    roomName: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    type: {
+      type: String,
+      required: true,
+      enum: [
+        'Single Room',
+        'Double Room',
+        'Twin Room',
+        'Triple Room',
+        'Quad Room',
+        'King Room',
+        'Queen Room',
+        'Suite',
+        'Deluxe Room',
+        'Executive Room',
+        'Presidential Suite',
+        'Family Room',
+        'Studio',
+        'Penthouse',
+        'Villa',
+        'Bungalow',
+        'Cottage',
+        'Dormitory',
+        'Connecting Rooms',
+        'Adjoining Rooms'
+      ]
+    },
+    capacity: {
+      type: Number,
+      required: true,
+      min: 1
+    },
+    beds: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    roomDescription: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    pricePerNight: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    pricePerFullDay: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    pricing: {
+      fullboardPrice: { type: Number, min: 0 },
+      fullboardInclude: {
+        type: [String],
+        default: []
+      },
+      halfboardPrice: { type: Number, min: 0 },
+      halfboardInclude: {
+        type: [String],
+        default: []
+      }
+    },
+    isAvailable: {
+      type: Boolean,
+      default: true
+    },
+    amenities: {
+      type: [String],
+      default: []
+    },
+    images: {
+      type: [{
+        url: { type: String, required: true },
+        publicId: { type: String, required: true }
+      }],
+      validate: [arrayLimit, 'Maximum 5 images allowed per room']
+    },
+    noOfRooms: {
+      type: Number,
+      required: true,
+      min: 1
+    },
+    roomOpenForAgents: {
+      type: Boolean,
+      default: false
+    },
+    discountForPromo: {
+      type: Number,
+      min: 0,
+      default: 0
+    },
+    earnRateForPromo: {
+      type: Number,
+      min: 0,
+      default: 0
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+    default: []
+  },
+
   // Reviews and ratings
   reviews: [{
     userId: {
