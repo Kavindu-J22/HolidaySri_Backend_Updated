@@ -38,6 +38,12 @@ const hscConfigSchema = new mongoose.Schema({
     required: true,
     default: 50 // HSC - one-time payment to access promo code viewing page
   },
+  // Additional room charge for Hotels & Accommodations (after 3 free rooms)
+  additionalRoomCharge: {
+    type: Number,
+    required: true,
+    default: 50 // HSC - charge for adding 4th, 5th, 6th... rooms
+  },
   lastUpdated: {
     type: Date,
     default: Date.now

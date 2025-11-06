@@ -570,12 +570,74 @@ router.post('/:id/rooms', verifyToken, async (req, res) => {
       });
     }
 
-    // Check room limit (max 3 free rooms)
-    if (hotel.rooms && hotel.rooms.length >= 3) {
-      return res.status(400).json({
-        success: false,
-        message: 'Maximum 3 rooms allowed. You have already added 3 rooms.'
+    // Check if this is the 4th+ room (requires HSC payment)
+    const currentRoomCount = hotel.rooms ? hotel.rooms.length : 0;
+    const isAdditionalRoom = currentRoomCount >= 3;
+    let hscCharge = 0;
+
+    if (isAdditionalRoom) {
+      // Get additional room charge from HSC config
+      const { HSCConfig } = require('../models/HSC');
+      const hscConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
+      hscCharge = hscConfig ? hscConfig.additionalRoomCharge : 50;
+
+      // Get user and check HSC balance
+      const User = require('../models/User');
+      const user = await User.findById(req.user._id);
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      // Check if user has enough HSC balance
+      if (user.hscBalance < hscCharge) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient HSC balance. You need ${hscCharge} HSC to add an additional room. Your current balance is ${user.hscBalance} HSC.`,
+          requiredHSC: hscCharge,
+          currentBalance: user.hscBalance
+        });
+      }
+
+      // Deduct HSC from user balance
+      const balanceBefore = user.hscBalance;
+      user.hscBalance -= hscCharge;
+      await user.save();
+
+      // Create HSC transaction record
+      const { HSCTransaction } = require('../models/HSC');
+      const hscTransaction = new HSCTransaction({
+        userId: user._id,
+        tokenType: 'HSC',
+        type: 'spend',
+        amount: hscCharge,
+        description: `Additional room charge for ${hotel.hotelName} (Room #${currentRoomCount + 1})`,
+        balanceBefore,
+        balanceAfter: user.hscBalance,
+        paymentDetails: {
+          paymentStatus: 'completed'
+        }
       });
+      await hscTransaction.save();
+
+      // Create payment activity record
+      const PaymentActivity = require('../models/PaymentActivity');
+      const paymentActivity = new PaymentActivity({
+        userId: user._id,
+        buyerEmail: user.email,
+        item: `Additional Room - ${hotel.hotelName}`,
+        quantity: 1,
+        category: 'Advertisement', // Using Advertisement category as it's related to hotel advertisement
+        originalAmount: hscCharge,
+        amount: hscCharge,
+        discountedAmount: 0,
+        paymentMethod: 'HSC',
+        status: 'completed'
+      });
+      await paymentActivity.save();
     }
 
     // Validate required fields
@@ -629,11 +691,20 @@ router.post('/:id/rooms', verifyToken, async (req, res) => {
     hotel.rooms.push(newRoom);
     await hotel.save();
 
-    res.status(201).json({
+    const response = {
       success: true,
-      message: 'Room added successfully',
+      message: isAdditionalRoom
+        ? `Room added successfully. ${hscCharge} HSC has been deducted from your balance.`
+        : 'Room added successfully',
       data: hotel.rooms[hotel.rooms.length - 1]
-    });
+    };
+
+    if (isAdditionalRoom) {
+      response.hscCharged = hscCharge;
+      response.roomNumber = currentRoomCount + 1;
+    }
+
+    res.status(201).json(response);
   } catch (error) {
     console.error('Error adding room:', error);
     res.status(500).json({

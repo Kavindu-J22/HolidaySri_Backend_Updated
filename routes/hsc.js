@@ -27,6 +27,7 @@ router.get('/info', async (req, res) => {
       hsgValue: hscConfig.hsgValue || 1,
       hsdValue: hscConfig.hsdValue || 1,
       currency: hscConfig.currency,
+      additionalRoomCharge: hscConfig.additionalRoomCharge || 50,
       packages
     });
 

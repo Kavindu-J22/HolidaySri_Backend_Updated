@@ -126,6 +126,7 @@ router.get('/hsc-config', verifyAdminToken, async (req, res) => {
         customizeTourPackageCharge: 100,
         sellAdFee: 100,
         accessPromoCodeViewAmount: 50,
+        additionalRoomCharge: 50,
         lastUpdated: null,
         updatedBy: null
       });
@@ -142,7 +143,7 @@ router.get('/hsc-config', verifyAdminToken, async (req, res) => {
 // Update token configuration
 router.put('/hsc-config', verifyAdminToken, async (req, res) => {
   try {
-    const { hscValue, hsgValue, hsdValue, currency, customizeTourPackageCharge, sellAdFee, accessPromoCodeViewAmount } = req.body;
+    const { hscValue, hsgValue, hsdValue, currency, customizeTourPackageCharge, sellAdFee, accessPromoCodeViewAmount, additionalRoomCharge } = req.body;
 
     console.log('========== UPDATE REQUEST ==========');
     console.log('Received update request:', req.body);
@@ -166,6 +167,7 @@ router.put('/hsc-config', verifyAdminToken, async (req, res) => {
       customizeTourPackageCharge: customizeTourPackageCharge !== undefined ? customizeTourPackageCharge : (currentConfig ? currentConfig.customizeTourPackageCharge : 100),
       sellAdFee: sellAdFee !== undefined ? sellAdFee : (currentConfig ? currentConfig.sellAdFee : 100),
       accessPromoCodeViewAmount: accessPromoCodeViewAmount !== undefined ? accessPromoCodeViewAmount : (currentConfig ? currentConfig.accessPromoCodeViewAmount : 50),
+      additionalRoomCharge: additionalRoomCharge !== undefined ? additionalRoomCharge : (currentConfig ? currentConfig.additionalRoomCharge : 50),
       currency: currency !== undefined ? currency : (currentConfig ? currentConfig.currency : 'LKR'),
       updatedBy: req.admin.username
     };
