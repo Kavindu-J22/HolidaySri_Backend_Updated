@@ -192,6 +192,90 @@ router.post('/', verifyToken, async (req, res) => {
     
     await booking.save();
 
+    // Send email notification to hotel owner
+    try {
+      const hotelOwner = await User.findById(hotelOwnerId);
+      if (hotelOwner && hotelOwner.email) {
+        await transporter.sendMail({
+          from: process.env.EMAIL_USER || 'noreply@holidaysri.com',
+          to: hotelOwner.email,
+          subject: '🔔 New Booking Request Received!',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #10b981;">New Booking Request!</h2>
+              <p>Dear Hotel Owner,</p>
+              <p>You have received a new booking request for your hotel. Please review and respond as soon as possible.</p>
+              <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p><strong>Booking ID:</strong> ${booking.bookingId}</p>
+                <p><strong>Hotel:</strong> ${hotelName}</p>
+                <p><strong>Room:</strong> ${roomName} (${roomType})</p>
+                <p><strong>Customer:</strong> ${customerName}</p>
+                <p><strong>Contact:</strong> ${customerContactNumber}</p>
+                <p><strong>Email:</strong> ${customerEmail}</p>
+                <p><strong>Check-in Date:</strong> ${new Date(checkInDate).toLocaleDateString()}</p>
+                <p><strong>Package:</strong> ${selectedPackage}</p>
+                <p><strong>Duration:</strong> ${numberOfDays} day(s)</p>
+                <p><strong>Guests:</strong> ${numberOfAdults} adult(s)${numberOfChildren > 0 ? `, ${numberOfChildren} child(ren)` : ''}</p>
+                <p><strong>Number of Rooms:</strong> ${numberOfRooms}</p>
+                <p><strong>Total Amount:</strong> LKR ${finalAmount.toLocaleString()}</p>
+              </div>
+              <p style="background: #fef3c7; padding: 10px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+                <strong>⚠️ Action Required:</strong> Please log in to your account and review this booking request in the "Client's Requests" tab.
+              </p>
+              <p>Thank you for your prompt attention!</p>
+              <p style="color: #6b7280; font-size: 12px; margin-top: 30px;">Holidaysri Team</p>
+            </div>
+          `
+        });
+        console.log('Hotel owner notification email sent successfully to:', hotelOwner.email);
+      }
+    } catch (emailError) {
+      console.error('Error sending hotel owner email:', emailError);
+    }
+
+    // Send confirmation email to customer
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER || 'noreply@holidaysri.com',
+        to: customerEmail,
+        subject: '✅ Booking Request Submitted Successfully!',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #10b981;">Booking Request Submitted!</h2>
+            <p>Dear ${customerName},</p>
+            <p>Your booking request has been successfully submitted to the hotel. The hotel owner will review your request and respond as soon as possible.</p>
+            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <p><strong>Booking ID:</strong> ${booking.bookingId}</p>
+              <p><strong>Hotel:</strong> ${hotelName}</p>
+              <p><strong>Room:</strong> ${roomName} (${roomType})</p>
+              <p><strong>Check-in Date:</strong> ${new Date(checkInDate).toLocaleDateString()}</p>
+              <p><strong>Package:</strong> ${selectedPackage}</p>
+              <p><strong>Duration:</strong> ${numberOfDays} day(s)</p>
+              <p><strong>Guests:</strong> ${numberOfAdults} adult(s)${numberOfChildren > 0 ? `, ${numberOfChildren} child(ren)` : ''}</p>
+              <p><strong>Number of Rooms:</strong> ${numberOfRooms}</p>
+              <p><strong>Total Amount:</strong> LKR ${finalAmount.toLocaleString()}</p>
+            </div>
+            ${hscDeducted ? `
+              <div style="background: #dbeafe; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p><strong>💰 Payment Information:</strong></p>
+                <p>HSC Amount Paid: ${(totalEarnRate / (await HSCConfig.findOne().sort({ createdAt: -1 })).hscValue).toFixed(2)} HSC</p>
+                <p style="font-size: 12px; color: #6b7280;">This amount was paid for the agent commission and will be refunded if the booking is rejected.</p>
+              </div>
+            ` : ''}
+            <p style="background: #e0f2fe; padding: 10px; border-left: 4px solid #0ea5e9; margin: 20px 0;">
+              <strong>📌 Note:</strong> You will receive an email notification once the hotel owner approves or rejects your request.
+            </p>
+            <p>You can track your booking status in the "My Booking Requests" tab on the hotel details page.</p>
+            <p>Thank you for choosing Holidaysri!</p>
+            <p style="color: #6b7280; font-size: 12px; margin-top: 30px;">Holidaysri Team</p>
+          </div>
+        `
+      });
+      console.log('Customer confirmation email sent successfully to:', customerEmail);
+    } catch (emailError) {
+      console.error('Error sending customer confirmation email:', emailError);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Booking request submitted successfully',
@@ -396,9 +480,9 @@ router.put('/:bookingId/reject', verifyToken, async (req, res) => {
     if (booking.earningsRecordId) {
       await Earning.findByIdAndDelete(booking.earningsRecordId);
 
-      // Send email to agent
+      // Send email to agent - promocodeOwnerId is the agent's _id
       if (booking.promocodeOwnerId) {
-        const agent = await Agent.findOne({ userId: booking.promocodeOwnerId });
+        const agent = await Agent.findById(booking.promocodeOwnerId);
         if (agent) {
           try {
             await transporter.sendMail({
@@ -413,16 +497,21 @@ router.put('/:bookingId/reject', verifyToken, async (req, res) => {
                   <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
                     <p><strong>Booking ID:</strong> ${booking.bookingId}</p>
                     <p><strong>Hotel:</strong> ${booking.hotelName}</p>
-                    <p><strong>Promocode:</strong> ${booking.promocodeUsed}</p>
-                    <p><strong>Amount:</strong> LKR ${booking.totalEarnRate.toLocaleString()}</p>
+                    <p><strong>Room:</strong> ${booking.roomName}</p>
+                    <p><strong>Promocode Used:</strong> ${booking.promocodeUsed}</p>
+                    <p><strong>Deducted Amount:</strong> LKR ${booking.totalEarnRate.toLocaleString()}</p>
                   </div>
                   <p>Thank you for your understanding.</p>
+                  <p style="color: #6b7280; font-size: 12px; margin-top: 30px;">Holidaysri Team</p>
                 </div>
               `
             });
+            console.log('Agent notification email sent successfully to:', agent.email);
           } catch (emailError) {
             console.error('Error sending agent email:', emailError);
           }
+        } else {
+          console.error('Agent not found for promocodeOwnerId:', booking.promocodeOwnerId);
         }
       }
     }
