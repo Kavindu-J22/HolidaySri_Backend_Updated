@@ -315,19 +315,43 @@ router.get('/my-bookings', verifyToken, async (req, res) => {
   }
 });
 
-// GET /api/room-bookings/client-requests/:hotelId - Get hotel owner's client requests
-router.get('/client-requests/:hotelId', verifyToken, async (req, res) => {
+// GET /api/room-bookings/all-client-requests - Get all hotel owner's client requests across all hotels
+router.get('/all-client-requests', verifyToken, async (req, res) => {
   try {
-    const { hotelId } = req.params;
-    
-    const bookings = await RoomBooking.find({ 
-      hotelId,
-      hotelOwnerId: req.user._id 
+    const bookings = await RoomBooking.find({
+      hotelOwnerId: req.user._id
     })
       .sort({ createdAt: -1 })
       .populate('customerId', 'name email contactNumber')
       .populate('promocodeOwnerId', 'userName email promoCode');
-    
+
+    res.json({
+      success: true,
+      data: bookings
+    });
+  } catch (error) {
+    console.error('Error fetching all client requests:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch client requests',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/room-bookings/client-requests/:hotelId - Get hotel owner's client requests for specific hotel
+router.get('/client-requests/:hotelId', verifyToken, async (req, res) => {
+  try {
+    const { hotelId } = req.params;
+
+    const bookings = await RoomBooking.find({
+      hotelId,
+      hotelOwnerId: req.user._id
+    })
+      .sort({ createdAt: -1 })
+      .populate('customerId', 'name email contactNumber')
+      .populate('promocodeOwnerId', 'userName email promoCode');
+
     res.json({
       success: true,
       data: bookings
