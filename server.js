@@ -99,6 +99,7 @@ const booksAndMagazinesEducationalRoutes = require('./routes/booksAndMagazinesEd
 const otherItemsRoutes = require('./routes/otherItems');
 const exclusiveComboPackagesRoutes = require('./routes/exclusiveComboPackages');
 const hotelsAccommodationsRoutes = require('./routes/hotelsAccommodations');
+const roomBookingsRoutes = require('./routes/roomBookings');
 const talentedEntertainersArtistsRoutes = require('./routes/talentedEntertainersArtists');
 const fitnessHealthSpasGymRoutes = require('./routes/fitnessHealthSpasGym');
 const fitnessHealthSpasGymReviewsRoutes = require('./routes/fitnessHealthSpasGymReviews');
@@ -179,6 +180,7 @@ app.use('/api/job-opportunities', jobOpportunitiesRoutes);
 app.use('/api/local-sim-mobile-data', localSimMobileDataRoutes);
 app.use('/api/emergency-services-insurance', emergencyServicesInsuranceRoutes);
 app.use('/api/hotels-accommodations', hotelsAccommodationsRoutes);
+app.use('/api/room-bookings', roomBookingsRoutes);
 
 // Basic route
 app.get('/', (req, res) => {

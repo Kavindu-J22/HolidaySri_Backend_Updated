@@ -13,6 +13,75 @@ const nodemailer = require('nodemailer');
 
 const router = express.Router();
 
+// Validate promocode for booking (public endpoint)
+router.get('/validate-promocode/:code', async (req, res) => {
+  try {
+    const { code } = req.params;
+
+    if (!code) {
+      return res.json({
+        success: false,
+        isValid: false,
+        message: 'Promocode is required'
+      });
+    }
+
+    // Find agent with this promocode
+    const agent = await Agent.findOne({
+      promoCode: code.toUpperCase()
+    });
+
+    if (!agent) {
+      return res.json({
+        success: false,
+        isValid: false,
+        message: 'Invalid promocode'
+      });
+    }
+
+    // Check if active
+    if (!agent.isActive) {
+      return res.json({
+        success: false,
+        isValid: false,
+        message: 'This promocode is inactive'
+      });
+    }
+
+    // Check if expired
+    if (agent.expirationDate && new Date(agent.expirationDate) < new Date()) {
+      return res.json({
+        success: false,
+        isValid: false,
+        message: 'This promocode has expired'
+      });
+    }
+
+    // Valid promocode
+    res.json({
+      success: true,
+      isValid: true,
+      message: 'Valid promocode',
+      agent: {
+        _id: agent._id,
+        userId: agent.userId,
+        userName: agent.userName,
+        email: agent.email,
+        promoCode: agent.promoCode,
+        promoCodeType: agent.promoCodeType
+      }
+    });
+
+  } catch (error) {
+    console.error('Error validating promocode:', error);
+    res.status(500).json({
+      success: false,
+      isValid: false,
+      message: 'Server error while validating promocode'
+    });
+  }
+});
+
 // Email configuration
 const transporter = nodemailer.createTransport({
   // Configure your email service here
