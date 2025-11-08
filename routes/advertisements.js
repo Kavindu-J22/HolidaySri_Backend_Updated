@@ -266,26 +266,34 @@ router.post('/calculate-discount', verifyToken, verifyEmailVerified, async (req,
 router.post('/check-duplicate-slot', verifyToken, verifyEmailVerified, async (req, res) => {
   try {
     const { category } = req.body;
-    
+
     // Check for specific slots that can't be purchased twice
-    const restrictedSlots = ['travel_buddys', 'tour_guiders'];
-    
+    const restrictedSlots = ['travel_buddys', 'tour_guiders', 'caregivers_time_currency'];
+
     if (restrictedSlots.includes(category)) {
       const existingAd = await Advertisement.findOne({
         userId: req.user._id,
         category: category,
-        status: { $in: ['active', 'draft'] }
+        status: { $in: ['draft', 'active', 'paused', 'expired', 'rejected', 'Published'] }
       });
-      
+
       if (existingAd) {
-        return res.status(400).json({ 
-          message: `You can't publish ${category.replace('_', ' ')} advertisement twice. Use your pre-purchased slot.`,
+        // Custom message for caregivers_time_currency
+        let message;
+        if (category === 'caregivers_time_currency') {
+          message = "You can't publish Compassionate Caregivers & Earn Time Currency advertisement twice. Use your pre-purchased slot.";
+        } else {
+          message = `You can't publish ${category.replace('_', ' ')} advertisement twice. Use your pre-purchased slot.`;
+        }
+
+        return res.status(400).json({
+          message: message,
           hasExisting: true,
           existingAd: existingAd
         });
       }
     }
-    
+
     res.json({ canPurchase: true });
   } catch (error) {
     console.error('Check duplicate slot error:', error);
@@ -314,17 +322,25 @@ router.post('/process-payment', verifyToken, verifyEmailVerified, async (req, re
     }
 
     // Check for duplicate slots
-    const restrictedSlots = ['travel_buddys', 'tour_guiders'];
+    const restrictedSlots = ['travel_buddys', 'tour_guiders', 'caregivers_time_currency'];
     if (restrictedSlots.includes(slot.category)) {
       const existingAd = await Advertisement.findOne({
         userId: req.user._id,
         category: slot.category,
-        status: { $in: ['active', 'draft'] }
+        status: { $in: ['draft', 'active', 'paused', 'expired', 'rejected', 'Published'] }
       });
-      
+
       if (existingAd) {
-        return res.status(400).json({ 
-          message: `You can't publish ${slot.category.replace('_', ' ')} advertisement twice. Use your pre-purchased slot.`
+        // Custom message for caregivers_time_currency
+        let message;
+        if (slot.category === 'caregivers_time_currency') {
+          message = "You can't publish Compassionate Caregivers & Earn Time Currency advertisement twice. Use your pre-purchased slot.";
+        } else {
+          message = `You can't publish ${slot.category.replace('_', ' ')} advertisement twice. Use your pre-purchased slot.`;
+        }
+
+        return res.status(400).json({
+          message: message
         });
       }
     }
