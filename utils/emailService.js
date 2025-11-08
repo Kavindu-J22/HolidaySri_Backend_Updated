@@ -2211,6 +2211,170 @@ const sendCustomizeEventPartnerNotification = async (email, name) => {
   }
 };
 
+// Send email to partner when they approve a customize tour package request
+const sendTourPackageApprovalConfirmation = async (email, name, requestDetails) => {
+  const transporter = createTransporter();
+
+  const activitiesList = requestDetails.activities && requestDetails.activities.length > 0
+    ? requestDetails.activities.map(activity => `<li style="margin: 5px 0;">${activity}</li>`).join('')
+    : '<li style="margin: 5px 0;">No specific activities selected</li>';
+
+  const accommodationDisplay = requestDetails.accommodation === 'other'
+    ? requestDetails.accommodationOther
+    : requestDetails.accommodation.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+  const formattedStartDate = new Date(requestDetails.startDate).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri.com',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: '✅ Successfully Accepted Customize Tour Request | Holidaysri',
+    html: `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 650px; margin: 0 auto; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px;">
+        <div style="background: white; border-radius: 15px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.1);">
+
+          <!-- Header -->
+          <div style="text-align: center; margin-bottom: 30px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+              <span style="font-size: 40px;">✅</span>
+            </div>
+            <h1 style="color: #2d3748; margin: 0; font-size: 28px; font-weight: 700;">
+              Request Accepted Successfully!
+            </h1>
+            <p style="color: #718096; margin: 10px 0 0 0; font-size: 16px;">
+              You have successfully accepted a customize tour request
+            </p>
+          </div>
+
+          <!-- Greeting -->
+          <div style="margin-bottom: 30px;">
+            <p style="color: #2d3748; font-size: 16px; line-height: 1.6; margin: 0;">
+              Dear <strong>${name}</strong>,
+            </p>
+            <p style="color: #4a5568; font-size: 15px; line-height: 1.6; margin: 15px 0 0 0;">
+              Congratulations! You have successfully accepted a customize tour package request. The customer will be notified with your contact details.
+            </p>
+          </div>
+
+          <!-- Request Details Card -->
+          <div style="background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%); border-left: 4px solid #667eea; border-radius: 10px; padding: 25px; margin: 25px 0;">
+            <h2 style="color: #2d3748; margin: 0 0 20px 0; font-size: 20px; font-weight: 600;">
+              📋 Tour Request Details
+            </h2>
+
+            <div style="background: white; border-radius: 8px; padding: 20px; margin-bottom: 15px;">
+              <h3 style="color: #667eea; margin: 0 0 15px 0; font-size: 16px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+                👤 Customer Information
+              </h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; color: #718096; font-size: 14px; width: 40%;">Full Name:</td>
+                  <td style="padding: 8px 0; color: #2d3748; font-size: 14px; font-weight: 600;">${requestDetails.fullName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #718096; font-size: 14px;">Email:</td>
+                  <td style="padding: 8px 0; color: #2d3748; font-size: 14px; font-weight: 600;">${requestDetails.email}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #718096; font-size: 14px;">Contact Number:</td>
+                  <td style="padding: 8px 0; color: #2d3748; font-size: 14px; font-weight: 600;">${requestDetails.contactNumber}</td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="background: white; border-radius: 8px; padding: 20px; margin-bottom: 15px;">
+              <h3 style="color: #667eea; margin: 0 0 15px 0; font-size: 16px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+                ✈️ Travel Details
+              </h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; color: #718096; font-size: 14px; width: 40%;">Start Date:</td>
+                  <td style="padding: 8px 0; color: #2d3748; font-size: 14px; font-weight: 600;">${formattedStartDate}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #718096; font-size: 14px;">Number of Travelers:</td>
+                  <td style="padding: 8px 0; color: #2d3748; font-size: 14px; font-weight: 600;">${requestDetails.numberOfTravelers} ${requestDetails.numberOfTravelers === 1 ? 'person' : 'people'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #718096; font-size: 14px;">Duration:</td>
+                  <td style="padding: 8px 0; color: #2d3748; font-size: 14px; font-weight: 600;">${requestDetails.duration} ${requestDetails.duration === 1 ? 'day' : 'days'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #718096; font-size: 14px;">Accommodation:</td>
+                  <td style="padding: 8px 0; color: #2d3748; font-size: 14px; font-weight: 600;">${accommodationDisplay}</td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="background: white; border-radius: 8px; padding: 20px;">
+              <h3 style="color: #667eea; margin: 0 0 15px 0; font-size: 16px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+                🎯 Activities & Preferences
+              </h3>
+              <ul style="margin: 10px 0; padding-left: 20px; color: #4a5568; font-size: 14px; line-height: 1.8;">
+                ${activitiesList}
+              </ul>
+              ${requestDetails.specialRequests ? `
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
+                  <p style="color: #718096; font-size: 13px; margin: 0 0 5px 0; font-weight: 600;">Special Requests:</p>
+                  <p style="color: #4a5568; font-size: 14px; margin: 0; line-height: 1.6; font-style: italic;">${requestDetails.specialRequests}</p>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- Next Steps -->
+          <div style="background: #fff5f5; border-left: 4px solid #f56565; border-radius: 10px; padding: 20px; margin: 25px 0;">
+            <h3 style="color: #c53030; margin: 0 0 12px 0; font-size: 16px; font-weight: 600;">
+              📌 Next Steps
+            </h3>
+            <ul style="margin: 0; padding-left: 20px; color: #742a2a; font-size: 14px; line-height: 1.8;">
+              <li>The customer has been notified with your contact information</li>
+              <li>They will reach out to you directly to discuss the tour details</li>
+              <li>Please respond promptly to provide the best customer experience</li>
+              <li>Prepare a customized tour package based on their requirements</li>
+            </ul>
+          </div>
+
+          <!-- Support Section -->
+          <div style="background: #f7fafc; border-radius: 10px; padding: 20px; margin: 25px 0; text-align: center;">
+            <p style="color: #4a5568; font-size: 14px; margin: 0 0 10px 0;">
+              Need assistance? Our support team is here to help!
+            </p>
+            <p style="color: #718096; font-size: 13px; margin: 0;">
+              Contact us at <a href="mailto:support@holidaysri.com" style="color: #667eea; text-decoration: none; font-weight: 600;">support@holidaysri.com</a>
+            </p>
+          </div>
+
+          <!-- Footer -->
+          <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #a0aec0; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri.com. All rights reserved.
+            </p>
+            <p style="color: #cbd5e0; font-size: 12px; margin: 5px 0 0 0;">
+              This is an automated message, please do not reply to this email.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Tour package approval confirmation email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Send email to partner/member when they approve an event request
 const sendEventRequestApprovalConfirmation = async (email, name, requestDetails) => {
   const transporter = createTransporter();
@@ -2376,5 +2540,6 @@ module.exports = {
   sendAdvertisementExpiredEmail,
   sendCustomizeTourPartnerNotification,
   sendCustomizeEventPartnerNotification,
-  sendEventRequestApprovalConfirmation
+  sendEventRequestApprovalConfirmation,
+  sendTourPackageApprovalConfirmation
 };

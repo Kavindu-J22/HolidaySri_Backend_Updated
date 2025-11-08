@@ -6,7 +6,7 @@ const User = require('../models/User');
 const { HSCConfig } = require('../models/HSC');
 const { CommercialPartner } = require('../models/CommercialPartner');
 const { verifyToken, verifyEmailVerified, verifyAdminToken } = require('../middleware/auth');
-const { sendCustomizeTourPartnerNotification } = require('../utils/emailService');
+const { sendCustomizeTourPartnerNotification, sendTourPackageApprovalConfirmation } = require('../utils/emailService');
 
 // Submit customize tour package request
 router.post('/submit', verifyToken, verifyEmailVerified, async (req, res) => {
@@ -466,9 +466,29 @@ router.put('/partner/request/:id/approve', verifyToken, verifyEmailVerified, asy
 
     await request.save();
 
+    // Send confirmation email to the partner who approved
+    try {
+      await sendTourPackageApprovalConfirmation(user.email, user.name, {
+        fullName: request.fullName,
+        email: request.email,
+        contactNumber: request.contactNumber,
+        startDate: request.startDate,
+        numberOfTravelers: request.numberOfTravelers,
+        duration: request.duration,
+        accommodation: request.accommodation,
+        accommodationOther: request.accommodationOther,
+        activities: request.activities,
+        specialRequests: request.specialRequests,
+        createdAt: request.createdAt
+      });
+    } catch (emailError) {
+      console.error('Error sending approval confirmation email:', emailError);
+      // Don't fail the request if email fails
+    }
+
     res.json({
       success: true,
-      message: 'Request approved successfully',
+      message: 'Request approved successfully. Confirmation email sent.',
       data: request
     });
 
