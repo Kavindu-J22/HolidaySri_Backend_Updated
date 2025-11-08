@@ -106,6 +106,7 @@ const fitnessHealthSpasGymReviewsRoutes = require('./routes/fitnessHealthSpasGym
 const jobOpportunitiesRoutes = require('./routes/jobOpportunities');
 const localSimMobileDataRoutes = require('./routes/localSimMobileData');
 const emergencyServicesInsuranceRoutes = require('./routes/emergencyServicesInsurance');
+const liveRidesCarpoolingRoutes = require('./routes/liveRidesCarpooling');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
 const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
 const { startHSDLeaderBoardJobs, runHSDStartupChecks } = require('./jobs/hsdLeaderBoardRewards');
@@ -181,6 +182,7 @@ app.use('/api/local-sim-mobile-data', localSimMobileDataRoutes);
 app.use('/api/emergency-services-insurance', emergencyServicesInsuranceRoutes);
 app.use('/api/hotels-accommodations', hotelsAccommodationsRoutes);
 app.use('/api/room-bookings', roomBookingsRoutes);
+app.use('/api/live-rides-carpooling', liveRidesCarpoolingRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
