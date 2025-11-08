@@ -26,6 +26,12 @@ const hscConfigSchema = new mongoose.Schema({
     required: true,
     default: 100 // HSC - charge for submitting customize tour package request
   },
+  // Customize Event Request Charge (HSC)
+  customizeEventRequestCharge: {
+    type: Number,
+    required: true,
+    default: 100 // HSC - charge for submitting customize event request
+  },
   // Selling advertisement fee
   sellAdFee: {
     type: Number,

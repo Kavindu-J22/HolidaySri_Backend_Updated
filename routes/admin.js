@@ -143,7 +143,7 @@ router.get('/hsc-config', verifyAdminToken, async (req, res) => {
 // Update token configuration
 router.put('/hsc-config', verifyAdminToken, async (req, res) => {
   try {
-    const { hscValue, hsgValue, hsdValue, currency, customizeTourPackageCharge, sellAdFee, accessPromoCodeViewAmount, additionalRoomCharge } = req.body;
+    const { hscValue, hsgValue, hsdValue, currency, customizeTourPackageCharge, customizeEventRequestCharge, sellAdFee, accessPromoCodeViewAmount, additionalRoomCharge } = req.body;
 
     console.log('========== UPDATE REQUEST ==========');
     console.log('Received update request:', req.body);
@@ -165,6 +165,7 @@ router.put('/hsc-config', verifyAdminToken, async (req, res) => {
       hsgValue: hsgValue !== undefined ? hsgValue : (currentConfig ? currentConfig.hsgValue : 1),
       hsdValue: hsdValue !== undefined ? hsdValue : (currentConfig ? currentConfig.hsdValue : 1),
       customizeTourPackageCharge: customizeTourPackageCharge !== undefined ? customizeTourPackageCharge : (currentConfig ? currentConfig.customizeTourPackageCharge : 100),
+      customizeEventRequestCharge: customizeEventRequestCharge !== undefined ? customizeEventRequestCharge : (currentConfig ? currentConfig.customizeEventRequestCharge : 100),
       sellAdFee: sellAdFee !== undefined ? sellAdFee : (currentConfig ? currentConfig.sellAdFee : 100),
       accessPromoCodeViewAmount: accessPromoCodeViewAmount !== undefined ? accessPromoCodeViewAmount : (currentConfig ? currentConfig.accessPromoCodeViewAmount : 50),
       additionalRoomCharge: additionalRoomCharge !== undefined ? additionalRoomCharge : (currentConfig ? currentConfig.additionalRoomCharge : 50),
