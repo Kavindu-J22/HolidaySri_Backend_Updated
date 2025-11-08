@@ -2145,6 +2145,72 @@ const sendCustomizeTourPartnerNotification = async (email, name) => {
   }
 };
 
+// Send customize event request notification to partners & members
+const sendCustomizeEventPartnerNotification = async (email, name) => {
+  const transporter = createTransporter();
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri.com',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: '🎉 New Customize Event Request Available!',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">🎉 New Event Request!</h1>
+        </div>
+
+        <div style="background-color: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            Hello <strong>${name}</strong>,
+          </p>
+
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            Great news! A new <strong>Customize Event Request</strong> is now available for partners and members to review.
+          </p>
+
+          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea;">
+            <p style="color: #555; font-size: 14px; margin: 0; line-height: 1.6;">
+              <strong>📋 What to do next:</strong><br>
+              Visit the <strong>Customize Your Event</strong> page and check the <strong>Open Requests</strong> tab to view the details and approve the request if you're interested.
+            </p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="http://localhost:3000/ads/events-management/customize-event"
+               style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 25px; font-weight: bold; font-size: 16px;">
+              View Open Requests
+            </a>
+          </div>
+
+          <p style="color: #666; font-size: 14px; line-height: 1.6; margin-top: 20px;">
+            As a valued partner/member, you have exclusive access to these event requests. Don't miss this opportunity!
+          </p>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri.com. All rights reserved.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
+              This is an automated message, please do not reply to this email.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Customize event partner notification email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   generateOTP,
   sendEmailVerificationOTP,
@@ -2169,5 +2235,6 @@ module.exports = {
   sendTokenGiftEmail,
   sendAdvertisementExpiringWarning,
   sendAdvertisementExpiredEmail,
-  sendCustomizeTourPartnerNotification
+  sendCustomizeTourPartnerNotification,
+  sendCustomizeEventPartnerNotification
 };

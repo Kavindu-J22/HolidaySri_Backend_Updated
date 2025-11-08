@@ -62,7 +62,7 @@ const customizeEventRequestSchema = new mongoose.Schema({
   // Request Status
   status: {
     type: String,
-    enum: ['pending', 'under-review', 'approved', 'rejected'],
+    enum: ['pending', 'under-review', 'approved', 'rejected', 'show-partners-members', 'open-acceptance'],
     default: 'pending'
   },
   
@@ -93,6 +93,19 @@ const customizeEventRequestSchema = new mongoose.Schema({
     trim: true
   },
   processedAt: {
+    type: Date
+  },
+
+  // Partner/Member Approval
+  partnerApprovedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  partnerApprovedEmail: {
+    type: String,
+    trim: true
+  },
+  partnerApprovedAt: {
     type: Date
   },
   
