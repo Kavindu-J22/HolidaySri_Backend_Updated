@@ -2211,6 +2211,145 @@ const sendCustomizeEventPartnerNotification = async (email, name) => {
   }
 };
 
+// Send email to partner/member when they approve an event request
+const sendEventRequestApprovalConfirmation = async (email, name, requestDetails) => {
+  const transporter = createTransporter();
+
+  const activitiesList = requestDetails.activities && requestDetails.activities.length > 0
+    ? requestDetails.activities.map(activity => `<li style="margin: 5px 0;">${activity}</li>`).join('')
+    : '<li style="margin: 5px 0;">No specific activities selected</li>';
+
+  const eventTypeDisplay = requestDetails.eventType === 'other'
+    ? requestDetails.eventTypeOther
+    : requestDetails.eventType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri.com',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: '✅ Event Request Approval Confirmation - Holidaysri.com',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4;">
+        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td align="center" style="padding: 40px 0;">
+              <table role="presentation" style="width: 600px; border-collapse: collapse; background-color: #ffffff; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); border-radius: 8px; overflow: hidden;">
+
+                <tr>
+                  <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
+                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">🎉 Approval Confirmed!</h1>
+                    <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 16px;">You've successfully approved an event request</p>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding: 40px 30px;">
+                    <p style="margin: 0 0 20px 0; color: #333333; font-size: 16px;">Dear <strong>${name}</strong>,</p>
+
+                    <p style="margin: 0 0 25px 0; color: #333333; font-size: 16px; line-height: 1.6;">
+                      Thank you for approving the customize event request! The customer will be notified, and you can now proceed with planning their special event.
+                    </p>
+
+                    <div style="background-color: #f8f9fa; border-left: 4px solid #667eea; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                      <h2 style="margin: 0 0 15px 0; color: #667eea; font-size: 20px;">📋 Event Request Details</h2>
+
+                      <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                          <td style="padding: 8px 0; color: #666666; font-size: 14px; width: 40%;"><strong>Event Type:</strong></td>
+                          <td style="padding: 8px 0; color: #333333; font-size: 14px;">${eventTypeDisplay}</td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 8px 0; color: #666666; font-size: 14px;"><strong>Customer Name:</strong></td>
+                          <td style="padding: 8px 0; color: #333333; font-size: 14px;">${requestDetails.fullName}</td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 8px 0; color: #666666; font-size: 14px;"><strong>Email:</strong></td>
+                          <td style="padding: 8px 0; color: #333333; font-size: 14px;">${requestDetails.email}</td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 8px 0; color: #666666; font-size: 14px;"><strong>Contact Number:</strong></td>
+                          <td style="padding: 8px 0; color: #333333; font-size: 14px;">${requestDetails.contactNumber}</td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 8px 0; color: #666666; font-size: 14px;"><strong>Number of Guests:</strong></td>
+                          <td style="padding: 8px 0; color: #333333; font-size: 14px;">${requestDetails.numberOfGuests} guests</td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 8px 0; color: #666666; font-size: 14px;"><strong>Estimated Budget:</strong></td>
+                          <td style="padding: 8px 0; color: #333333; font-size: 14px;">${requestDetails.estimatedBudget} LKR</td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 8px 0; color: #666666; font-size: 14px;"><strong>Submitted On:</strong></td>
+                          <td style="padding: 8px 0; color: #333333; font-size: 14px;">${new Date(requestDetails.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                        </tr>
+                      </table>
+                    </div>
+
+                    <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                      <h3 style="margin: 0 0 12px 0; color: #856404; font-size: 16px;">🎯 Requested Activities & Services</h3>
+                      <ul style="margin: 0; padding-left: 20px; color: #856404; font-size: 14px; line-height: 1.8;">${activitiesList}</ul>
+                    </div>
+
+                    ${requestDetails.specialRequests ? `
+                    <div style="background-color: #e7f3ff; border-left: 4px solid #2196F3; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                      <h3 style="margin: 0 0 12px 0; color: #0d47a1; font-size: 16px;">💬 Special Requests</h3>
+                      <p style="margin: 0; color: #1565c0; font-size: 14px; line-height: 1.6;">${requestDetails.specialRequests}</p>
+                    </div>` : ''}
+
+                    <div style="background-color: #d4edda; border-left: 4px solid #28a745; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                      <h3 style="margin: 0 0 12px 0; color: #155724; font-size: 16px;">✅ Next Steps</h3>
+                      <ul style="margin: 0; padding-left: 20px; color: #155724; font-size: 14px; line-height: 1.8;">
+                        <li>Contact the customer using the provided contact details</li>
+                        <li>Discuss event requirements and finalize arrangements</li>
+                        <li>Provide a detailed quote based on their budget and needs</li>
+                        <li>Coordinate with the customer for event planning and execution</li>
+                      </ul>
+                    </div>
+
+                    <p style="margin: 25px 0 0 0; color: #333333; font-size: 16px;">
+                      If you have any questions, please contact our support team.
+                    </p>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e0e0e0;">
+                    <p style="margin: 0 0 10px 0; color: #666666; font-size: 14px;">
+                      Best regards,<br><strong style="color: #667eea;">The Holidaysri.com Team</strong>
+                    </p>
+                    <p style="margin: 15px 0 0 0; color: #999999; font-size: 12px;">
+                      This is an automated confirmation email.
+                    </p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log('Event request approval confirmation email sent to:', email);
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending event request approval confirmation email:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   generateOTP,
   sendEmailVerificationOTP,
@@ -2236,5 +2375,6 @@ module.exports = {
   sendAdvertisementExpiringWarning,
   sendAdvertisementExpiredEmail,
   sendCustomizeTourPartnerNotification,
-  sendCustomizeEventPartnerNotification
+  sendCustomizeEventPartnerNotification,
+  sendEventRequestApprovalConfirmation
 };

@@ -5,7 +5,7 @@ const PaymentActivity = require('../models/PaymentActivity');
 const User = require('../models/User');
 const { HSCConfig, HSCTransaction } = require('../models/HSC');
 const { verifyToken, verifyEmailVerified, verifyAdminToken } = require('../middleware/auth');
-const { sendCustomizeEventPartnerNotification } = require('../utils/emailService');
+const { sendCustomizeEventPartnerNotification, sendEventRequestApprovalConfirmation } = require('../utils/emailService');
 
 // Submit customize event request
 router.post('/submit', verifyToken, verifyEmailVerified, async (req, res) => {
@@ -458,9 +458,28 @@ router.post('/approve-request/:id', verifyToken, verifyEmailVerified, async (req
 
     await request.save();
 
+    // Send confirmation email to the partner/member who approved
+    try {
+      await sendEventRequestApprovalConfirmation(user.email, user.name, {
+        eventType: request.eventType,
+        eventTypeOther: request.eventTypeOther,
+        fullName: request.fullName,
+        email: request.email,
+        contactNumber: request.contactNumber,
+        numberOfGuests: request.numberOfGuests,
+        estimatedBudget: request.estimatedBudget,
+        activities: request.activities,
+        specialRequests: request.specialRequests,
+        createdAt: request.createdAt
+      });
+    } catch (emailError) {
+      console.error('Error sending approval confirmation email:', emailError);
+      // Don't fail the request if email fails
+    }
+
     res.json({
       success: true,
-      message: 'Request approved successfully',
+      message: 'Request approved successfully. Confirmation email sent.',
       data: request
     });
 
