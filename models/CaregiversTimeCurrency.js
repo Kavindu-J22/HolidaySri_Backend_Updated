@@ -198,8 +198,10 @@ caregiversTimeCurrencySchema.pre('save', function(next) {
       reason: '',
       specialNeeds: []
     };
-    // Set HSTC to 36 for Care Giver
-    this.HSTC = 36;
+    // Set HSTC to 36 for Care Giver ONLY on new documents (not on updates)
+    if (this.isNew) {
+      this.HSTC = 36;
+    }
   } else if (this.type === 'Care Needer') {
     // Care Needer must have reason
     if (!this.careNeederDetails.reason || this.careNeederDetails.reason.trim() === '') {
@@ -210,8 +212,10 @@ caregiversTimeCurrencySchema.pre('save', function(next) {
       experience: undefined,
       services: []
     };
-    // Set HSTC to 720 for Care Needer
-    this.HSTC = 720;
+    // Set HSTC to 720 for Care Needer ONLY on new documents (not on updates)
+    if (this.isNew) {
+      this.HSTC = 720;
+    }
   }
 
   next();
@@ -224,6 +228,54 @@ caregiversTimeCurrencySchema.index({ type: 1 });
 caregiversTimeCurrencySchema.index({ province: 1, city: 1 });
 caregiversTimeCurrencySchema.index({ available: 1, occupied: 1 });
 caregiversTimeCurrencySchema.index({ createdAt: -1 });
+caregiversTimeCurrencySchema.index({ publishedAdId: 1 });
 
-module.exports = mongoose.model('CaregiversTimeCurrency', caregiversTimeCurrencySchema);
+// Review Schema for Caregivers Time Currency
+const caregiverReviewSchema = new mongoose.Schema({
+  caregiverId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CaregiversTimeCurrency',
+    required: true
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  userName: {
+    type: String,
+    required: true
+  },
+  userAvatar: {
+    type: String,
+    default: ''
+  },
+  rating: {
+    type: Number,
+    required: true,
+    min: 1,
+    max: 5
+  },
+  review: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 1000
+  }
+}, {
+  timestamps: true
+});
+
+// Index for reviews
+caregiverReviewSchema.index({ caregiverId: 1 });
+caregiverReviewSchema.index({ userId: 1 });
+caregiverReviewSchema.index({ createdAt: -1 });
+
+const CaregiversTimeCurrency = mongoose.model('CaregiversTimeCurrency', caregiversTimeCurrencySchema);
+const CaregiverReview = mongoose.model('CaregiverReview', caregiverReviewSchema);
+
+module.exports = {
+  CaregiversTimeCurrency,
+  CaregiverReview
+};
 
