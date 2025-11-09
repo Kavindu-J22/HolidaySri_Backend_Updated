@@ -5,6 +5,7 @@ const moment = require('moment-timezone');
 const { verifyToken } = require('../middleware/auth');
 const { CaregiversTimeCurrency, CaregiverReview } = require('../models/CaregiversTimeCurrency');
 const Advertisement = require('../models/Advertisement');
+const HSTCTransaction = require('../models/HSTCTransaction');
 
 // Sri Lankan provinces and districts mapping for validation
 const provincesAndDistricts = {
@@ -701,6 +702,198 @@ router.get('/:id/reviews', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch reviews'
+    });
+  }
+});
+
+// GET /api/caregivers-time-currency/find-by-careid/:careId - Find user by careID
+router.get('/find-by-careid/:careId', verifyToken, async (req, res) => {
+  try {
+    const { careId } = req.params;
+
+    // Find profile by careID
+    const profile = await CaregiversTimeCurrency.findOne({ careID: careId })
+      .select('careID name gender age type avatar HSTC');
+
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        message: 'No profile found with this Care ID'
+      });
+    }
+
+    // Check if user is trying to find themselves
+    const userProfile = await CaregiversTimeCurrency.findOne({ userId: req.user._id });
+    if (userProfile && userProfile.careID === careId) {
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot transfer HSTC to yourself'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: profile
+    });
+  } catch (error) {
+    console.error('Error finding profile by careID:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to find profile'
+    });
+  }
+});
+
+// POST /api/caregivers-time-currency/transfer-hstc - Transfer HSTC to another user
+router.post('/transfer-hstc', verifyToken, async (req, res) => {
+  try {
+    const { receiverCareId, amount, reason } = req.body;
+
+    // Validate input
+    if (!receiverCareId || !amount || !reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Receiver Care ID, amount, and reason are required'
+      });
+    }
+
+    // Validate amount is a positive integer
+    if (!Number.isInteger(amount) || amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Amount must be a positive whole number (no decimals allowed)'
+      });
+    }
+
+    // Validate reason length
+    if (reason.trim().length === 0 || reason.length > 500) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reason must be between 1 and 500 characters'
+      });
+    }
+
+    // Find sender's profile
+    const senderProfile = await CaregiversTimeCurrency.findOne({ userId: req.user._id });
+    if (!senderProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Your profile not found'
+      });
+    }
+
+    // Find receiver's profile
+    const receiverProfile = await CaregiversTimeCurrency.findOne({ careID: receiverCareId });
+    if (!receiverProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Receiver profile not found'
+      });
+    }
+
+    // Check if trying to transfer to self
+    if (senderProfile.careID === receiverCareId) {
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot transfer HSTC to yourself'
+      });
+    }
+
+    // Check if sender has sufficient HSTC
+    if (senderProfile.HSTC < amount) {
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient HSTC. You have ${senderProfile.HSTC}h, but trying to transfer ${amount}h`
+      });
+    }
+
+    // Perform the transfer
+    senderProfile.HSTC -= amount;
+    receiverProfile.HSTC += amount;
+
+    await senderProfile.save();
+    await receiverProfile.save();
+
+    // Create a single transaction record (type will be determined by who's viewing it)
+    const transaction = new HSTCTransaction({
+      senderId: senderProfile._id,
+      senderCareID: senderProfile.careID,
+      senderName: senderProfile.name,
+      receiverId: receiverProfile._id,
+      receiverCareID: receiverProfile.careID,
+      receiverName: receiverProfile.name,
+      amount,
+      reason,
+      transactionType: 'Transfer', // This will be dynamically determined when fetching
+      status: 'completed'
+    });
+
+    await transaction.save();
+
+    res.json({
+      success: true,
+      message: `Successfully transferred ${amount}h HSTC to ${receiverProfile.name}`,
+      data: {
+        newBalance: senderProfile.HSTC,
+        transferredAmount: amount,
+        receiverName: receiverProfile.name,
+        receiverCareID: receiverProfile.careID
+      }
+    });
+  } catch (error) {
+    console.error('Error transferring HSTC:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to transfer HSTC'
+    });
+  }
+});
+
+// GET /api/caregivers-time-currency/:id/transactions - Get transaction history for a profile
+router.get('/:id/transactions', async (req, res) => {
+  try {
+    const profile = await CaregiversTimeCurrency.findById(req.params.id);
+
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Profile not found'
+      });
+    }
+
+    // Get all transactions where this profile is either sender or receiver
+    const transactions = await HSTCTransaction.find({
+      $or: [
+        { senderId: profile._id },
+        { receiverId: profile._id }
+      ]
+    }).sort({ createdAt: -1 });
+
+    // Format transactions for display
+    const formattedTransactions = transactions.map(transaction => {
+      const isSender = transaction.senderId.toString() === profile._id.toString();
+
+      return {
+        _id: transaction._id,
+        amount: transaction.amount,
+        reason: transaction.reason,
+        transactionType: isSender ? 'Transfer' : 'Received',
+        otherPartyName: isSender ? transaction.receiverName : transaction.senderName,
+        otherPartyCareID: isSender ? transaction.receiverCareID : transaction.senderCareID,
+        createdAt: transaction.createdAt,
+        status: transaction.status
+      };
+    });
+
+    res.json({
+      success: true,
+      data: formattedTransactions
+    });
+  } catch (error) {
+    console.error('Error fetching transactions:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch transactions'
     });
   }
 });
