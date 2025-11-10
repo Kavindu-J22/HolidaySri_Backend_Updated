@@ -2,7 +2,10 @@ const express = require('express');
 const router = express.Router();
 const DonationsRaiseFund = require('../models/DonationsRaiseFund');
 const Advertisement = require('../models/Advertisement');
+const PaidDonationFund = require('../models/PaidDonationFund');
+const User = require('../models/User');
 const { verifyToken, verifyEmailVerified, verifyAdmin, verifyAdminToken } = require('../middleware/auth');
+const { sendDonationFundPaidConfirmation } = require('../utils/emailService');
 const moment = require('moment-timezone');
 const { HSCConfig } = require('../models/HSC');
 
@@ -681,6 +684,129 @@ router.put('/admin/withdrawal-requests/:id', verifyAdminToken, async (req, res) 
     res.status(500).json({
       success: false,
       message: 'Failed to process withdrawal request'
+    });
+  }
+});
+
+// POST /api/donations-raise-fund/admin/mark-as-paid/:id - Mark approved withdrawal as paid (admin only)
+router.post('/admin/mark-as-paid/:id', verifyAdminToken, async (req, res) => {
+  try {
+    const { paymentNote } = req.body;
+
+    // Find the campaign with all necessary populated data
+    const campaign = await DonationsRaiseFund.findById(req.params.id)
+      .populate('userId', 'name email contactNumber bankDetails')
+      .populate('publishedAdId');
+
+    if (!campaign) {
+      return res.status(404).json({
+        success: false,
+        message: 'Campaign not found'
+      });
+    }
+
+    // Verify withdrawal request is approved
+    if (campaign.withdrawalRequest.status !== 'approved') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only approved withdrawal requests can be marked as paid'
+      });
+    }
+
+    // Get HSC config for conversion
+    const hscConfig = await HSCConfig.findOne();
+    const hscValue = hscConfig?.hscValue || 100;
+
+    // Create paid donation fund record
+    const paidFund = new PaidDonationFund({
+      campaignId: campaign._id,
+      campaignTitle: campaign.title,
+      organizer: campaign.organizer,
+      category: campaign.category,
+      userId: campaign.userId._id,
+      userName: campaign.userId.name,
+      userEmail: campaign.userId.email,
+      userContact: campaign.userId.contactNumber,
+      bankDetails: campaign.userId.bankDetails || {},
+      requestedAmountLKR: campaign.requestedAmountLKR,
+      requestedAmountHSC: campaign.requestedAmountHSC,
+      raisedAmountHSC: campaign.totalDonatedHSC,
+      raisedAmountLKR: campaign.totalDonatedLKR,
+      withdrawalRequestedAt: campaign.withdrawalRequest.requestedAt,
+      withdrawalApprovedAt: campaign.withdrawalRequest.processedAt,
+      adminNote: campaign.withdrawalRequest.adminNote,
+      paidBy: req.admin.username,
+      paymentNote: paymentNote || '',
+      advertisementId: campaign.publishedAdId.slotId,
+      advertisementSlot: campaign.publishedAdId.category
+    });
+
+    await paidFund.save();
+
+    // Send payment confirmation email
+    const emailResult = await sendDonationFundPaidConfirmation(
+      campaign.userId.email,
+      campaign.userId.name,
+      {
+        campaignTitle: campaign.title,
+        organizer: campaign.organizer,
+        raisedAmountHSC: campaign.totalDonatedHSC,
+        raisedAmountLKR: campaign.totalDonatedLKR,
+        requestedAmountHSC: campaign.requestedAmountHSC,
+        requestedAmountLKR: campaign.requestedAmountLKR,
+        paidAt: new Date(),
+        bankDetails: campaign.userId.bankDetails
+      }
+    );
+
+    if (!emailResult.success) {
+      console.error('Failed to send payment confirmation email:', emailResult.error);
+    }
+
+    // Delete the advertisement
+    if (campaign.publishedAdId) {
+      await Advertisement.findByIdAndDelete(campaign.publishedAdId._id);
+    }
+
+    // Delete the campaign
+    await DonationsRaiseFund.findByIdAndDelete(campaign._id);
+
+    res.json({
+      success: true,
+      message: 'Withdrawal marked as paid successfully. Campaign and advertisement deleted.',
+      data: {
+        paidFundId: paidFund._id,
+        emailSent: emailResult.success
+      }
+    });
+
+  } catch (error) {
+    console.error('Error marking withdrawal as paid:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to mark withdrawal as paid',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/donations-raise-fund/admin/paid-funds - Get all paid donation funds (admin only)
+router.get('/admin/paid-funds', verifyAdminToken, async (req, res) => {
+  try {
+    const paidFunds = await PaidDonationFund.find()
+      .populate('userId', 'name email profileImage')
+      .sort({ paidAt: -1 });
+
+    res.json({
+      success: true,
+      data: paidFunds
+    });
+
+  } catch (error) {
+    console.error('Error fetching paid funds:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch paid funds'
     });
   }
 });

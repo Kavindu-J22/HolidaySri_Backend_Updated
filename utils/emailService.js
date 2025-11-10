@@ -2514,6 +2514,139 @@ const sendEventRequestApprovalConfirmation = async (email, name, requestDetails)
   }
 };
 
+// Send donation fund paid confirmation email
+const sendDonationFundPaidConfirmation = async (userEmail, userName, paymentDetails) => {
+  const transporter = createTransporter();
+
+  const {
+    campaignTitle,
+    organizer,
+    raisedAmountHSC,
+    raisedAmountLKR,
+    requestedAmountHSC,
+    requestedAmountLKR,
+    paidAt,
+    bankDetails
+  } = paymentDetails;
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri.com',
+      address: process.env.EMAIL_USER
+    },
+    to: userEmail,
+    subject: '🎉 Congratulations! Your Raised Funds Have Been Paid - Holidaysri.com',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #2563eb; margin: 0;">Holidaysri.com</h1>
+            <p style="color: #666; margin: 5px 0;">Sri Lanka's Premier Tourism Platform</p>
+          </div>
+
+          <!-- Congratulations Banner -->
+          <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; border-radius: 8px; text-align: center; margin-bottom: 30px;">
+            <h2 style="color: white; margin: 0; font-size: 28px;">🎉 Congratulations!</h2>
+            <p style="color: white; margin: 10px 0 0 0; font-size: 16px;">Your raised funds have been successfully paid</p>
+          </div>
+
+          <!-- Greeting -->
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px; font-size: 16px;">
+            Dear ${userName},
+          </p>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 30px; font-size: 16px;">
+            We are delighted to inform you that the funds raised through your donation campaign have been successfully transferred to your registered bank account. Thank you for using Holidaysri.com to make a positive impact!
+          </p>
+
+          <!-- Payment Invoice -->
+          <div style="background-color: #f8fafc; padding: 25px; border-radius: 8px; border-left: 4px solid #10b981; margin-bottom: 30px;">
+            <h3 style="color: #1e293b; margin: 0 0 20px 0; font-size: 18px;">📋 Payment Details</h3>
+
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 10px 0; color: #64748b; font-size: 14px; border-bottom: 1px solid #e2e8f0;">Campaign Title:</td>
+                <td style="padding: 10px 0; color: #1e293b; font-weight: 600; text-align: right; border-bottom: 1px solid #e2e8f0;">${campaignTitle}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 0; color: #64748b; font-size: 14px; border-bottom: 1px solid #e2e8f0;">Organizer:</td>
+                <td style="padding: 10px 0; color: #1e293b; font-weight: 600; text-align: right; border-bottom: 1px solid #e2e8f0;">${organizer}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 0; color: #64748b; font-size: 14px; border-bottom: 1px solid #e2e8f0;">Goal Amount:</td>
+                <td style="padding: 10px 0; color: #1e293b; font-weight: 600; text-align: right; border-bottom: 1px solid #e2e8f0;">${requestedAmountHSC.toLocaleString()} HSC (LKR ${requestedAmountLKR.toLocaleString()})</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 0; color: #64748b; font-size: 14px; border-bottom: 1px solid #e2e8f0;">Amount Raised:</td>
+                <td style="padding: 10px 0; color: #10b981; font-weight: 700; text-align: right; font-size: 16px; border-bottom: 1px solid #e2e8f0;">${raisedAmountHSC.toLocaleString()} HSC (LKR ${raisedAmountLKR.toLocaleString()})</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 0; color: #64748b; font-size: 14px; border-bottom: 1px solid #e2e8f0;">Payment Date:</td>
+                <td style="padding: 10px 0; color: #1e293b; font-weight: 600; text-align: right; border-bottom: 1px solid #e2e8f0;">${new Date(paidAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 0; color: #64748b; font-size: 14px;">Bank Account:</td>
+                <td style="padding: 10px 0; color: #1e293b; font-weight: 600; text-align: right;">${bankDetails?.accountNumber ? `****${bankDetails.accountNumber.slice(-4)}` : 'On File'}</td>
+              </tr>
+            </table>
+          </div>
+
+          <!-- Bank Details -->
+          ${bankDetails?.bankName ? `
+          <div style="background-color: #eff6ff; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+            <h4 style="color: #1e40af; margin: 0 0 15px 0; font-size: 16px;">💳 Transfer Details</h4>
+            <p style="color: #475569; margin: 5px 0; font-size: 14px;"><strong>Bank:</strong> ${bankDetails.bankName}</p>
+            <p style="color: #475569; margin: 5px 0; font-size: 14px;"><strong>Account Holder:</strong> ${bankDetails.accountHolderName || userName}</p>
+            <p style="color: #475569; margin: 5px 0; font-size: 14px;"><strong>Branch:</strong> ${bankDetails.branchName || 'N/A'}</p>
+          </div>
+          ` : ''}
+
+          <!-- Important Note -->
+          <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 30px;">
+            <h4 style="color: #92400e; margin: 0 0 10px 0; font-size: 16px;">⚠️ Important Information</h4>
+            <p style="color: #78350f; margin: 0; font-size: 14px; line-height: 1.6;">
+              Please allow 2-5 business days for the funds to reflect in your bank account. If you have any questions or concerns, please contact our support team.
+            </p>
+          </div>
+
+          <!-- Thank You Message -->
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px; font-size: 16px;">
+            Thank you for your dedication to making a difference. We are proud to support your cause and wish you continued success in your future endeavors.
+          </p>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 30px; font-size: 16px;">
+            Best regards,<br>
+            <strong>The Holidaysri.com Team</strong>
+          </p>
+
+          <!-- Footer -->
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri.com. All rights reserved.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 10px 0 0 0;">
+              This is an automated payment confirmation. Please do not reply to this email.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
+              For support, contact us at support@holidaysri.com
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Payment confirmation email sent to ${userEmail}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending payment confirmation email:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   generateOTP,
   sendEmailVerificationOTP,
@@ -2541,5 +2674,6 @@ module.exports = {
   sendCustomizeTourPartnerNotification,
   sendCustomizeEventPartnerNotification,
   sendEventRequestApprovalConfirmation,
-  sendTourPackageApprovalConfirmation
+  sendTourPackageApprovalConfirmation,
+  sendDonationFundPaidConfirmation
 };
