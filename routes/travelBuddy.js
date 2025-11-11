@@ -122,14 +122,6 @@ router.post('/publish', verifyToken, async (req, res) => {
       });
     }
 
-    // Validate WhatsApp number format
-    const whatsappRegex = /^\+?[1-9]\d{1,14}$/;
-    if (!whatsappRegex.test(whatsappNumber)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid WhatsApp number format'
-      });
-    }
 
     // Validate images
     if (!coverPhoto.url || !coverPhoto.publicId || !avatarImage.url || !avatarImage.publicId) {
@@ -1287,3 +1279,4 @@ router.patch('/manage/:advertisementId/availability', verifyToken, async (req, r
 });
 
 module.exports = router;
+

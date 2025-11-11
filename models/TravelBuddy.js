@@ -31,8 +31,7 @@ const travelBuddySchema = new mongoose.Schema({
   whatsappNumber: {
     type: String,
     required: true,
-    trim: true,
-    match: [/^\+?[1-9]\d{1,14}$/, 'Please enter a valid WhatsApp number']
+    trim: true
   },
   country: {
     type: String,
@@ -60,35 +59,17 @@ const travelBuddySchema = new mongoose.Schema({
     facebook: {
       type: String,
       trim: true,
-      validate: {
-        validator: function(v) {
-          if (!v) return true; // Allow empty values
-          return /^https?:\/\/(www\.)?facebook\.com\//.test(v);
-        },
-        message: 'Please enter a valid Facebook profile URL'
-      }
+      default: ''
     },
     instagram: {
       type: String,
       trim: true,
-      validate: {
-        validator: function(v) {
-          if (!v) return true; // Allow empty values
-          return /^https?:\/\/(www\.)?instagram\.com\//.test(v);
-        },
-        message: 'Please enter a valid Instagram profile URL'
-      }
+      default: ''
     },
     tiktok: {
       type: String,
       trim: true,
-      validate: {
-        validator: function(v) {
-          if (!v) return true; // Allow empty values
-          return /^https?:\/\/(www\.)?tiktok\.com\//.test(v);
-        },
-        message: 'Please enter a valid TikTok profile URL'
-      }
+      default: ''
     }
   },
   coverPhoto: {
@@ -201,3 +182,4 @@ travelBuddySchema.methods.updateAverageRating = async function() {
 };
 
 module.exports = mongoose.model('TravelBuddy', travelBuddySchema);
+
