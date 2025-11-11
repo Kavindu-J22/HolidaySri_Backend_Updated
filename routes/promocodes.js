@@ -152,7 +152,7 @@ const createPromoCodePurchaseEmail = (user, paymentData) => {
           </div>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/profile"
+            <a href="${process.env.CLIENT_URL || 'https://www.holidaysri.com'}/profile"
                style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
               View My Profile & Start Earning
             </a>

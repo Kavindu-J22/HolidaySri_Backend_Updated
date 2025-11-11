@@ -152,7 +152,7 @@ const sendWelcomeEmail = async (email, name) => {
 const sendPasswordResetEmail = async (email, name, resetToken) => {
   const transporter = createTransporter();
 
-  const resetUrl = `http://localhost:3000/reset-password?token=${resetToken}`;
+  const resetUrl = `https://www.holidaysri.com/reset-password?token=${resetToken}`;
 
   const mailOptions = {
     from: {
@@ -280,7 +280,7 @@ const sendPromoCodeExpirationWarning = async (email, name, promoCode, promoType,
           </div>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:5173/profile" style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+            <a href="https://www.holidaysri.com/profile" style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
               Renew My Promo Code Now
             </a>
           </div>
@@ -370,7 +370,7 @@ const sendPromoCodeExpiredNotification = async (email, name, promoCode, promoTyp
           </div>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:5173/profile" style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+            <a href="https://www.holidaysri.com/profile" style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
               Renew My Promo Code
             </a>
           </div>
@@ -460,7 +460,7 @@ const sendPromoCodeRenewalSuccess = async (email, name, promoCode, promoType, re
           </div>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:5173/profile" style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+            <a href="https://www.holidaysri.com/profile" style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
               View My Dashboard
             </a>
           </div>
@@ -564,7 +564,7 @@ const sendPromoCodeSoldNotification = async (sellerEmail, sellerName, promoCodeD
           </div>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:5173/profile" style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+            <a href="https://www.holidaysri.com/profile" style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
               View My Dashboard
             </a>
           </div>
@@ -664,7 +664,7 @@ const sendPromoCodePurchaseSuccess = async (buyerEmail, buyerName, promoCodeDeta
           </div>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:5173/profile" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+            <a href="https://www.holidaysri.com/profile" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
               Access My Agent Dashboard
             </a>
           </div>
@@ -773,7 +773,7 @@ const sendHSCEarnedClaimApprovalEmail = async (email, name, hscAmount, lkrAmount
           </div>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:5173/hsc-earnings-claim"
+            <a href="https://www.holidaysri.com/hsc-earnings-claim"
                style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; padding: 12px 30px; border-radius: 8px; font-weight: 600; display: inline-block; transition: all 0.3s ease;">
               View HSC Earnings
             </a>
@@ -1095,7 +1095,7 @@ const sendCommercialPartnerWelcomeEmail = async (email, name, partnerDetails) =>
           </div>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:5173/ads/opportunities/partnerships"
+            <a href="https://www.holidaysri.com/ads/opportunities/partnerships"
                style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
               Access Partner Dashboard
             </a>
@@ -1181,7 +1181,7 @@ const sendCommercialPartnerExpirationWarning = async (email, name, partnerDetail
           </div>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:5173/ads/opportunities/partnerships"
+            <a href="https://www.holidaysri.com/ads/opportunities/partnerships"
                style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
               Renew Partnership Now
             </a>
@@ -1257,7 +1257,7 @@ const sendCommercialPartnerExpiredEmail = async (email, name, partnerDetails) =>
           </div>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:5173/ads/opportunities/partnerships"
+            <a href="https://www.holidaysri.com/ads/opportunities/partnerships"
                style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
               Renew Partnership
             </a>
@@ -1548,7 +1548,7 @@ const sendAdvertisementPurchaseEmail = async (user, advertisementData) => {
           </div>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:3000/profile" style="display: inline-block; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+            <a href="https://www.holidaysri.com/profile" style="display: inline-block; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
               View My Advertisements
             </a>
           </div>
@@ -1685,7 +1685,7 @@ const sendTokenGiftEmail = async (email, name, tokenType, amount, adminMessage, 
 
           <!-- Call to Action -->
           <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:3000/hsc"
+            <a href="https://www.holidaysri.com/hsc"
                style="display: inline-block; background: ${config.gradient}; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
               View My Wallet ${config.icon}
             </a>
@@ -2020,7 +2020,7 @@ const sendAdvertisementRenewalEmail = async (user, advertisementData) => {
           </div>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:3000/profile" style="display: inline-block; background: linear-gradient(135deg, #059669, #10b981); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+            <a href="https://www.holidaysri.com/profile" style="display: inline-block; background: linear-gradient(135deg, #059669, #10b981); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
               View My Advertisements
             </a>
           </div>
@@ -2105,7 +2105,7 @@ const sendCustomizeTourPartnerNotification = async (email, name) => {
           </div>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:3000/customize-tour-package" style="display: inline-block; background: linear-gradient(135deg, #f97316, #fb923c); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+            <a href="https://www.holidaysri.com/customize-tour-package" style="display: inline-block; background: linear-gradient(135deg, #f97316, #fb923c); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
               View Customize Requests
             </a>
           </div>
@@ -2179,7 +2179,7 @@ const sendCustomizeEventPartnerNotification = async (email, name) => {
           </div>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:3000/ads/events-management/customize-event"
+            <a href="https://www.holidaysri.com/ads/events-management/customize-event"
                style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 25px; font-weight: bold; font-size: 16px;">
               View Open Requests
             </a>
