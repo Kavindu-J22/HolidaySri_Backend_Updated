@@ -1,10 +1,12 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const TripRequest = require('../models/TripRequest');
+const TravelBuddy = require('../models/TravelBuddy');
 const User = require('../models/User');
 const { HSCConfig, HSCTransaction } = require('../models/HSC');
 const PaymentActivity = require('../models/PaymentActivity');
 const { verifyToken } = require('../middleware/auth');
+const { sendNewTripRequestNotification } = require('../utils/emailService');
 
 const router = express.Router();
 
@@ -79,6 +81,19 @@ router.post('/', verifyToken, async (req, res) => {
       });
     }
 
+    // Get user's active TravelBuddy advertisement
+    const travelBuddy = await TravelBuddy.findOne({
+      userId: req.user._id,
+      isActive: true
+    });
+
+    if (!travelBuddy) {
+      return res.status(400).json({
+        success: false,
+        message: 'You must have an active Travel Buddy profile to create trip requests'
+      });
+    }
+
     // Get HSC config for trip request charge
     const hscConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
     const tripRequestCharge = hscConfig?.travelBuddyTripRequestCharge || 50;
@@ -134,10 +149,11 @@ router.post('/', verifyToken, async (req, res) => {
       // Create trip request
       const tripRequest = new TripRequest({
         organizerId: user._id,
-        organizerName: user.name,
+        organizerTravelBuddyId: travelBuddy._id,
+        organizerName: travelBuddy.userName,
         organizerEmail: user.email,
         organizerWhatsapp,
-        organizerAvatar: user.profileImage || '',
+        organizerAvatar: travelBuddy.avatarImage?.url || user.profileImage || '',
         destinations,
         startLocation,
         endLocation,
@@ -159,6 +175,55 @@ router.post('/', verifyToken, async (req, res) => {
       await tripRequest.save({ session });
 
       await session.commitTransaction();
+
+      // Send email notifications to all active Travel Buddies (async, don't wait)
+      setImmediate(async () => {
+        try {
+          // Get all active Travel Buddies except the organizer
+          const allTravelBuddies = await TravelBuddy.find({
+            isActive: true,
+            userId: { $ne: user._id } // Exclude the organizer
+          }).populate('userId', 'email name');
+
+          console.log(`📧 Sending trip request notifications to ${allTravelBuddies.length} Travel Buddies...`);
+
+          // Prepare trip request details for email
+          const tripRequestDetails = {
+            organizerName: tripRequest.organizerName,
+            destinations: tripRequest.destinations,
+            startDate: tripRequest.startDate,
+            endDate: tripRequest.endDate,
+            days: tripRequest.days,
+            requiredBuddies: tripRequest.requiredBuddies,
+            budgetPerPerson: tripRequest.budgetPerPerson,
+            description: tripRequest.description
+          };
+
+          // Send emails to all Travel Buddies
+          let successCount = 0;
+          let failCount = 0;
+
+          for (const buddy of allTravelBuddies) {
+            if (buddy.userId && buddy.userId.email) {
+              const emailResult = await sendNewTripRequestNotification(
+                buddy.userId.email,
+                buddy.userId.name || buddy.userName,
+                tripRequestDetails
+              );
+
+              if (emailResult.success) {
+                successCount++;
+              } else {
+                failCount++;
+              }
+            }
+          }
+
+          console.log(`✅ Trip request notifications sent: ${successCount} successful, ${failCount} failed`);
+        } catch (emailError) {
+          console.error('Error sending trip request notification emails:', emailError);
+        }
+      });
 
       res.status(201).json({
         success: true,

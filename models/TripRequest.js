@@ -7,6 +7,11 @@ const tripRequestSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  organizerTravelBuddyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'TravelBuddy',
+    required: true
+  },
   organizerName: {
     type: String,
     required: true,

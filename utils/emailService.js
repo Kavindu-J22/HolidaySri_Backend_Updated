@@ -2757,6 +2757,147 @@ const sendContactFormEmail = async ({ name, email, phone, subject, category, mes
   }
 };
 
+// Send new trip request notification to all travel buddies
+const sendNewTripRequestNotification = async (email, name, tripRequestDetails) => {
+  const transporter = createTransporter();
+
+  const formattedStartDate = new Date(tripRequestDetails.startDate).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const formattedEndDate = new Date(tripRequestDetails.endDate).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const destinationsList = tripRequestDetails.destinations.join(', ');
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri.com',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: '🌍 New Trip Request Available - Find Your Travel Buddy! | Holidaysri',
+    html: `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 650px; margin: 0 auto; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px;">
+        <div style="background: white; border-radius: 15px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.1);">
+
+          <!-- Header -->
+          <div style="text-align: center; margin-bottom: 30px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+              <span style="font-size: 40px;">🌍</span>
+            </div>
+            <h1 style="color: #333; margin: 0; font-size: 28px; font-weight: 700;">New Trip Request!</h1>
+            <p style="color: #666; margin: 10px 0 0 0; font-size: 16px;">A new adventure awaits</p>
+          </div>
+
+          <!-- Greeting -->
+          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+            Hi <strong>${name}</strong>,
+          </p>
+
+          <p style="color: #555; font-size: 15px; line-height: 1.6; margin-bottom: 25px;">
+            Great news! A new trip request has been posted on the Travel Buddies Platform. This could be your next adventure!
+          </p>
+
+          <!-- Trip Details Card -->
+          <div style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-radius: 12px; padding: 25px; margin: 25px 0;">
+            <h2 style="color: #333; font-size: 20px; margin: 0 0 20px 0; border-bottom: 2px solid #667eea; padding-bottom: 10px;">
+              🗺️ Trip Details
+            </h2>
+
+            <div style="margin-bottom: 15px;">
+              <p style="color: #666; font-size: 13px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 0.5px;">Organizer</p>
+              <p style="color: #333; font-size: 16px; margin: 0; font-weight: 600;">${tripRequestDetails.organizerName}</p>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+              <p style="color: #666; font-size: 13px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 0.5px;">📍 Destinations</p>
+              <p style="color: #333; font-size: 16px; margin: 0; font-weight: 600;">${destinationsList}</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+              <div>
+                <p style="color: #666; font-size: 13px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 0.5px;">📅 Start Date</p>
+                <p style="color: #333; font-size: 15px; margin: 0; font-weight: 600;">${formattedStartDate}</p>
+              </div>
+              <div>
+                <p style="color: #666; font-size: 13px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 0.5px;">📅 End Date</p>
+                <p style="color: #333; font-size: 15px; margin: 0; font-weight: 600;">${formattedEndDate}</p>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+              <div>
+                <p style="color: #666; font-size: 13px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 0.5px;">⏱️ Duration</p>
+                <p style="color: #333; font-size: 15px; margin: 0; font-weight: 600;">${tripRequestDetails.days} Days</p>
+              </div>
+              <div>
+                <p style="color: #666; font-size: 13px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 0.5px;">👥 Buddies Needed</p>
+                <p style="color: #333; font-size: 15px; margin: 0; font-weight: 600;">${tripRequestDetails.requiredBuddies}</p>
+              </div>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+              <p style="color: #666; font-size: 13px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 0.5px;">💰 Budget Per Person</p>
+              <p style="color: #333; font-size: 16px; margin: 0; font-weight: 600;">LKR ${tripRequestDetails.budgetPerPerson.toLocaleString()}</p>
+            </div>
+
+            <div style="margin-bottom: 0;">
+              <p style="color: #666; font-size: 13px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 0.5px;">📝 Description</p>
+              <p style="color: #555; font-size: 14px; margin: 0; line-height: 1.6;">${tripRequestDetails.description}</p>
+            </div>
+          </div>
+
+          <!-- Call to Action -->
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="https://www.holidaysri.com/travel-buddies"
+               style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 16px 40px; border-radius: 30px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: all 0.3s;">
+              View Trip Request
+            </a>
+          </div>
+
+          <p style="color: #555; font-size: 14px; line-height: 1.6; margin: 20px 0; text-align: center;">
+            Visit the <strong>Trip Requests</strong> tab on the Travel Buddies Platform to see full details and connect with the organizer!
+          </p>
+
+          <!-- Info Box -->
+          <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin: 25px 0;">
+            <p style="color: #856404; font-size: 14px; margin: 0; line-height: 1.6;">
+              <strong>💡 Tip:</strong> Respond quickly to increase your chances of joining this adventure. The organizer is looking for travel companions like you!
+            </p>
+          </div>
+
+          <!-- Footer -->
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri.com. All rights reserved.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 10px 0 0 0;">
+              You received this email because you are a registered Travel Buddy on Holidaysri.com
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
+              This is an automated notification. Please do not reply to this email.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Trip request notification email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   generateOTP,
   sendEmailVerificationOTP,
@@ -2782,6 +2923,7 @@ module.exports = {
   sendAdvertisementExpiringWarning,
   sendAdvertisementExpiredEmail,
   sendCustomizeTourPartnerNotification,
+  sendNewTripRequestNotification,
   sendCustomizeEventPartnerNotification,
   sendEventRequestApprovalConfirmation,
   sendTourPackageApprovalConfirmation,
