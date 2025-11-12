@@ -508,7 +508,7 @@ router.get('/:id', verifyToken, async (req, res) => {
 router.put('/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, image, link, buttonText } = req.body;
+    const { title, description, image, link, buttonText, slotNumber, reactivate } = req.body;
 
     // Validation
     if (!title || !description || !image || !link || !buttonText) {
@@ -558,7 +558,46 @@ router.put('/:id', verifyToken, async (req, res) => {
       });
     }
 
-    // Update the banner slot
+    // If reactivating (isActive was false and user selected a new slot)
+    if (reactivate && slotNumber) {
+      // Validate slot number
+      if (!Number.isInteger(slotNumber) || slotNumber < 1 || slotNumber > 6) {
+        return res.status(400).json({
+          success: false,
+          message: 'Slot number must be between 1 and 6'
+        });
+      }
+
+      // Check if slot is available
+      const existingSlot = await HomeBannerSlot.findOne({
+        slotNumber,
+        isActive: true,
+        _id: { $ne: id } // Exclude current banner slot
+      }).populate('publishedAdId');
+
+      if (existingSlot) {
+        // Check if the existing slot's advertisement is expired
+        const ad = existingSlot.publishedAdId;
+        const isExpired = ad && (ad.status === 'expired' ||
+                                (ad.expiresAt && new Date(ad.expiresAt) < new Date()));
+
+        if (!isExpired) {
+          return res.status(400).json({
+            success: false,
+            message: `Slot ${slotNumber} is currently occupied. Please select another slot.`
+          });
+        } else {
+          // Deactivate the expired slot
+          await HomeBannerSlot.findByIdAndUpdate(existingSlot._id, { isActive: false });
+        }
+      }
+
+      // Update slot number and reactivate
+      bannerSlot.slotNumber = slotNumber;
+      bannerSlot.isActive = true;
+    }
+
+    // Update the banner slot content
     bannerSlot.title = title;
     bannerSlot.description = description;
     bannerSlot.image = image;
