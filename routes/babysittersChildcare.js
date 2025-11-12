@@ -243,6 +243,22 @@ router.get('/browse', async (req, res) => {
   }
 });
 
+// GET /api/babysitters-childcare/provinces - Get provinces and districts
+router.get('/provinces', (req, res) => {
+  try {
+    res.status(200).json({
+      success: true,
+      data: provincesAndDistricts
+    });
+  } catch (error) {
+    console.error('Error fetching provinces:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch provinces'
+    });
+  }
+});
+
 // GET /api/babysitters-childcare/:id - Get single babysitter profile details
 router.get('/:id', async (req, res) => {
   try {
@@ -428,22 +444,6 @@ router.put('/:id', verifyToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update profile'
-    });
-  }
-});
-
-// GET /api/babysitters-childcare/provinces - Get provinces and districts
-router.get('/provinces', (req, res) => {
-  try {
-    res.status(200).json({
-      success: true,
-      data: provincesAndDistricts
-    });
-  } catch (error) {
-    console.error('Error fetching provinces:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch provinces'
     });
   }
 });

@@ -179,6 +179,23 @@ router.post('/publish', verifyToken, async (req, res) => {
   }
 });
 
+// GET /api/daily-grocery-essentials/provinces - Get provinces and districts
+router.get('/provinces', (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: provincesAndDistricts
+    });
+  } catch (error) {
+    console.error('Error fetching provinces:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching provinces',
+      error: error.message
+    });
+  }
+});
+
 // GET /api/daily-grocery-essentials/:id - Get single listing
 router.get('/:id', async (req, res) => {
   try {
@@ -514,23 +531,6 @@ router.post('/:id/reviews', verifyToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error adding review',
-      error: error.message
-    });
-  }
-});
-
-// GET /api/daily-grocery-essentials/provinces - Get provinces and districts
-router.get('/provinces', (req, res) => {
-  try {
-    res.json({
-      success: true,
-      data: provincesAndDistricts
-    });
-  } catch (error) {
-    console.error('Error fetching provinces:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching provinces',
       error: error.message
     });
   }

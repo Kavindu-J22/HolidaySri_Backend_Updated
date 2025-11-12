@@ -222,6 +222,22 @@ router.get('/browse', async (req, res) => {
   }
 });
 
+// GET /api/rent-property-buying-selling/provinces
+router.get('/provinces', (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: provincesAndDistricts
+    });
+  } catch (error) {
+    console.error('Error fetching provinces:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch provinces'
+    });
+  }
+});
+
 // GET /api/rent-property-buying-selling/:id
 router.get('/:id', async (req, res) => {
   try {
@@ -419,22 +435,6 @@ router.post('/:id/reviews', verifyToken, async (req, res) => {
       success: false,
       message: 'Error adding review',
       error: error.message
-    });
-  }
-});
-
-// GET /api/rent-property-buying-selling/provinces
-router.get('/provinces', (req, res) => {
-  try {
-    res.json({
-      success: true,
-      data: provincesAndDistricts
-    });
-  } catch (error) {
-    console.error('Error fetching provinces:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch provinces'
     });
   }
 });

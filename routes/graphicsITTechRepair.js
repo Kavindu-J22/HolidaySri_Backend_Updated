@@ -249,6 +249,22 @@ router.get('/browse', async (req, res) => {
   }
 });
 
+// GET /api/graphics-it-tech-repair/provinces - Get provinces and districts
+router.get('/provinces', (req, res) => {
+  try {
+    res.status(200).json({
+      success: true,
+      data: provincesAndDistricts
+    });
+  } catch (error) {
+    console.error('Error fetching provinces:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch provinces'
+    });
+  }
+});
+
 // GET /api/graphics-it-tech-repair/:id - Get profile details
 router.get('/:id', async (req, res) => {
   try {
@@ -458,22 +474,6 @@ router.get('/:id/reviews', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch reviews. Please try again.'
-    });
-  }
-});
-
-// GET /api/graphics-it-tech-repair/provinces - Get provinces and districts
-router.get('/provinces', (req, res) => {
-  try {
-    res.status(200).json({
-      success: true,
-      data: provincesAndDistricts
-    });
-  } catch (error) {
-    console.error('Error fetching provinces:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch provinces'
     });
   }
 });

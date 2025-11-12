@@ -245,6 +245,14 @@ router.get('/browse', async (req, res) => {
   }
 });
 
+// GET /api/home-office-accessories-tech/provinces - Get provinces and cities
+router.get('/provinces', (req, res) => {
+  res.json({
+    success: true,
+    data: provincesAndDistricts
+  });
+});
+
 // GET /api/home-office-accessories-tech/:id - Get product details
 router.get('/:id', async (req, res) => {
   try {
@@ -436,11 +444,6 @@ router.get('/:id/reviews', async (req, res) => {
       message: 'Failed to fetch reviews'
     });
   }
-});
-
-// GET /api/home-office-accessories-tech/provinces - Get provinces and cities
-router.get('/provinces', (req, res) => {
-  res.json(provincesAndDistricts);
 });
 
 module.exports = router;

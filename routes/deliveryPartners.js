@@ -250,6 +250,22 @@ router.get('/browse', async (req, res) => {
   }
 });
 
+// GET /api/delivery-partners/provinces - Get provinces and districts
+router.get('/provinces', (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: provincesAndDistricts
+    });
+  } catch (error) {
+    console.error('Error fetching provinces:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch provinces'
+    });
+  }
+});
+
 // GET /api/delivery-partners/:id - Get single profile details
 router.get('/:id', async (req, res) => {
   try {
@@ -439,22 +455,6 @@ router.post('/:id/reviews', verifyToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to add review. Please try again.'
-    });
-  }
-});
-
-// GET /api/delivery-partners/provinces - Get provinces and districts
-router.get('/provinces', (req, res) => {
-  try {
-    res.json({
-      success: true,
-      data: provincesAndDistricts
-    });
-  } catch (error) {
-    console.error('Error fetching provinces:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch provinces'
     });
   }
 });

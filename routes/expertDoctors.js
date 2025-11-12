@@ -231,6 +231,22 @@ router.get('/browse', async (req, res) => {
   }
 });
 
+// GET /api/expert-doctors/provinces - Get provinces and districts
+router.get('/provinces', (req, res) => {
+  try {
+    res.status(200).json({
+      success: true,
+      data: provincesAndDistricts
+    });
+  } catch (error) {
+    console.error('Error fetching provinces:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch provinces'
+    });
+  }
+});
+
 // GET /api/expert-doctors/:id - Get single expert doctor with reviews
 router.get('/:id', async (req, res) => {
   try {
@@ -438,23 +454,6 @@ router.put('/:id', verifyToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update expert doctor profile',
-      error: error.message
-    });
-  }
-});
-
-// GET /api/expert-doctors/provinces - Get provinces and districts
-router.get('/provinces', (req, res) => {
-  try {
-    res.status(200).json({
-      success: true,
-      data: provincesAndDistricts
-    });
-  } catch (error) {
-    console.error('Error fetching provinces:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch provinces',
       error: error.message
     });
   }

@@ -237,6 +237,22 @@ router.get('/browse', async (req, res) => {
   }
 });
 
+// GET /api/trusted-astrologists/provinces - Get provinces and districts
+router.get('/provinces', async (req, res) => {
+  try {
+    res.status(200).json({
+      success: true,
+      data: provincesAndDistricts
+    });
+  } catch (error) {
+    console.error('Error fetching provinces:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch provinces. Please try again.'
+    });
+  }
+});
+
 // GET /api/trusted-astrologists/:id - Get single profile details
 router.get('/:id', async (req, res) => {
   try {
@@ -417,22 +433,6 @@ router.post('/:id/reviews', verifyToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to add review. Please try again.'
-    });
-  }
-});
-
-// GET /api/trusted-astrologists/provinces - Get provinces and districts
-router.get('/provinces', async (req, res) => {
-  try {
-    res.status(200).json({
-      success: true,
-      data: provincesAndDistricts
-    });
-  } catch (error) {
-    console.error('Error fetching provinces:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch provinces. Please try again.'
     });
   }
 });
