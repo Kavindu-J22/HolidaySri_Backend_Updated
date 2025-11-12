@@ -465,5 +465,121 @@ router.delete('/cancel-notification', verifyToken, async (req, res) => {
   }
 });
 
+// GET /api/home-banner-slot/:id - Get home banner slot by ID for editing
+router.get('/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const bannerSlot = await HomeBannerSlot.findById(id)
+      .populate({
+        path: 'publishedAdId',
+        select: 'status expiresAt'
+      });
+
+    if (!bannerSlot) {
+      return res.status(404).json({
+        success: false,
+        message: 'Home banner slot not found'
+      });
+    }
+
+    // Check if user owns this banner slot
+    if (bannerSlot.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to access this banner slot'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: bannerSlot
+    });
+  } catch (error) {
+    console.error('Error fetching home banner slot:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch home banner slot'
+    });
+  }
+});
+
+// PUT /api/home-banner-slot/:id - Update home banner slot
+router.put('/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, image, link, buttonText } = req.body;
+
+    // Validation
+    if (!title || !description || !image || !link || !buttonText) {
+      return res.status(400).json({
+        success: false,
+        message: 'All fields are required'
+      });
+    }
+
+    // Validate field lengths
+    if (title.length > 30) {
+      return res.status(400).json({
+        success: false,
+        message: 'Title must not exceed 30 characters'
+      });
+    }
+
+    if (description.length > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'Description must not exceed 100 characters'
+      });
+    }
+
+    if (buttonText.length > 15) {
+      return res.status(400).json({
+        success: false,
+        message: 'Button text must not exceed 15 characters'
+      });
+    }
+
+    // Find the banner slot
+    const bannerSlot = await HomeBannerSlot.findById(id);
+
+    if (!bannerSlot) {
+      return res.status(404).json({
+        success: false,
+        message: 'Home banner slot not found'
+      });
+    }
+
+    // Check if user owns this banner slot
+    if (bannerSlot.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to update this banner slot'
+      });
+    }
+
+    // Update the banner slot
+    bannerSlot.title = title;
+    bannerSlot.description = description;
+    bannerSlot.image = image;
+    bannerSlot.link = link;
+    bannerSlot.buttonText = buttonText;
+
+    await bannerSlot.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Home banner slot updated successfully',
+      data: bannerSlot
+    });
+  } catch (error) {
+    console.error('Error updating home banner slot:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update home banner slot'
+    });
+  }
+});
+
 module.exports = router;
 
