@@ -124,9 +124,11 @@ router.get('/hsc-config', verifyAdminToken, async (req, res) => {
         hsdValue: 1,
         currency: 'LKR',
         customizeTourPackageCharge: 100,
+        customizeEventRequestCharge: 100,
         sellAdFee: 100,
         accessPromoCodeViewAmount: 50,
         additionalRoomCharge: 50,
+        travelBuddyTripRequestCharge: 50,
         lastUpdated: null,
         updatedBy: null
       });
@@ -143,20 +145,21 @@ router.get('/hsc-config', verifyAdminToken, async (req, res) => {
 // Update token configuration
 router.put('/hsc-config', verifyAdminToken, async (req, res) => {
   try {
-    const { hscValue, hsgValue, hsdValue, currency, customizeTourPackageCharge, customizeEventRequestCharge, sellAdFee, accessPromoCodeViewAmount, additionalRoomCharge } = req.body;
+    const { hscValue, hsgValue, hsdValue, currency, customizeTourPackageCharge, customizeEventRequestCharge, sellAdFee, accessPromoCodeViewAmount, additionalRoomCharge, travelBuddyTripRequestCharge } = req.body;
 
     console.log('========== UPDATE REQUEST ==========');
     console.log('Received update request:', req.body);
-    console.log('customizeTourPackageCharge value:', customizeTourPackageCharge);
-    console.log('customizeTourPackageCharge type:', typeof customizeTourPackageCharge);
-    console.log('customizeTourPackageCharge !== undefined:', customizeTourPackageCharge !== undefined);
+    console.log('travelBuddyTripRequestCharge value:', travelBuddyTripRequestCharge);
+    console.log('travelBuddyTripRequestCharge type:', typeof travelBuddyTripRequestCharge);
+    console.log('travelBuddyTripRequestCharge !== undefined:', travelBuddyTripRequestCharge !== undefined);
 
     // Get current config to preserve existing values
     const currentConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
 
     console.log('Current config:', {
       id: currentConfig?._id,
-      customizeTourPackageCharge: currentConfig?.customizeTourPackageCharge,
+      travelBuddyTripRequestCharge: currentConfig?.travelBuddyTripRequestCharge,
+      additionalRoomCharge: currentConfig?.additionalRoomCharge,
       hscValue: currentConfig?.hscValue
     });
 
@@ -169,6 +172,7 @@ router.put('/hsc-config', verifyAdminToken, async (req, res) => {
       sellAdFee: sellAdFee !== undefined ? sellAdFee : (currentConfig ? currentConfig.sellAdFee : 100),
       accessPromoCodeViewAmount: accessPromoCodeViewAmount !== undefined ? accessPromoCodeViewAmount : (currentConfig ? currentConfig.accessPromoCodeViewAmount : 50),
       additionalRoomCharge: additionalRoomCharge !== undefined ? additionalRoomCharge : (currentConfig ? currentConfig.additionalRoomCharge : 50),
+      travelBuddyTripRequestCharge: travelBuddyTripRequestCharge !== undefined ? travelBuddyTripRequestCharge : (currentConfig ? currentConfig.travelBuddyTripRequestCharge : 50),
       currency: currency !== undefined ? currency : (currentConfig ? currentConfig.currency : 'LKR'),
       updatedBy: req.admin.username
     };
@@ -182,7 +186,8 @@ router.put('/hsc-config', verifyAdminToken, async (req, res) => {
     console.log('Config saved successfully!');
     console.log('Saved config:', {
       id: newConfig._id,
-      customizeTourPackageCharge: newConfig.customizeTourPackageCharge,
+      travelBuddyTripRequestCharge: newConfig.travelBuddyTripRequestCharge,
+      additionalRoomCharge: newConfig.additionalRoomCharge,
       hscValue: newConfig.hscValue,
       createdAt: newConfig.createdAt
     });

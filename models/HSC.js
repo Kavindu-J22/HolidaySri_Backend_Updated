@@ -50,6 +50,12 @@ const hscConfigSchema = new mongoose.Schema({
     required: true,
     default: 50 // HSC - charge for adding 4th, 5th, 6th... rooms
   },
+  // Travel Buddy's Trip Request Charge (HSC)
+  travelBuddyTripRequestCharge: {
+    type: Number,
+    required: true,
+    default: 50 // HSC - charge for submitting travel buddy trip request
+  },
   lastUpdated: {
     type: Date,
     default: Date.now
