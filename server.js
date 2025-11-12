@@ -111,10 +111,12 @@ const emergencyServicesInsuranceRoutes = require('./routes/emergencyServicesInsu
 const liveRidesCarpoolingRoutes = require('./routes/liveRidesCarpooling');
 const eventsUpdatesRoutes = require('./routes/eventsUpdates');
 const donationsRaiseFundRoutes = require('./routes/donationsRaiseFund');
+const homeBannerSlotRoutes = require('./routes/homeBannerSlot');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
 const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
 const { startHSDLeaderBoardJobs, runHSDStartupChecks } = require('./jobs/hsdLeaderBoardRewards');
 const { startAdvertisementJobs } = require('./jobs/advertisementExpiration');
+const { startSlotNotificationJob } = require('./jobs/slotNotification');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -191,6 +193,7 @@ app.use('/api/room-bookings', roomBookingsRoutes);
 app.use('/api/live-rides-carpooling', liveRidesCarpoolingRoutes);
 app.use('/api/events-updates', eventsUpdatesRoutes);
 app.use('/api/donations-raise-fund', donationsRaiseFundRoutes);
+app.use('/api/home-banner-slot', homeBannerSlotRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
@@ -224,4 +227,7 @@ app.listen(PORT, () => {
 
   // Start HSD Leader Board reward jobs
   startHSDLeaderBoardJobs();
+
+  // Start slot notification job
+  startSlotNotificationJob();
 });
