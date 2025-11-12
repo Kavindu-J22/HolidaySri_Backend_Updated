@@ -2647,6 +2647,116 @@ const sendDonationFundPaidConfirmation = async (userEmail, userName, paymentDeta
   }
 };
 
+// Send contact form submission email to support
+const sendContactFormEmail = async ({ name, email, phone, subject, category, message }) => {
+  const transporter = createTransporter();
+
+  const formattedDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri Contact Form',
+      address: process.env.EMAIL_USER
+    },
+    to: 'holidaysri.notificcation@gmail.com',
+    replyTo: email,
+    subject: `🔔 New Contact Form Submission: ${subject}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #2563eb;">
+            <h1 style="color: #2563eb; margin: 0;">📧 New Contact Form Submission</h1>
+            <p style="color: #666; margin: 5px 0;">Holidaysri Support Center</p>
+          </div>
+
+          <div style="background-color: #f0f8ff; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #2563eb;">
+            <h2 style="color: #1e40af; margin: 0 0 15px 0; font-size: 18px;">Contact Information</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px 0; color: #666; font-weight: bold; width: 120px;">Name:</td>
+                <td style="padding: 8px 0; color: #333;">${name}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666; font-weight: bold;">Email:</td>
+                <td style="padding: 8px 0; color: #2563eb;">
+                  <a href="mailto:${email}" style="color: #2563eb; text-decoration: none;">${email}</a>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666; font-weight: bold;">Phone:</td>
+                <td style="padding: 8px 0; color: #333;">${phone}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666; font-weight: bold;">Category:</td>
+                <td style="padding: 8px 0;">
+                  <span style="background-color: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 600;">
+                    ${category}
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666; font-weight: bold;">Submitted:</td>
+                <td style="padding: 8px 0; color: #333;">${formattedDate}</td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="background-color: #fff7ed; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #f59e0b;">
+            <h2 style="color: #c2410c; margin: 0 0 15px 0; font-size: 18px;">Subject</h2>
+            <p style="color: #333; margin: 0; font-size: 16px; font-weight: 600;">${subject}</p>
+          </div>
+
+          <div style="background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #22c55e;">
+            <h2 style="color: #15803d; margin: 0 0 15px 0; font-size: 18px;">Message</h2>
+            <div style="color: #333; line-height: 1.8; white-space: pre-wrap; font-size: 15px;">${message}</div>
+          </div>
+
+          <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444;">
+            <h3 style="color: #dc2626; margin: 0 0 10px 0; font-size: 16px;">⚡ Action Required</h3>
+            <p style="color: #555; margin: 0; line-height: 1.6;">
+              Please respond to this inquiry within 24 hours. You can reply directly to this email to contact <strong>${name}</strong>.
+            </p>
+          </div>
+
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
+            <a href="mailto:${email}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-right: 10px;">
+              Reply to ${name}
+            </a>
+            <a href="https://www.holidaysri.com/admin" style="display: inline-block; background-color: #6b7280; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+              Admin Dashboard
+            </a>
+          </div>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri.com. All rights reserved.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
+              This is an automated notification from the Holidaysri Contact Form.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Contact form email sent to support from ${email}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Contact form email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   generateOTP,
   sendEmailVerificationOTP,
@@ -2675,5 +2785,6 @@ module.exports = {
   sendCustomizeEventPartnerNotification,
   sendEventRequestApprovalConfirmation,
   sendTourPackageApprovalConfirmation,
-  sendDonationFundPaidConfirmation
+  sendDonationFundPaidConfirmation,
+  sendContactFormEmail
 };
