@@ -112,6 +112,7 @@ const liveRidesCarpoolingRoutes = require('./routes/liveRidesCarpooling');
 const eventsUpdatesRoutes = require('./routes/eventsUpdates');
 const donationsRaiseFundRoutes = require('./routes/donationsRaiseFund');
 const homeBannerSlotRoutes = require('./routes/homeBannerSlot');
+const cryptoConsultingSignalsRoutes = require('./routes/cryptoConsultingSignals');
 const contactRoutes = require('./routes/contact');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
 const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
@@ -195,6 +196,7 @@ app.use('/api/live-rides-carpooling', liveRidesCarpoolingRoutes);
 app.use('/api/events-updates', eventsUpdatesRoutes);
 app.use('/api/donations-raise-fund', donationsRaiseFundRoutes);
 app.use('/api/home-banner-slot', homeBannerSlotRoutes);
+app.use('/api/crypto-consulting-signals', cryptoConsultingSignalsRoutes);
 app.use('/api/contact', contactRoutes);
 
 // Basic route
