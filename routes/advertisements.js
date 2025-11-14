@@ -902,7 +902,15 @@ router.post('/process-renewal-payment', verifyToken, verifyEmailVerified, async 
 // GET /api/advertisements/featured - Get all featured (Published) advertisements
 router.get('/featured', async (req, res) => {
   try {
-    const { page = 1, limit = 12, category } = req.query;
+    const {
+      page = 1,
+      limit = 12,
+      category,
+      search,
+      sortBy = 'random',
+      premiumOnly
+    } = req.query;
+
     const skip = (page - 1) * limit;
 
     // Categories to exclude from featured ads
@@ -921,25 +929,82 @@ router.get('/featured', async (req, res) => {
       query.category = category;
     }
 
-    // Get total count
-    const total = await Advertisement.countDocuments(query);
-
-    // Fetch advertisements with populated data
-    const advertisements = await Advertisement.find(query)
+    // Fetch advertisements with populated data first
+    let advertisements = await Advertisement.find(query)
       .populate('userId', 'name email isMember isPartner')
-      .populate('publishedAdId')
-      .sort({ publishedAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+      .populate('publishedAdId');
+
+    // Filter by premium only (members or partners)
+    if (premiumOnly === 'true') {
+      advertisements = advertisements.filter(ad =>
+        ad.userId && (ad.userId.isMember === true || ad.userId.isPartner === true)
+      );
+    }
+
+    // Search filter (by name or description in publishedAdId)
+    if (search && search.trim()) {
+      const searchLower = search.toLowerCase().trim();
+      advertisements = advertisements.filter(ad => {
+        if (!ad.publishedAdId) return false;
+
+        const pub = ad.publishedAdId;
+        const title = (pub.title || pub.name || pub.businessName || pub.companyName ||
+                      pub.eventTitle || pub.hotelName || pub.restaurantName ||
+                      pub.serviceName || pub.packageTitle || pub.propertyName || '').toLowerCase();
+        const description = (pub.description || pub.bio || pub.overview || pub.about || '').toLowerCase();
+
+        return title.includes(searchLower) || description.includes(searchLower);
+      });
+    }
+
+    // Sort advertisements
+    if (sortBy === 'random') {
+      // Separate premium and regular ads
+      const premiumAds = advertisements.filter(ad =>
+        ad.userId && (ad.userId.isMember === true || ad.userId.isPartner === true)
+      );
+      const regularAds = advertisements.filter(ad =>
+        !ad.userId || (ad.userId.isMember !== true && ad.userId.isPartner !== true)
+      );
+
+      // Shuffle both arrays randomly
+      const shufflePremium = premiumAds.sort(() => Math.random() - 0.5);
+      const shuffleRegular = regularAds.sort(() => Math.random() - 0.5);
+
+      // Combine: premium first, then regular
+      advertisements = [...shufflePremium, ...shuffleRegular];
+    } else if (sortBy === 'rating_high') {
+      advertisements.sort((a, b) => {
+        const ratingA = a.publishedAdId?.averageRating || 0;
+        const ratingB = b.publishedAdId?.averageRating || 0;
+        return ratingB - ratingA;
+      });
+    } else if (sortBy === 'rating_low') {
+      advertisements.sort((a, b) => {
+        const ratingA = a.publishedAdId?.averageRating || 0;
+        const ratingB = b.publishedAdId?.averageRating || 0;
+        return ratingA - ratingB;
+      });
+    } else if (sortBy === 'newest') {
+      advertisements.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+    } else if (sortBy === 'oldest') {
+      advertisements.sort((a, b) => new Date(a.publishedAt) - new Date(b.publishedAt));
+    }
+
+    // Get total count after filtering
+    const total = advertisements.length;
+
+    // Apply pagination
+    const paginatedAds = advertisements.slice(skip, skip + parseInt(limit));
 
     res.json({
       success: true,
-      data: advertisements,
+      data: paginatedAds,
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(total / limit),
         totalCount: total,
-        hasNext: skip + advertisements.length < total,
+        hasNext: skip + paginatedAds.length < total,
         hasPrev: parseInt(page) > 1
       }
     });
