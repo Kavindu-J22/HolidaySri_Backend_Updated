@@ -178,7 +178,18 @@ router.get('/browse', async (req, res) => {
     const { search, specialization, category, city, province, page = 1, limit = 12 } = req.query;
 
     // Build filter query
-    const filter = {};
+    const filter = { isActive: true };
+
+    // Exclude expired advertisements
+    const expiredAds = await Advertisement.find({
+      status: 'expired',
+      publishedAdModel: 'ProfessionalLawyers'
+    }).select('publishedAdId');
+
+    const expiredIds = expiredAds.map(ad => ad.publishedAdId);
+    if (expiredIds.length > 0) {
+      filter._id = { $nin: expiredIds };
+    }
 
     if (search) {
       filter.$or = [

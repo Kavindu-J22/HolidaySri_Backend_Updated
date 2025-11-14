@@ -210,17 +210,21 @@ router.get('/browse', async (req, res) => {
       ];
     }
 
+    // Exclude expired advertisements
+    const expiredAds = await Advertisement.find({
+      status: 'expired',
+      publishedAdModel: 'FitnessHealthSpasGym'
+    }).select('publishedAdId');
+
+    const expiredIds = expiredAds.map(ad => ad.publishedAdId.toString());
+    if (expiredIds.length > 0) {
+      filter._id = { $nin: expiredIds };
+    }
+
     // Get all matching profiles
     let profiles = await FitnessHealthSpasGym.find(filter)
       .populate('userId', 'name avatar')
       .lean();
-
-    // Filter out expired advertisements
-    const now = new Date();
-    profiles = profiles.filter(async (profile) => {
-      const ad = await Advertisement.findById(profile.publishedAdId);
-      return ad && ad.status !== 'expired' && ad.expiresAt > now;
-    });
 
     // Shuffle profiles randomly
     profiles = profiles.sort(() => Math.random() - 0.5);

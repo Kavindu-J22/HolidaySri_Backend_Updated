@@ -240,7 +240,7 @@ router.get('/browse', async (req, res) => {
         if (hotel.publishedAdId) {
           const ad = await Advertisement.findById(hotel.publishedAdId);
           // Only include if ad exists and is not expired
-          if (ad && ad.status !== 'Expired') {
+          if (ad && ad.status !== 'expired') {
             return hotel;
           }
           return null;

@@ -175,6 +175,17 @@ router.get('/browse', async (req, res) => {
     // Build filter query
     const filter = { isActive: true };
 
+    // Exclude expired advertisements
+    const expiredAds = await Advertisement.find({
+      status: 'expired',
+      publishedAdModel: 'TrustedAstrologists'
+    }).select('publishedAdId');
+
+    const expiredIds = expiredAds.map(ad => ad.publishedAdId);
+    if (expiredIds.length > 0) {
+      filter._id = { $nin: expiredIds };
+    }
+
     // Search by name, specialization, category, or description
     if (search) {
       filter.$or = [

@@ -179,12 +179,11 @@ router.get('/browse', async (req, res) => {
 
     // Check for expired advertisements
     const expiredAds = await Advertisement.find({
-      status: 'Published',
-      publishedAdModel: 'DeliveryPartners',
-      expiresAt: { $lt: new Date() }
-    });
+      status: 'expired',
+      publishedAdModel: 'DeliveryPartners'
+    }).select('publishedAdId');
 
-    const expiredAdIds = expiredAds.map(ad => ad.publishedAdId.toString());
+    const expiredAdIds = expiredAds.map(ad => ad.publishedAdId);
     if (expiredAdIds.length > 0) {
       filter._id = { $nin: expiredAdIds };
     }

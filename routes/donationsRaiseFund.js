@@ -214,6 +214,17 @@ router.get('/', async (req, res) => {
 
     let query = { isActive: true };
 
+    // Exclude expired advertisements
+    const expiredAds = await Advertisement.find({
+      status: 'expired',
+      publishedAdModel: 'DonationsRaiseFund'
+    }).select('publishedAdId');
+
+    const expiredIds = expiredAds.map(ad => ad.publishedAdId);
+    if (expiredIds.length > 0) {
+      query._id = { $nin: expiredIds };
+    }
+
     if (category && category !== 'all') {
       query.category = category;
     }

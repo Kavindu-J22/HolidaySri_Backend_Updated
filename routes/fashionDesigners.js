@@ -206,10 +206,9 @@ router.get('/browse', async (req, res) => {
     const filter = { isActive: true };
 
     // Filter by non-expired advertisements
-    const now = new Date();
     const expiredAds = await Advertisement.find({
-      status: 'Expired',
-      expiresAt: { $lt: now }
+      status: 'expired',
+      publishedAdModel: 'FashionDesigners'
     }).select('publishedAdId');
 
     const expiredIds = expiredAds.map(ad => ad.publishedAdId);

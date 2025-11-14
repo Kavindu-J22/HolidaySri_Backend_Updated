@@ -218,7 +218,7 @@ router.get('/public', async (req, res) => {
     // Filter out events with expired advertisements
     events = events.filter(event => {
       if (!event.publishedAdId) return false;
-      return event.publishedAdId.status !== 'Expired';
+      return event.publishedAdId.status !== 'expired';
     });
 
     // Sorting
