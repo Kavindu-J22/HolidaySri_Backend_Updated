@@ -676,6 +676,101 @@ router.get('/claim-requests/stats', verifyAdminToken, async (req, res) => {
   }
 });
 
+// Get all earnings with search and filter
+router.get('/earnings', verifyAdminToken, async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      search = '',
+      status = 'all',
+      usedPromoCode = '',
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Build query
+    const query = {};
+
+    // Status filter
+    if (status !== 'all') {
+      query.status = status;
+    }
+
+    // Promo code filter
+    if (usedPromoCode) {
+      query.usedPromoCode = usedPromoCode.toUpperCase();
+    }
+
+    // Search filter (buyerEmail or usedPromoCodeOwner)
+    if (search) {
+      query.$or = [
+        { buyerEmail: { $regex: search, $options: 'i' } },
+        { usedPromoCodeOwner: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Sort options
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    // Get earnings with pagination
+    const earnings = await Earning.find(query)
+      .populate('buyerId', 'name email')
+      .populate('usedPromoCodeOwnerId', 'name email')
+      .sort(sortOptions)
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await Earning.countDocuments(query);
+
+    // Get statistics
+    const stats = await Earning.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$amount' }
+        }
+      }
+    ]);
+
+    const formattedStats = {
+      pending: { count: 0, totalAmount: 0 },
+      processed: { count: 0, totalAmount: 0 },
+      paid: { count: 0, totalAmount: 0 },
+      total: { count: 0, totalAmount: 0 }
+    };
+
+    stats.forEach(stat => {
+      if (formattedStats[stat._id]) {
+        formattedStats[stat._id] = {
+          count: stat.count,
+          totalAmount: stat.totalAmount
+        };
+      }
+      formattedStats.total.count += stat.count;
+      formattedStats.total.totalAmount += stat.totalAmount;
+    });
+
+    res.json({
+      success: true,
+      earnings,
+      stats: formattedStats,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get earnings error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get HSC earned claim requests
 router.get('/hsc-earned-claims', verifyAdminToken, async (req, res) => {
   try {
