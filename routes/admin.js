@@ -12,6 +12,7 @@ const ClaimRequest = require('../models/ClaimRequest');
 const Earning = require('../models/Earning');
 const TokenDistribution = require('../models/TokenDistribution');
 const Notification = require('../models/Notification');
+const PaymentActivity = require('../models/PaymentActivity');
 const { verifyAdmin, verifyAdminToken } = require('../middleware/auth');
 const { checkExpiredMemberships, checkExpiringMemberships } = require('../jobs/membershipExpiration');
 const { sendTokenGiftEmail } = require('../utils/emailService');
@@ -2154,6 +2155,202 @@ router.put('/agents/:agentId/status', verifyAdminToken, async (req, res) => {
 
   } catch (error) {
     console.error('Update agent status error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get all payment activities with filters and search
+router.get('/payment-activities', verifyAdminToken, async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      search = '',
+      category = 'all',
+      paymentMethod = 'all',
+      status = 'all',
+      startDate,
+      endDate,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    const skip = (page - 1) * limit;
+
+    // Build query
+    let query = {};
+
+    // Search by buyer email or transaction ID
+    if (search) {
+      query.$or = [
+        { buyerEmail: { $regex: search, $options: 'i' } },
+        { transactionId: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Filter by category
+    if (category !== 'all') {
+      query.category = category;
+    }
+
+    // Filter by payment method
+    if (paymentMethod !== 'all') {
+      query.paymentMethod = paymentMethod;
+    }
+
+    // Filter by status
+    if (status !== 'all') {
+      query.status = status;
+    }
+
+    // Filter by date range
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) {
+        query.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        query.createdAt.$lte = new Date(endDate);
+      }
+    }
+
+    // Build sort object
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    // Execute query
+    const activities = await PaymentActivity.find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate('userId', 'name email')
+      .populate('promoCodeOwnerId', 'name email');
+
+    const total = await PaymentActivity.countDocuments(query);
+
+    // Calculate company profit (sum of all LKR payment methods)
+    const companyProfitResult = await PaymentActivity.aggregate([
+      {
+        $match: {
+          paymentMethod: 'LKR',
+          status: 'completed'
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalProfit: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const companyProfit = companyProfitResult.length > 0
+      ? companyProfitResult[0].totalProfit
+      : 0;
+    const lkrTransactionCount = companyProfitResult.length > 0
+      ? companyProfitResult[0].count
+      : 0;
+
+    // Get statistics
+    const stats = await PaymentActivity.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: null,
+          totalTransactions: { $sum: 1 },
+          totalAmount: { $sum: '$amount' },
+          totalOriginalAmount: { $sum: '$originalAmount' },
+          totalDiscountedAmount: { $sum: '$discountedAmount' }
+        }
+      }
+    ]);
+
+    // Get category breakdown
+    const categoryBreakdown = await PaymentActivity.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: '$category',
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$amount' }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Get payment method breakdown
+    const paymentMethodBreakdown = await PaymentActivity.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: '$paymentMethod',
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$amount' }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Get status breakdown
+    const statusBreakdown = await PaymentActivity.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      activities,
+      pagination: {
+        current: parseInt(page),
+        pages: Math.ceil(total / limit),
+        total,
+        limit: parseInt(limit)
+      },
+      companyProfit: {
+        totalProfit: companyProfit,
+        lkrTransactionCount: lkrTransactionCount
+      },
+      stats: stats[0] || {
+        totalTransactions: 0,
+        totalAmount: 0,
+        totalOriginalAmount: 0,
+        totalDiscountedAmount: 0
+      },
+      categoryBreakdown,
+      paymentMethodBreakdown,
+      statusBreakdown
+    });
+
+  } catch (error) {
+    console.error('Get payment activities error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get payment activity details by ID
+router.get('/payment-activities/:id', verifyAdminToken, async (req, res) => {
+  try {
+    const activity = await PaymentActivity.findById(req.params.id)
+      .populate('userId', 'name email contactNumber countryCode')
+      .populate('promoCodeOwnerId', 'name email');
+
+    if (!activity) {
+      return res.status(404).json({ message: 'Payment activity not found' });
+    }
+
+    res.json({
+      success: true,
+      activity
+    });
+
+  } catch (error) {
+    console.error('Get payment activity details error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
