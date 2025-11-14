@@ -80,7 +80,7 @@ emergencyServicesInsuranceReviewSchema.statics.calculateAverageRating = async fu
   const result = await this.aggregate([
     {
       $match: {
-        emergencyServicesInsuranceId: mongoose.Types.ObjectId(emergencyServicesInsuranceId),
+        emergencyServicesInsuranceId: new mongoose.Types.ObjectId(emergencyServicesInsuranceId),
         isActive: true
       }
     },
