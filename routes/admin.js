@@ -13,6 +13,7 @@ const Earning = require('../models/Earning');
 const TokenDistribution = require('../models/TokenDistribution');
 const Notification = require('../models/Notification');
 const PaymentActivity = require('../models/PaymentActivity');
+const RoomBooking = require('../models/RoomBooking');
 const { verifyAdmin, verifyAdminToken } = require('../middleware/auth');
 const { checkExpiredMemberships, checkExpiringMemberships } = require('../jobs/membershipExpiration');
 const { sendTokenGiftEmail } = require('../utils/emailService');
@@ -2352,6 +2353,140 @@ router.get('/payment-activities/:id', verifyAdminToken, async (req, res) => {
   } catch (error) {
     console.error('Get payment activity details error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get all room bookings with filters and search
+router.get('/room-bookings', verifyAdminToken, async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      search = '',
+      status = 'all',
+      startDate,
+      endDate,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    const skip = (page - 1) * limit;
+
+    // Build query
+    let query = {};
+
+    // Search by booking ID, customer name, customer email, or hotel name
+    if (search) {
+      query.$or = [
+        { bookingId: { $regex: search, $options: 'i' } },
+        { customerName: { $regex: search, $options: 'i' } },
+        { customerEmail: { $regex: search, $options: 'i' } },
+        { hotelName: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Filter by status
+    if (status !== 'all') {
+      query.status = status;
+    }
+
+    // Filter by date range
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) {
+        query.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        query.createdAt.$lte = new Date(endDate);
+      }
+    }
+
+    // Build sort object
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    // Execute query
+    const bookings = await RoomBooking.find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate('customerId', 'name email contactNumber')
+      .populate('hotelOwnerId', 'name email contactNumber')
+      .populate('promocodeOwnerId', 'name email');
+
+    const total = await RoomBooking.countDocuments(query);
+
+    // Get statistics
+    const stats = await RoomBooking.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalBookings: { $sum: 1 },
+          totalAmount: { $sum: '$totalAmount' },
+          totalFinalAmount: { $sum: '$finalAmount' },
+          totalDiscount: { $sum: '$totalDiscount' }
+        }
+      }
+    ]);
+
+    // Get status breakdown
+    const statusBreakdown = await RoomBooking.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$finalAmount' }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    res.json({
+      success: true,
+      bookings,
+      pagination: {
+        current: parseInt(page),
+        pages: Math.ceil(total / limit),
+        total,
+        limit: parseInt(limit)
+      },
+      stats: stats[0] || {
+        totalBookings: 0,
+        totalAmount: 0,
+        totalFinalAmount: 0,
+        totalDiscount: 0
+      },
+      statusBreakdown
+    });
+
+  } catch (error) {
+    console.error('Get room bookings error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get room booking details by ID
+router.get('/room-bookings/:id', verifyAdminToken, async (req, res) => {
+  try {
+    const booking = await RoomBooking.findById(req.params.id)
+      .populate('customerId', 'name email contactNumber countryCode')
+      .populate('hotelOwnerId', 'name email contactNumber countryCode')
+      .populate('promocodeOwnerId', 'name email')
+      .populate('hotelId')
+      .populate('paymentActivityId');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Room booking not found' });
+    }
+
+    res.json({
+      success: true,
+      booking
+    });
+
+  } catch (error) {
+    console.error('Get room booking details error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
