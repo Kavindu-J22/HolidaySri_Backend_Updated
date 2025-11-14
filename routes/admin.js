@@ -931,6 +931,119 @@ router.post('/hsc-earned-claims/:requestId/approve', verifyAdminToken, async (re
   }
 });
 
+// Get all HSC earned records with search and filter
+router.get('/hsc-earned-records', verifyAdminToken, async (req, res) => {
+  try {
+    const HSCEarned = require('../models/HSCEarned');
+    const {
+      page = 1,
+      limit = 20,
+      search = '',
+      status = 'all',
+      category = 'all',
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      startDate = '',
+      endDate = ''
+    } = req.query;
+
+    // Build query
+    const query = {};
+
+    // Status filter
+    if (status !== 'all') {
+      query.status = status;
+    }
+
+    // Category filter
+    if (category !== 'all') {
+      query.category = category;
+    }
+
+    // Date range filter
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) {
+        query.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        query.createdAt.$lte = new Date(endDate);
+      }
+    }
+
+    // Search filter (user email from buyerDetails or populated user)
+    if (search) {
+      query.$or = [
+        { 'buyerDetails.buyerEmail': { $regex: search, $options: 'i' } },
+        { 'buyerDetails.buyerName': { $regex: search, $options: 'i' } },
+        { 'itemDetails.promoCode': { $regex: search, $options: 'i' } },
+        { transactionId: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Sort options
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    // Get HSC earned records with pagination
+    const hscEarnedRecords = await HSCEarned.find(query)
+      .populate('userId', 'name email')
+      .populate('buyerUserId', 'name email')
+      .sort(sortOptions)
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await HSCEarned.countDocuments(query);
+
+    // Get statistics
+    const stats = await HSCEarned.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$earnedAmount' }
+        }
+      }
+    ]);
+
+    const formattedStats = {
+      pending: { count: 0, totalAmount: 0 },
+      completed: { count: 0, totalAmount: 0 },
+      cancelled: { count: 0, totalAmount: 0 },
+      'paid As HSC': { count: 0, totalAmount: 0 },
+      'paid As LKR': { count: 0, totalAmount: 0 },
+      total: { count: 0, totalAmount: 0 }
+    };
+
+    stats.forEach(stat => {
+      if (formattedStats[stat._id] !== undefined) {
+        formattedStats[stat._id] = {
+          count: stat.count,
+          totalAmount: stat.totalAmount
+        };
+      }
+      formattedStats.total.count += stat.count;
+      formattedStats.total.totalAmount += stat.totalAmount;
+    });
+
+    res.json({
+      success: true,
+      hscEarnedRecords,
+      stats: formattedStats,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get HSC earned records error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Membership Management Routes
 
 // Test endpoint for membership
