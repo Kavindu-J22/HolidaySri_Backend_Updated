@@ -372,13 +372,56 @@ router.get('/transactions', verifyToken, async (req, res) => {
 // Admin: Get all promo code transactions
 router.get('/admin/transactions', verifyAdminToken, async (req, res) => {
   try {
-    const { page = 1, limit = 20, userId, promoCodeType, transactionType } = req.query;
+    const {
+      page = 1,
+      limit = 20,
+      userId,
+      promoCodeType,
+      transactionType,
+      paymentStatus,
+      search,
+      startDate,
+      endDate
+    } = req.query;
     const skip = (page - 1) * limit;
 
     const query = {};
+
+    // Filter by userId
     if (userId) query.userId = userId;
-    if (promoCodeType) query.promoCodeType = promoCodeType;
-    if (transactionType) query.transactionType = transactionType;
+
+    // Filter by promoCodeType
+    if (promoCodeType && promoCodeType !== 'all') {
+      query.promoCodeType = promoCodeType;
+    }
+
+    // Filter by transactionType
+    if (transactionType && transactionType !== 'all') {
+      query.transactionType = transactionType;
+    }
+
+    // Filter by payment status
+    if (paymentStatus && paymentStatus !== 'all') {
+      query['paymentDetails.paymentStatus'] = paymentStatus;
+    }
+
+    // Search by description
+    if (search) {
+      query.description = { $regex: search, $options: 'i' };
+    }
+
+    // Filter by date range
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) {
+        query.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = endDateTime;
+      }
+    }
 
     const transactions = await PromoCodeTransaction.find(query)
       .sort({ createdAt: -1 })
@@ -389,8 +432,49 @@ router.get('/admin/transactions', verifyAdminToken, async (req, res) => {
 
     const total = await PromoCodeTransaction.countDocuments(query);
 
+    // Calculate stats
+    const allTransactions = await PromoCodeTransaction.find({});
+
+    const stats = {
+      byPromoCodeType: {
+        silver: { count: 0, totalAmount: 0 },
+        gold: { count: 0, totalAmount: 0 },
+        diamond: { count: 0, totalAmount: 0 },
+        free: { count: 0, totalAmount: 0 },
+        'pre-used': { count: 0, totalAmount: 0 }
+      },
+      byTransactionType: {
+        purchase: { count: 0, totalAmount: 0 },
+        use_monthly_ad: { count: 0, totalAmount: 0 },
+        use_daily_ad: { count: 0, totalAmount: 0 },
+        use_hourly_ad: { count: 0, totalAmount: 0 },
+        use_yearly_ad: { count: 0, totalAmount: 0 },
+        use_purchase: { count: 0, totalAmount: 0 }
+      },
+      total: { count: 0, totalAmount: 0 }
+    };
+
+    allTransactions.forEach(transaction => {
+      // By promo code type
+      if (stats.byPromoCodeType[transaction.promoCodeType]) {
+        stats.byPromoCodeType[transaction.promoCodeType].count++;
+        stats.byPromoCodeType[transaction.promoCodeType].totalAmount += transaction.amount || 0;
+      }
+
+      // By transaction type
+      if (stats.byTransactionType[transaction.transactionType]) {
+        stats.byTransactionType[transaction.transactionType].count++;
+        stats.byTransactionType[transaction.transactionType].totalAmount += transaction.amount || 0;
+      }
+
+      // Total
+      stats.total.count++;
+      stats.total.totalAmount += transaction.amount || 0;
+    });
+
     res.json({
       transactions,
+      stats,
       pagination: {
         current: parseInt(page),
         pages: Math.ceil(total / limit),
