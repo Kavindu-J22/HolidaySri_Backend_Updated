@@ -899,4 +899,58 @@ router.post('/process-renewal-payment', verifyToken, verifyEmailVerified, async 
   }
 });
 
+// GET /api/advertisements/featured - Get all featured (Published) advertisements
+router.get('/featured', async (req, res) => {
+  try {
+    const { page = 1, limit = 12, category } = req.query;
+    const skip = (page - 1) * limit;
+
+    // Categories to exclude from featured ads
+    const excludedCategories = ['home_banner_slot', 'travel_buddys', 'caregivers_time_currency'];
+
+    // Build query
+    let query = {
+      status: 'Published',
+      isActive: true,
+      category: { $nin: excludedCategories },
+      expiresAt: { $gt: new Date() } // Only non-expired ads
+    };
+
+    // Optional category filter
+    if (category && category !== 'all') {
+      query.category = category;
+    }
+
+    // Get total count
+    const total = await Advertisement.countDocuments(query);
+
+    // Fetch advertisements with populated data
+    const advertisements = await Advertisement.find(query)
+      .populate('userId', 'name email isMember isPartner')
+      .populate('publishedAdId')
+      .sort({ publishedAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    res.json({
+      success: true,
+      data: advertisements,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+        totalCount: total,
+        hasNext: skip + advertisements.length < total,
+        hasPrev: parseInt(page) > 1
+      }
+    });
+
+  } catch (error) {
+    console.error('Get featured advertisements error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
 module.exports = router;
