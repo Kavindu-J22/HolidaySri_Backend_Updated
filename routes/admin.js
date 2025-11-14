@@ -1,6 +1,8 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const User = require('../models/User');
+const Agent = require('../models/Agent');
 const { HSCConfig, HSCTransaction, HSCPackage } = require('../models/HSC');
 const { MembershipConfig, MembershipTransaction } = require('../models/Membership');
 const { CommercialPartnerConfig, CommercialPartner } = require('../models/CommercialPartner');
@@ -1681,6 +1683,141 @@ router.get('/distribution-history/:id', verifyAdminToken, async (req, res) => {
 
   } catch (error) {
     console.error('Get distribution details error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ==================== AGENTS MANAGEMENT ROUTES ====================
+
+// Get all agents with search and filters
+router.get('/agents', verifyAdminToken, async (req, res) => {
+  try {
+    const { page = 1, limit = 20, search, promoCodeType, isActive } = req.query;
+
+    let query = {};
+
+    // Search by email or promoCode
+    if (search) {
+      query.$or = [
+        { email: { $regex: search, $options: 'i' } },
+        { promoCode: { $regex: search, $options: 'i' } },
+        { userName: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Filter by promoCodeType
+    if (promoCodeType && promoCodeType !== 'all') {
+      query.promoCodeType = promoCodeType;
+    }
+
+    // Filter by isActive
+    if (isActive === 'true') {
+      query.isActive = true;
+    } else if (isActive === 'false') {
+      query.isActive = false;
+    }
+
+    const agents = await Agent.find(query)
+      .populate('userId', 'name email contactNumber hscBalance')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await Agent.countDocuments(query);
+
+    // Get statistics
+    const stats = {
+      total: await Agent.countDocuments(),
+      active: await Agent.countDocuments({ isActive: true }),
+      inactive: await Agent.countDocuments({ isActive: false }),
+      verified: await Agent.countDocuments({ isVerified: true }),
+      byType: {
+        silver: await Agent.countDocuments({ promoCodeType: 'silver' }),
+        gold: await Agent.countDocuments({ promoCodeType: 'gold' }),
+        diamond: await Agent.countDocuments({ promoCodeType: 'diamond' }),
+        free: await Agent.countDocuments({ promoCodeType: 'free' })
+      }
+    };
+
+    res.json({
+      success: true,
+      agents,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      },
+      stats
+    });
+
+  } catch (error) {
+    console.error('Get agents error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get agent details by ID
+router.get('/agents/:agentId', verifyAdminToken, async (req, res) => {
+  try {
+    const agent = await Agent.findById(req.params.agentId)
+      .populate('userId', 'name email contactNumber countryCode hscBalance hsgBalance hsdBalance createdAt');
+
+    if (!agent) {
+      return res.status(404).json({ message: 'Agent not found' });
+    }
+
+    // Get agent's earnings using usedPromoCodeOwnerId (which references the agent's userId)
+    const earnings = await Earning.find({ usedPromoCodeOwnerId: agent.userId._id })
+      .populate('buyerId', 'name email')
+      .sort({ createdAt: -1 })
+      .limit(20);
+
+    // Calculate total earnings using usedPromoCodeOwnerId
+    const totalEarnings = await Earning.aggregate([
+      { $match: { usedPromoCodeOwnerId: new mongoose.Types.ObjectId(agent.userId._id) } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+
+    console.log('Agent details - Total Earnings:', totalEarnings[0]?.total || 0);
+    console.log('Agent details - Earnings count:', earnings.length);
+
+    res.json({
+      success: true,
+      agent,
+      earnings,
+      totalEarnings: totalEarnings[0]?.total || 0
+    });
+
+  } catch (error) {
+    console.error('Get agent details error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update agent status (activate/deactivate)
+router.put('/agents/:agentId/status', verifyAdminToken, async (req, res) => {
+  try {
+    const { isActive } = req.body;
+
+    const agent = await Agent.findByIdAndUpdate(
+      req.params.agentId,
+      { isActive },
+      { new: true }
+    ).populate('userId', 'name email');
+
+    if (!agent) {
+      return res.status(404).json({ message: 'Agent not found' });
+    }
+
+    res.json({
+      success: true,
+      message: `Agent ${isActive ? 'activated' : 'deactivated'} successfully`,
+      agent
+    });
+
+  } catch (error) {
+    console.error('Update agent status error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
