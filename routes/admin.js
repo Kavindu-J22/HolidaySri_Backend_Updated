@@ -771,6 +771,134 @@ router.get('/earnings', verifyAdminToken, async (req, res) => {
   }
 });
 
+// Get all HSC transactions with search and filter
+router.get('/hsc-transactions', verifyAdminToken, async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      search = '',
+      tokenType = 'all',
+      type = 'all',
+      paymentStatus = 'all',
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Build query
+    const query = {};
+
+    // Token type filter
+    if (tokenType !== 'all') {
+      query.tokenType = tokenType;
+    }
+
+    // Transaction type filter
+    if (type !== 'all') {
+      query.type = type;
+    }
+
+    // Payment status filter
+    if (paymentStatus !== 'all') {
+      query['paymentDetails.paymentStatus'] = paymentStatus;
+    }
+
+    // Search filter (user email or transaction ID)
+    if (search) {
+      // First, try to find users by email
+      const users = await User.find({
+        email: { $regex: search, $options: 'i' }
+      }).select('_id');
+
+      const userIds = users.map(u => u._id);
+
+      query.$or = [
+        { userId: { $in: userIds } },
+        { transactionId: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Sort options
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    // Get transactions with pagination
+    const transactions = await HSCTransaction.find(query)
+      .populate('userId', 'name email contactNumber')
+      .populate('relatedAdvertisement', 'slotId category')
+      .sort(sortOptions)
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await HSCTransaction.countDocuments(query);
+
+    // Get statistics
+    const stats = await HSCTransaction.aggregate([
+      {
+        $group: {
+          _id: {
+            tokenType: '$tokenType',
+            type: '$type'
+          },
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$amount' }
+        }
+      }
+    ]);
+
+    const formattedStats = {
+      byTokenType: {
+        HSC: { count: 0, totalAmount: 0 },
+        HSG: { count: 0, totalAmount: 0 },
+        HSD: { count: 0, totalAmount: 0 }
+      },
+      byType: {
+        purchase: { count: 0, totalAmount: 0 },
+        spend: { count: 0, totalAmount: 0 },
+        refund: { count: 0, totalAmount: 0 },
+        bonus: { count: 0, totalAmount: 0 },
+        gift: { count: 0, totalAmount: 0 }
+      },
+      total: { count: 0, totalAmount: 0 }
+    };
+
+    stats.forEach(stat => {
+      const tokenType = stat._id.tokenType;
+      const type = stat._id.type;
+
+      if (formattedStats.byTokenType[tokenType]) {
+        formattedStats.byTokenType[tokenType].count += stat.count;
+        formattedStats.byTokenType[tokenType].totalAmount += stat.totalAmount;
+      }
+
+      if (formattedStats.byType[type]) {
+        formattedStats.byType[type].count += stat.count;
+        formattedStats.byType[type].totalAmount += stat.totalAmount;
+      }
+
+      formattedStats.total.count += stat.count;
+      formattedStats.total.totalAmount += stat.totalAmount;
+    });
+
+    res.json({
+      success: true,
+      transactions,
+      stats: formattedStats,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get HSC transactions error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get HSC earned claim requests
 router.get('/hsc-earned-claims', verifyAdminToken, async (req, res) => {
   try {
