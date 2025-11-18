@@ -164,7 +164,7 @@ const checkSlotAvailabilityAndNotify = async () => {
                       <p>Click the button below to publish your home banner advertisement now:</p>
                       
                       <center>
-                        <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/profile?section=advertisements" class="button">
+                        <a href="${process.env.FRONTEND_URL || 'https://www.holidaysri.com'}/profile?section=advertisements" class="button">
                           Publish My Banner Now
                         </a>
                       </center>
