@@ -56,10 +56,14 @@ router.get('/dashboard', verifyAdminToken, async (req, res) => {
       createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }
     });
 
-    // Get advertisement statistics
+    // Get advertisement statistics with all statuses
     const totalAds = await Advertisement.countDocuments();
     const activeAds = await Advertisement.countDocuments({ status: 'active' });
-    const pendingAds = await Advertisement.countDocuments({ status: 'draft' });
+    const publishedAds = await Advertisement.countDocuments({ status: 'Published' });
+    const expiredAds = await Advertisement.countDocuments({ status: 'expired' });
+    const pausedAds = await Advertisement.countDocuments({ status: 'paused' });
+    const draftAds = await Advertisement.countDocuments({ status: 'draft' });
+    const rejectedAds = await Advertisement.countDocuments({ status: 'rejected' });
 
     // Get HSC statistics
     const totalHSCTransactions = await HSCTransaction.countDocuments();
@@ -75,6 +79,19 @@ router.get('/dashboard', verifyAdminToken, async (req, res) => {
     // Get current HSC configuration
     const hscConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
 
+    // Get company profit from LKR payments
+    const PaymentActivity = require('../models/PaymentActivity');
+    const lkrPayments = await PaymentActivity.aggregate([
+      { $match: { paymentMethod: 'LKR', status: 'completed' } },
+      {
+        $group: {
+          _id: null,
+          totalProfit: { $sum: '$finalAmount' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
     res.json({
       users: {
         total: totalUsers,
@@ -84,7 +101,11 @@ router.get('/dashboard', verifyAdminToken, async (req, res) => {
       advertisements: {
         total: totalAds,
         active: activeAds,
-        pending: pendingAds
+        published: publishedAds,
+        expired: expiredAds,
+        paused: pausedAds,
+        draft: draftAds,
+        rejected: rejectedAds
       },
       hsc: {
         currentValue: hscConfig ? hscConfig.hscValue : 100,
@@ -92,6 +113,10 @@ router.get('/dashboard', verifyAdminToken, async (req, res) => {
         totalTransactions: totalHSCTransactions,
         totalPurchased: totalHSCPurchased[0]?.total || 0,
         totalSpent: totalHSCSpent[0]?.total || 0
+      },
+      companyProfit: {
+        totalProfit: lkrPayments[0]?.totalProfit || 0,
+        lkrTransactionCount: lkrPayments[0]?.count || 0
       }
     });
 
