@@ -2898,6 +2898,118 @@ const sendNewTripRequestNotification = async (email, name, tripRequestDetails) =
   }
 };
 
+// Send advertisement deletion notification email
+const sendAdvertisementDeletionNotification = async (email, name, slotId, categoryName, adminNote) => {
+  const transporter = createTransporter();
+
+  const formattedDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri.com',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: `⚠️ Advertisement Deleted - Slot ${slotId} | Holidaysri`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #dc2626;">
+            <h1 style="color: #dc2626; margin: 0;">⚠️ Advertisement Deleted</h1>
+            <p style="color: #666; margin: 5px 0;">Holidaysri Admin Team</p>
+          </div>
+
+          <div style="margin-bottom: 30px;">
+            <p style="color: #333; font-size: 16px; line-height: 1.6;">
+              Dear <strong>${name}</strong>,
+            </p>
+            <p style="color: #333; font-size: 16px; line-height: 1.6;">
+              We regret to inform you that your advertisement has been deleted by our admin team.
+            </p>
+          </div>
+
+          <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 20px; margin-bottom: 30px; border-radius: 5px;">
+            <h3 style="color: #dc2626; margin: 0 0 15px 0; font-size: 18px;">Deleted Advertisement Details</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px 0; color: #666; font-weight: 600;">Slot ID:</td>
+                <td style="padding: 8px 0; color: #333; font-weight: bold;">${slotId}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666; font-weight: 600;">Category:</td>
+                <td style="padding: 8px 0; color: #333;">${categoryName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666; font-weight: 600;">Deleted On:</td>
+                <td style="padding: 8px 0; color: #333;">${formattedDate}</td>
+              </tr>
+            </table>
+          </div>
+
+          ${adminNote ? `
+          <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px; margin-bottom: 30px; border-radius: 5px;">
+            <h3 style="color: #f59e0b; margin: 0 0 10px 0; font-size: 16px;">📝 Admin Note:</h3>
+            <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${adminNote}</p>
+          </div>
+          ` : ''}
+
+          <div style="background-color: #f0f9ff; border-left: 4px solid #3b82f6; padding: 20px; margin-bottom: 30px; border-radius: 5px;">
+            <h3 style="color: #3b82f6; margin: 0 0 10px 0; font-size: 16px;">ℹ️ What This Means:</h3>
+            <ul style="color: #333; font-size: 14px; line-height: 1.8; margin: 10px 0; padding-left: 20px;">
+              <li>Your advertisement slot has been permanently removed from our platform</li>
+              <li>The published content associated with this slot has also been deleted</li>
+              <li>This action cannot be undone</li>
+            </ul>
+          </div>
+
+          <div style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 20px; margin-bottom: 30px; border-radius: 5px;">
+            <h3 style="color: #10b981; margin: 0 0 10px 0; font-size: 16px;">💡 Next Steps:</h3>
+            <ul style="color: #333; font-size: 14px; line-height: 1.8; margin: 10px 0; padding-left: 20px;">
+              <li>If you believe this was done in error, please contact our support team</li>
+              <li>You can create a new advertisement slot if you wish to continue advertising</li>
+              <li>Please review our advertising guidelines before posting new content</li>
+            </ul>
+          </div>
+
+          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+            <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+              Need help or have questions?
+            </p>
+            <a href="https://www.holidaysri.com/contact" style="display: inline-block; padding: 12px 30px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 5px; font-weight: 600;">
+              Contact Support
+            </a>
+          </div>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri.com. All rights reserved.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
+              This is an automated notification from Holidaysri Admin Team.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Advertisement deletion notification sent to ${email}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Advertisement deletion email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   generateOTP,
   sendEmailVerificationOTP,
@@ -2928,5 +3040,6 @@ module.exports = {
   sendEventRequestApprovalConfirmation,
   sendTourPackageApprovalConfirmation,
   sendDonationFundPaidConfirmation,
-  sendContactFormEmail
+  sendContactFormEmail,
+  sendAdvertisementDeletionNotification
 };

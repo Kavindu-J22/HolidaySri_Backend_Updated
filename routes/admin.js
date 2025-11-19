@@ -2490,4 +2490,221 @@ router.get('/room-bookings/:id', verifyAdminToken, async (req, res) => {
   }
 });
 
+// ==================== ADVERTISEMENTS MANAGEMENT ROUTES ====================
+
+// Get all advertisements with search and filters
+router.get('/advertisements', verifyAdminToken, async (req, res) => {
+  try {
+    const { page = 1, limit = 20, search, category, status, isActive } = req.query;
+
+    let query = {};
+
+    // Search by user email or slotId
+    if (search) {
+      const users = await User.find({
+        email: { $regex: search, $options: 'i' }
+      }).select('_id');
+
+      const userIds = users.map(u => u._id);
+
+      query.$or = [
+        { slotId: { $regex: search, $options: 'i' } },
+        { userId: { $in: userIds } }
+      ];
+    }
+
+    // Filter by category
+    if (category && category !== 'all') {
+      query.category = category;
+    }
+
+    // Filter by status
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+
+    // Filter by isActive
+    if (isActive === 'true') {
+      query.isActive = true;
+    } else if (isActive === 'false') {
+      query.isActive = false;
+    }
+
+    const advertisements = await Advertisement.find(query)
+      .populate('userId', 'name email')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await Advertisement.countDocuments(query);
+
+    res.json({
+      success: true,
+      advertisements,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page),
+      total
+    });
+
+  } catch (error) {
+    console.error('Get advertisements error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get advertisement details
+router.get('/advertisements/:adId', verifyAdminToken, async (req, res) => {
+  try {
+    const advertisement = await Advertisement.findById(req.params.adId)
+      .populate('userId', 'name email profileImage')
+      .populate('usedPromoCodeOwnerId', 'name email');
+
+    if (!advertisement) {
+      return res.status(404).json({ message: 'Advertisement not found' });
+    }
+
+    // Get published ad details if exists
+    let publishedAdDetails = null;
+    if (advertisement.publishedAdId && advertisement.publishedAdModel) {
+      const model = mongoose.model(advertisement.publishedAdModel);
+      publishedAdDetails = await model.findById(advertisement.publishedAdId);
+    }
+
+    res.json({
+      success: true,
+      advertisement,
+      publishedAdDetails
+    });
+
+  } catch (error) {
+    console.error('Get advertisement details error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Toggle advertisement isActive status
+router.put('/advertisements/:adId/toggle-active', verifyAdminToken, async (req, res) => {
+  try {
+    const advertisement = await Advertisement.findById(req.params.adId);
+
+    if (!advertisement) {
+      return res.status(404).json({ message: 'Advertisement not found' });
+    }
+
+    advertisement.isActive = !advertisement.isActive;
+    await advertisement.save();
+
+    res.json({
+      success: true,
+      message: `Advertisement ${advertisement.isActive ? 'activated' : 'deactivated'} successfully`,
+      isActive: advertisement.isActive
+    });
+
+  } catch (error) {
+    console.error('Toggle advertisement status error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Delete advertisement with slot
+router.delete('/advertisements/:adId', verifyAdminToken, async (req, res) => {
+  try {
+    const { slotId, adminNote } = req.body;
+
+    const advertisement = await Advertisement.findById(req.params.adId)
+      .populate('userId', 'name email');
+
+    if (!advertisement) {
+      return res.status(404).json({ message: 'Advertisement not found' });
+    }
+
+    // Verify slotId matches
+    if (advertisement.slotId !== slotId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Slot ID does not match. Please enter the correct Slot ID.'
+      });
+    }
+
+    // Delete published ad if exists
+    if (advertisement.publishedAdId && advertisement.publishedAdModel) {
+      try {
+        const model = mongoose.model(advertisement.publishedAdModel);
+        await model.findByIdAndDelete(advertisement.publishedAdId);
+      } catch (modelError) {
+        console.error('Error deleting published ad:', modelError);
+        // Continue with advertisement deletion even if published ad deletion fails
+      }
+    }
+
+    // Get category name for email
+    const categoryNames = {
+      'travel_buddys': 'Travel Buddies',
+      'tour_guiders': 'Tour Guiders',
+      'local_tour_packages': 'Local Tour Packages',
+      'travelsafe_help_professionals': 'Travel Safe Help Professionals',
+      'rent_land_camping_parking': 'Rent Land Camping Parking',
+      'hotels_accommodations': 'Hotels & Accommodations',
+      'cafes_restaurants': 'Cafes & Restaurants',
+      'foods_beverages': 'Foods & Beverages',
+      'vehicle_rentals_hire': 'Vehicle Rentals & Hire',
+      'professional_drivers': 'Professional Drivers',
+      'vehicle_repairs_mechanics': 'Vehicle Repairs & Mechanics',
+      'event_planners_coordinators': 'Event Planners & Coordinators',
+      'creative_photographers': 'Creative Photographers',
+      'decorators_florists': 'Decorators & Florists',
+      'salon_makeup_artists': 'Salon & Makeup Artists',
+      'fashion_designers': 'Fashion Designers',
+      'fashion_beauty_clothing': 'Fashion Beauty & Clothing',
+      'expert_doctors': 'Expert Doctors',
+      'professional_lawyers': 'Professional Lawyers',
+      'advisors_counselors': 'Advisors & Counselors',
+      'expert_architects': 'Expert Architects',
+      'trusted_astrologists': 'Trusted Astrologists',
+      'delivery_partners': 'Delivery Partners',
+      'graphics_it_tech_repair': 'Graphics IT & Tech Repair',
+      'educational_tutoring': 'Educational Tutoring',
+      'babysitters_childcare': 'Babysitters & Childcare',
+      'pet_care_animal_services': 'Pet Care & Animal Services',
+      'rent_property_buying_selling': 'Rent Property Buying Selling',
+      'books_magazines_educational': 'Books Magazines & Educational',
+      'other_items': 'Other Items',
+      'events_updates': 'Events & Updates',
+      'donations_raise_fund': 'Donations & Raise Fund',
+      'home_banner_slot': 'Home Banner Slot',
+      'live_rides_carpooling': 'Live Rides & Carpooling',
+      'crypto_consulting_signals': 'Crypto Consulting & Signals'
+    };
+
+    const categoryName = categoryNames[advertisement.category] || advertisement.category;
+
+    // Send email notification to user
+    const { sendAdvertisementDeletionNotification } = require('../utils/emailService');
+    try {
+      await sendAdvertisementDeletionNotification(
+        advertisement.userId.email,
+        advertisement.userId.name,
+        advertisement.slotId,
+        categoryName,
+        adminNote || ''
+      );
+    } catch (emailError) {
+      console.error('Error sending deletion notification email:', emailError);
+      // Continue with deletion even if email fails
+    }
+
+    // Delete the advertisement
+    await Advertisement.findByIdAndDelete(req.params.adId);
+
+    res.json({
+      success: true,
+      message: 'Advertisement and associated content deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Delete advertisement error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 module.exports = router;
