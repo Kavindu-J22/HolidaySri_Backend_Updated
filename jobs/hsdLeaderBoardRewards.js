@@ -7,7 +7,7 @@ const checkHSDPeriodEnd = async () => {
     console.log('[HSD-CRON] Checking for HSD Leader Board period end...');
     
     // Call the API endpoint to process period end rewards
-    const response = await axios.post(`${process.env.SERVER_URL || 'http://localhost:5000'}/api/hsd-leaderboard/process-period-end`);
+    const response = await axios.post(`${process.env.SERVER_URL || 'https://holidaysri-backend-9xm4.onrender.com'}/api/hsd-leaderboard/process-period-end`);
     
     if (response.data.results && response.data.results.length > 0) {
       console.log(`[HSD-CRON] Period end processed for ${response.data.period}:`);
