@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const API_BASE = 'https://holidaysri-backend-9xm4.onrender.com/api';
+const API_BASE = 'http://localhost:5000/api';
 
 async function testSendOTP() {
   try {
