@@ -1,6 +1,8 @@
 const express = require('express');
 const User = require('../models/User');
 const { HSCConfig, HSCTransaction, HSCPackage } = require('../models/HSC');
+const PaymentActivity = require('../models/PaymentActivity');
+const MoneyTransaction = require('../models/MoneyTransaction');
 const { verifyToken, verifyEmailVerified } = require('../middleware/auth');
 
 const router = express.Router();
@@ -40,7 +42,7 @@ router.get('/info', async (req, res) => {
 // Purchase HSC (custom amount)
 router.post('/purchase', verifyToken, verifyEmailVerified, async (req, res) => {
   try {
-    const { amount, paymentMethod, paymentDetails } = req.body;
+    const { amount, paymentMethod, paymentDetails, customerDetails } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ message: 'Invalid HSC amount' });
@@ -53,45 +55,89 @@ router.post('/purchase', verifyToken, verifyEmailVerified, async (req, res) => {
     // Get current HSC value
     const hscConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
     const hscValue = hscConfig ? hscConfig.hscValue : 100;
+    const currency = hscConfig ? hscConfig.currency : 'LKR';
 
-    // Calculate total price
+    // Calculate total price in LKR
     const totalPrice = amount * hscValue;
 
-    // In a real application, you would integrate with a payment gateway here
-    // For now, we'll simulate a successful payment
-    const simulatedPaymentResult = {
-      success: true,
-      transactionId: `TXN_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`,
-      status: 'completed'
-    };
-
-    if (!simulatedPaymentResult.success) {
-      return res.status(400).json({ message: 'Payment failed' });
-    }
-
-    // Update user's HSC balance
+    // Get user details
     const user = await User.findById(req.user._id);
     const balanceBefore = user.hscBalance;
+    const hsgBalanceBefore = user.hsgBalance || 0;
+    const hsdBalanceBefore = user.hsdBalance || 0;
+
+    // Update user's HSC balance
     user.hscBalance += amount;
     await user.save();
 
-    // Create transaction record
+    // Create HSC transaction record
     const transaction = new HSCTransaction({
       userId: req.user._id,
       type: 'purchase',
       amount,
-      description: `Purchased ${amount} HSC tokens`,
+      description: `Purchased ${amount} HSC tokens (Custom Amount)`,
       paymentMethod,
       paymentDetails: {
-        transactionId: simulatedPaymentResult.transactionId,
+        transactionId: paymentDetails?.transactionId || `TXN_${Date.now()}`,
         paymentStatus: 'completed',
         ...paymentDetails
       },
       balanceBefore,
       balanceAfter: user.hscBalance
     });
-
     await transaction.save();
+
+    // Create Payment Activity record
+    const paymentActivity = new PaymentActivity({
+      userId: req.user._id,
+      buyerEmail: user.email,
+      item: `Custom HSC Purchase - ${amount} HSC`,
+      quantity: amount,
+      category: 'HSC Purchase',
+      originalAmount: totalPrice,
+      amount: totalPrice,
+      discountedAmount: 0,
+      paymentMethod: 'LKR',
+      status: 'completed'
+    });
+    await paymentActivity.save();
+
+    // Create Money Transaction record
+    const moneyTransaction = new MoneyTransaction({
+      userId: req.user._id,
+      userEmail: user.email,
+      userName: user.name || 'User',
+      transactionType: 'HSC_PURCHASE',
+      paymentGateway: 'PayHere',
+      paymentMethod: 'LKR',
+      amountLKR: totalPrice,
+      hscAmount: amount,
+      hscValue: hscValue,
+      description: `Custom HSC Purchase - ${amount} HSC tokens`,
+      category: 'HSC Purchase',
+      gatewayTransactionId: paymentDetails?.transactionId || `TXN_${Date.now()}`,
+      gatewayStatus: 'completed',
+      customerDetails: customerDetails || {},
+      itemDetails: {
+        itemName: `Custom HSC Purchase - ${amount} HSC`,
+        quantity: amount,
+        packageType: 'Custom'
+      },
+      balanceBefore: {
+        hsc: balanceBefore,
+        hsg: hsgBalanceBefore,
+        hsd: hsdBalanceBefore
+      },
+      balanceAfter: {
+        hsc: user.hscBalance,
+        hsg: user.hsgBalance || 0,
+        hsd: user.hsdBalance || 0
+      },
+      status: 'completed',
+      relatedPaymentActivity: paymentActivity._id,
+      relatedHSCTransaction: transaction._id
+    });
+    await moneyTransaction.save();
 
     res.json({
       message: 'HSC purchase successful',
@@ -100,7 +146,9 @@ router.post('/purchase', verifyToken, verifyEmailVerified, async (req, res) => {
         amount,
         totalPrice,
         newBalance: user.hscBalance,
-        transactionId: simulatedPaymentResult.transactionId
+        transactionId: paymentDetails?.transactionId || transaction.transactionId,
+        paymentActivityId: paymentActivity._id,
+        moneyTransactionId: moneyTransaction._id
       }
     });
 
@@ -113,7 +161,7 @@ router.post('/purchase', verifyToken, verifyEmailVerified, async (req, res) => {
 // Purchase HSC package
 router.post('/purchase-package', verifyToken, verifyEmailVerified, async (req, res) => {
   try {
-    const { packageId, paymentMethod, paymentDetails } = req.body;
+    const { packageId, paymentMethod, paymentDetails, customerDetails } = req.body;
 
     if (!packageId) {
       return res.status(400).json({ message: 'Package ID is required' });
@@ -129,24 +177,21 @@ router.post('/purchase-package', verifyToken, verifyEmailVerified, async (req, r
       return res.status(404).json({ message: 'Package not found or inactive' });
     }
 
-    // In a real application, you would integrate with a payment gateway here
-    const simulatedPaymentResult = {
-      success: true,
-      transactionId: `PKG_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`,
-      status: 'completed'
-    };
+    // Get current HSC value for conversion
+    const hscConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
+    const hscValue = hscConfig ? hscConfig.hscValue : 100;
 
-    if (!simulatedPaymentResult.success) {
-      return res.status(400).json({ message: 'Payment failed' });
-    }
-
-    // Update user's HSC balance
+    // Get user details
     const user = await User.findById(req.user._id);
     const balanceBefore = user.hscBalance;
+    const hsgBalanceBefore = user.hsgBalance || 0;
+    const hsdBalanceBefore = user.hsdBalance || 0;
+
+    // Update user's HSC balance
     user.hscBalance += package.hscAmount;
     await user.save();
 
-    // Create transaction record
+    // Create HSC transaction record
     const transaction = new HSCTransaction({
       userId: req.user._id,
       type: 'purchase',
@@ -154,7 +199,7 @@ router.post('/purchase-package', verifyToken, verifyEmailVerified, async (req, r
       description: `Purchased ${package.name} package (${package.hscAmount} HSC)`,
       paymentMethod,
       paymentDetails: {
-        transactionId: simulatedPaymentResult.transactionId,
+        transactionId: paymentDetails?.transactionId || `PKG_${Date.now()}`,
         paymentStatus: 'completed',
         packageId: package._id,
         ...paymentDetails
@@ -162,8 +207,60 @@ router.post('/purchase-package', verifyToken, verifyEmailVerified, async (req, r
       balanceBefore,
       balanceAfter: user.hscBalance
     });
-
     await transaction.save();
+
+    // Create Payment Activity record
+    const paymentActivity = new PaymentActivity({
+      userId: req.user._id,
+      buyerEmail: user.email,
+      item: `HSC Package - ${package.name}`,
+      quantity: package.hscAmount,
+      category: 'HSC Purchase',
+      originalAmount: package.price,
+      amount: package.price,
+      discountedAmount: package.discount || 0,
+      paymentMethod: 'LKR',
+      status: 'completed'
+    });
+    await paymentActivity.save();
+
+    // Create Money Transaction record
+    const moneyTransaction = new MoneyTransaction({
+      userId: req.user._id,
+      userEmail: user.email,
+      userName: user.name || 'User',
+      transactionType: 'HSC_PURCHASE',
+      paymentGateway: 'PayHere',
+      paymentMethod: 'LKR',
+      amountLKR: package.price,
+      hscAmount: package.hscAmount,
+      hscValue: hscValue,
+      description: `Package Purchase - ${package.name} (${package.hscAmount} HSC)`,
+      category: 'Package Purchase',
+      gatewayTransactionId: paymentDetails?.transactionId || `PKG_${Date.now()}`,
+      gatewayStatus: 'completed',
+      customerDetails: customerDetails || {},
+      itemDetails: {
+        itemName: package.name,
+        itemId: package._id,
+        quantity: package.hscAmount,
+        packageType: package.name
+      },
+      balanceBefore: {
+        hsc: balanceBefore,
+        hsg: hsgBalanceBefore,
+        hsd: hsdBalanceBefore
+      },
+      balanceAfter: {
+        hsc: user.hscBalance,
+        hsg: user.hsgBalance || 0,
+        hsd: user.hsdBalance || 0
+      },
+      status: 'completed',
+      relatedPaymentActivity: paymentActivity._id,
+      relatedHSCTransaction: transaction._id
+    });
+    await moneyTransaction.save();
 
     res.json({
       message: 'Package purchase successful',
@@ -173,7 +270,9 @@ router.post('/purchase-package', verifyToken, verifyEmailVerified, async (req, r
         hscAmount: package.hscAmount,
         price: package.price,
         newBalance: user.hscBalance,
-        transactionId: simulatedPaymentResult.transactionId
+        transactionId: paymentDetails?.transactionId || transaction.transactionId,
+        paymentActivityId: paymentActivity._id,
+        moneyTransactionId: moneyTransaction._id
       }
     });
 
