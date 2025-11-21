@@ -113,6 +113,20 @@ const holidayMemorySchema = new mongoose.Schema({
       default: 2.5
     }
   }],
+  reports: [{
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    reason: {
+      type: String,
+      required: true
+    },
+    reportedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   downloadPrice: {
     type: Number,
     default: 2.5 // HSC price to download

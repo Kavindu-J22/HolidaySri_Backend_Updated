@@ -69,7 +69,7 @@ router.get('/browse', async (req, res) => {
       search,
       page = 1,
       limit = 12,
-      sortBy = 'recent' // recent, popular, mostDownloaded
+      sortBy = 'random' // random, recent, popular, mostDownloaded
     } = req.query;
 
     const skip = (page - 1) * limit;
@@ -83,36 +83,63 @@ router.get('/browse', async (req, res) => {
       filter.$or = [
         { caption: { $regex: search, $options: 'i' } },
         { 'location.name': { $regex: search, $options: 'i' } },
-        { 'location.city': { $regex: search, $options: 'i' } }
+        { 'location.city': { $regex: search, $options: 'i' } },
+        { tags: { $regex: search, $options: 'i' } } // Search in tags
       ];
     }
 
-    // Determine sort order
-    let sort = {};
-    if (sortBy === 'popular') {
-      sort = { 'likes': -1, createdAt: -1 };
-    } else if (sortBy === 'mostDownloaded') {
-      sort = { 'downloads': -1, createdAt: -1 };
+    let posts;
+    let total;
+
+    // Random sorting uses aggregation pipeline
+    if (sortBy === 'random') {
+      const pipeline = [
+        { $match: filter },
+        { $sample: { size: parseInt(limit) * 3 } }, // Get more for better randomization
+        { $skip: skip },
+        { $limit: parseInt(limit) }
+      ];
+
+      posts = await HolidayMemory.aggregate(pipeline);
+
+      // Populate userId manually for aggregation results
+      await HolidayMemory.populate(posts, {
+        path: 'userId',
+        select: 'name email profileImage'
+      });
+
+      total = await HolidayMemory.countDocuments(filter);
     } else {
-      sort = { createdAt: -1 };
+      // Determine sort order for non-random
+      let sort = {};
+      if (sortBy === 'popular') {
+        sort = { 'likes': -1, createdAt: -1 };
+      } else if (sortBy === 'mostDownloaded') {
+        sort = { 'downloads': -1, createdAt: -1 };
+      } else {
+        sort = { createdAt: -1 };
+      }
+
+      posts = await HolidayMemory.find(filter)
+        .sort(sort)
+        .skip(skip)
+        .limit(parseInt(limit))
+        .populate('userId', 'name email profileImage');
+
+      total = await HolidayMemory.countDocuments(filter);
     }
 
-    const posts = await HolidayMemory.find(filter)
-      .sort(sort)
-      .skip(skip)
-      .limit(parseInt(limit))
-      .populate('userId', 'name email profileImage');
-
-    const total = await HolidayMemory.countDocuments(filter);
-
-    // Transform posts to include like count and comment count
-    const transformedPosts = posts.map(post => ({
-      ...post.toObject(),
-      likeCount: post.likes.length,
-      commentCount: post.comments.length,
-      saveCount: post.saves.length,
-      downloadCount: post.downloads.length
-    }));
+    // Transform posts to include counts
+    const transformedPosts = posts.map(post => {
+      const postObj = post.toObject ? post.toObject() : post;
+      return {
+        ...postObj,
+        likeCount: postObj.likes?.length || 0,
+        commentCount: postObj.comments?.length || 0,
+        saveCount: postObj.saves?.length || 0,
+        downloadCount: postObj.downloads?.length || 0
+      };
+    });
 
     res.json({
       success: true,
@@ -628,6 +655,152 @@ router.get('/user/my-posts', verifyToken, verifyEmailVerified, async (req, res) 
 
   } catch (error) {
     console.error('Get my posts error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// PUT /api/holiday-memories/:id - Update a post (owner only)
+router.put('/:id', verifyToken, verifyEmailVerified, async (req, res) => {
+  try {
+    const { caption, location, mapLink, tags } = req.body;
+
+    const post = await HolidayMemory.findById(req.params.id);
+
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // Check if user owns this post
+    if (post.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to update this post' });
+    }
+
+    // Validation
+    if (!caption || !location || !location.name) {
+      return res.status(400).json({ message: 'Caption and location name are required' });
+    }
+
+    // Validate tags (max 5)
+    if (tags && tags.length > 5) {
+      return res.status(400).json({ message: 'Maximum 5 tags allowed' });
+    }
+
+    // Update fields (cannot change image)
+    post.caption = caption;
+    post.location = location;
+    post.mapLink = mapLink || '';
+    post.tags = tags || [];
+
+    await post.save();
+
+    res.json({
+      success: true,
+      message: 'Post updated successfully',
+      post: {
+        ...post.toObject(),
+        likeCount: post.likes.length,
+        commentCount: post.comments.length,
+        saveCount: post.saves.length,
+        downloadCount: post.downloads.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Update post error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// DELETE /api/holiday-memories/:id/comments/:commentId - Delete a comment
+router.delete('/:id/comments/:commentId', verifyToken, verifyEmailVerified, async (req, res) => {
+  try {
+    const { id, commentId } = req.params;
+
+    const post = await HolidayMemory.findById(id);
+
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    const commentIndex = post.comments.findIndex(
+      comment => comment._id.toString() === commentId
+    );
+
+    if (commentIndex === -1) {
+      return res.status(404).json({ message: 'Comment not found' });
+    }
+
+    const comment = post.comments[commentIndex];
+
+    // Check if user owns the comment OR owns the post
+    if (
+      comment.userId.toString() !== req.user._id.toString() &&
+      post.userId.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ message: 'Not authorized to delete this comment' });
+    }
+
+    // Remove the comment
+    post.comments.splice(commentIndex, 1);
+    await post.save();
+
+    res.json({
+      success: true,
+      message: 'Comment deleted successfully',
+      comments: post.comments
+    });
+
+  } catch (error) {
+    console.error('Delete comment error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// POST /api/holiday-memories/:id/report - Report a post
+router.post('/:id/report', verifyToken, verifyEmailVerified, async (req, res) => {
+  try {
+    const { reason } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ message: 'Report reason is required' });
+    }
+
+    const post = await HolidayMemory.findById(req.params.id);
+
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // Initialize reports array if it doesn't exist
+    if (!post.reports) {
+      post.reports = [];
+    }
+
+    // Check if user already reported this post
+    const alreadyReported = post.reports.some(
+      report => report.userId.toString() === req.user._id.toString()
+    );
+
+    if (alreadyReported) {
+      return res.status(400).json({ message: 'You have already reported this post' });
+    }
+
+    // Add report
+    post.reports.push({
+      userId: req.user._id,
+      reason: reason.trim(),
+      reportedAt: new Date()
+    });
+
+    await post.save();
+
+    res.json({
+      success: true,
+      message: 'Post reported successfully. We will review it shortly.'
+    });
+
+  } catch (error) {
+    console.error('Report post error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
