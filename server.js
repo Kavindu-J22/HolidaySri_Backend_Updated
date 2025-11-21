@@ -117,6 +117,7 @@ const donationsRaiseFundRoutes = require('./routes/donationsRaiseFund');
 const homeBannerSlotRoutes = require('./routes/homeBannerSlot');
 const cryptoConsultingSignalsRoutes = require('./routes/cryptoConsultingSignals');
 const contactRoutes = require('./routes/contact');
+const holidayMemoriesRoutes = require('./routes/holidayMemories');
 const { startMembershipJobs } = require('./jobs/membershipExpiration');
 const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpiration');
 const { startHSDLeaderBoardJobs, runHSDStartupChecks } = require('./jobs/hsdLeaderBoardRewards');
@@ -204,6 +205,7 @@ app.use('/api/donations-raise-fund', donationsRaiseFundRoutes);
 app.use('/api/home-banner-slot', homeBannerSlotRoutes);
 app.use('/api/crypto-consulting-signals', cryptoConsultingSignalsRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/holiday-memories', holidayMemoriesRoutes);
 
 // Basic route
 app.get('/', (req, res) => {

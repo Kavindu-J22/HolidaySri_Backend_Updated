@@ -19,25 +19,32 @@ const hscEarnedSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['Promocode Sold', 'Referral Bonus', 'Advertisement Revenue', 'Other']
+    enum: ['Promocode Sold', 'Referral Bonus', 'Advertisement Revenue', 'Photo Download', 'Other']
   },
   itemDetails: {
     promoCode: {
-      type: String,
-      required: true
+      type: String
     },
     promoCodeType: {
       type: String,
-      required: true,
       enum: ['silver', 'gold', 'diamond']
     },
     sellingPrice: {
-      type: Number,
-      required: true
+      type: Number
     },
     sellingPriceLKR: {
-      type: Number,
-      required: true
+      type: Number
+    },
+    // Photo download specific fields
+    postId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'HolidayMemory'
+    },
+    postLocation: {
+      type: String
+    },
+    photoEarnAmount: {
+      type: Number
     }
   },
   buyerDetails: {
