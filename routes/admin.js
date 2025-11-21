@@ -86,7 +86,7 @@ router.get('/dashboard', verifyAdminToken, async (req, res) => {
       {
         $group: {
           _id: null,
-          totalProfit: { $sum: '$finalAmount' },
+          totalProfit: { $sum: '$amount' },
           count: { $sum: 1 }
         }
       }
@@ -2278,9 +2278,10 @@ router.get('/payment-activities', verifyAdminToken, async (req, res) => {
       ? companyProfitResult[0].count
       : 0;
 
-    // Get statistics
+    // Get statistics (only for HSC payment method)
+    const hscQuery = { ...query, paymentMethod: 'HSC' };
     const stats = await PaymentActivity.aggregate([
-      { $match: query },
+      { $match: hscQuery },
       {
         $group: {
           _id: null,
