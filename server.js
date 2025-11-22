@@ -123,6 +123,7 @@ const { startCommercialPartnershipJobs } = require('./jobs/commercialPartnerExpi
 const { startHSDLeaderBoardJobs, runHSDStartupChecks } = require('./jobs/hsdLeaderBoardRewards');
 const { startAdvertisementJobs } = require('./jobs/advertisementExpiration');
 const { startSlotNotificationJob } = require('./jobs/slotNotification');
+const { startDatabaseBackupJob } = require('./jobs/databaseBackup');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -242,4 +243,7 @@ app.listen(PORT, () => {
 
   // Start slot notification job
   startSlotNotificationJob();
+
+  // Start database backup job (runs daily at 2:00 AM)
+  startDatabaseBackupJob();
 });
