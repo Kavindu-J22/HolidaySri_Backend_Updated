@@ -2937,7 +2937,7 @@ router.delete('/holiday-memories/:photoId/comments/:commentId', verifyAdminToken
 router.get('/photo-earnings', verifyAdminToken, async (req, res) => {
   try {
     const PhotoEarned = require('../models/PhotoEarned');
-    const HSCConfig = require('../models/HSCConfig');
+    const { HSCConfig } = require('../models/HSC');
     const {
       page = 1,
       limit = 20,
