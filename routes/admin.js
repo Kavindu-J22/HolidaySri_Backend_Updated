@@ -2767,14 +2767,22 @@ router.get('/holiday-memories', verifyAdminToken, async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    const [photos, totalPhotos] = await Promise.all([
-      HolidayMemory.find(query)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit))
-        .lean(),
-      HolidayMemory.countDocuments(query)
+    // Fetch photos and add reports count for sorting
+    const photosWithReportsCount = await HolidayMemory.aggregate([
+      { $match: query },
+      {
+        $addFields: {
+          reportsCount: { $size: { $ifNull: ['$reports', []] } }
+        }
+      },
+      { $sort: { reportsCount: -1, createdAt: -1 } },
+      { $skip: skip },
+      { $limit: parseInt(limit) }
     ]);
+
+    const totalPhotos = await HolidayMemory.countDocuments(query);
+
+    const photos = photosWithReportsCount;
 
     res.json({
       photos,
