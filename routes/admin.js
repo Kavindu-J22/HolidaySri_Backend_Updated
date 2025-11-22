@@ -2733,4 +2733,196 @@ router.delete('/advertisements/:adId', verifyAdminToken, async (req, res) => {
   }
 });
 
+// ==================== HOLIDAY MEMORIES (PHOTOS FROM TRAVELERS) MANAGEMENT ====================
+
+// Get all holiday memories with search and filters
+router.get('/holiday-memories', verifyAdminToken, async (req, res) => {
+  try {
+    const { page = 1, limit = 20, search, province, isActive } = req.query;
+    const HolidayMemory = require('../models/HolidayMemory');
+
+    let query = {};
+
+    // Search filter
+    if (search) {
+      query.$or = [
+        { caption: { $regex: search, $options: 'i' } },
+        { userName: { $regex: search, $options: 'i' } },
+        { userEmail: { $regex: search, $options: 'i' } },
+        { 'location.name': { $regex: search, $options: 'i' } },
+        { 'location.city': { $regex: search, $options: 'i' } },
+        { tags: { $in: [new RegExp(search, 'i')] } }
+      ];
+    }
+
+    // Province filter
+    if (province && province !== 'all') {
+      query['location.province'] = province;
+    }
+
+    // isActive filter
+    if (isActive && isActive !== 'all') {
+      query.isActive = isActive === 'true';
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [photos, totalPhotos] = await Promise.all([
+      HolidayMemory.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      HolidayMemory.countDocuments(query)
+    ]);
+
+    res.json({
+      photos,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(totalPhotos / limit),
+      totalPhotos
+    });
+
+  } catch (error) {
+    console.error('Get holiday memories error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get holiday memory details
+router.get('/holiday-memories/:photoId', verifyAdminToken, async (req, res) => {
+  try {
+    const HolidayMemory = require('../models/HolidayMemory');
+    const photo = await HolidayMemory.findById(req.params.photoId);
+
+    if (!photo) {
+      return res.status(404).json({ message: 'Photo not found' });
+    }
+
+    res.json({ photo });
+
+  } catch (error) {
+    console.error('Get holiday memory details error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Update holiday memory
+router.put('/holiday-memories/:photoId', verifyAdminToken, async (req, res) => {
+  try {
+    const HolidayMemory = require('../models/HolidayMemory');
+    const { image, caption, location, mapLink, tags, isActive } = req.body;
+
+    const photo = await HolidayMemory.findById(req.params.photoId);
+
+    if (!photo) {
+      return res.status(404).json({ message: 'Photo not found' });
+    }
+
+    // Update fields
+    if (image !== undefined) photo.image = image;
+    if (caption !== undefined) photo.caption = caption;
+    if (location !== undefined) photo.location = location;
+    if (mapLink !== undefined) photo.mapLink = mapLink;
+    if (tags !== undefined) photo.tags = tags;
+    if (isActive !== undefined) photo.isActive = isActive;
+
+    await photo.save();
+
+    res.json({
+      message: 'Photo updated successfully',
+      photo
+    });
+
+  } catch (error) {
+    console.error('Update holiday memory error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Delete holiday memory with email notification
+router.delete('/holiday-memories/:photoId', verifyAdminToken, async (req, res) => {
+  try {
+    const HolidayMemory = require('../models/HolidayMemory');
+    const { sendPhotoPostDeletionNotification } = require('../utils/emailService');
+    const { adminNote, deleteComments } = req.body;
+
+    if (!adminNote || !adminNote.trim()) {
+      return res.status(400).json({ message: 'Admin note is required' });
+    }
+
+    const photo = await HolidayMemory.findById(req.params.photoId);
+
+    if (!photo) {
+      return res.status(404).json({ message: 'Photo not found' });
+    }
+
+    // Store photo details for email
+    const photoDetails = {
+      caption: photo.caption,
+      location: photo.location,
+      userName: photo.userName,
+      userEmail: photo.userEmail,
+      image: photo.image,
+      createdAt: photo.createdAt
+    };
+
+    // Delete the photo
+    await HolidayMemory.findByIdAndDelete(req.params.photoId);
+
+    // Send email notification to user
+    try {
+      await sendPhotoPostDeletionNotification(
+        photoDetails.userEmail,
+        photoDetails.userName,
+        photoDetails.caption,
+        photoDetails.location?.name || 'Unknown location',
+        adminNote.trim()
+      );
+    } catch (emailError) {
+      console.error('Error sending deletion notification email:', emailError);
+      // Continue even if email fails
+    }
+
+    res.json({
+      message: 'Photo deleted successfully and user notified',
+      deletedPhoto: photoDetails
+    });
+
+  } catch (error) {
+    console.error('Delete holiday memory error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Delete comment from holiday memory
+router.delete('/holiday-memories/:photoId/comments/:commentId', verifyAdminToken, async (req, res) => {
+  try {
+    const HolidayMemory = require('../models/HolidayMemory');
+    const { photoId, commentId } = req.params;
+
+    const photo = await HolidayMemory.findById(photoId);
+
+    if (!photo) {
+      return res.status(404).json({ message: 'Photo not found' });
+    }
+
+    // Remove comment
+    photo.comments = photo.comments.filter(
+      comment => comment._id.toString() !== commentId
+    );
+
+    await photo.save();
+
+    res.json({
+      message: 'Comment deleted successfully',
+      photo
+    });
+
+  } catch (error) {
+    console.error('Delete comment error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 module.exports = router;

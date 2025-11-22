@@ -3010,6 +3010,107 @@ const sendAdvertisementDeletionNotification = async (email, name, slotId, catego
   }
 };
 
+// Send photo post deletion notification email
+const sendPhotoPostDeletionNotification = async (email, name, caption, location, adminNote) => {
+  const transporter = createTransporter();
+
+  const formattedDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri.com',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: `⚠️ Photo Post Deleted - Photos from Travelers | Holidaysri`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #dc2626;">
+            <h1 style="color: #dc2626; margin: 0;">⚠️ Photo Post Deleted</h1>
+            <p style="color: #666; margin: 5px 0;">Holidaysri Admin Team</p>
+          </div>
+
+          <div style="margin-bottom: 30px;">
+            <p style="color: #333; font-size: 16px; line-height: 1.6;">
+              Dear <strong>${name}</strong>,
+            </p>
+            <p style="color: #333; font-size: 16px; line-height: 1.6;">
+              We regret to inform you that your photo post from the "Photos from Travelers" section has been deleted by our admin team.
+            </p>
+          </div>
+
+          <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 20px; margin-bottom: 30px; border-radius: 5px;">
+            <h3 style="color: #dc2626; margin: 0 0 15px 0; font-size: 18px;">Deleted Photo Details</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px 0; color: #666; font-weight: 600;">Caption:</td>
+                <td style="padding: 8px 0; color: #333;">${caption}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666; font-weight: 600;">Location:</td>
+                <td style="padding: 8px 0; color: #333;">${location}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666; font-weight: 600;">Deleted On:</td>
+                <td style="padding: 8px 0; color: #333;">${formattedDate}</td>
+              </tr>
+            </table>
+          </div>
+
+          ${adminNote ? `
+          <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px; margin-bottom: 30px; border-radius: 5px;">
+            <h3 style="color: #f59e0b; margin: 0 0 10px 0; font-size: 16px;">📝 Admin Note:</h3>
+            <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${adminNote}</p>
+          </div>
+          ` : ''}
+
+          <div style="background-color: #f0f9ff; border-left: 4px solid #3b82f6; padding: 20px; margin-bottom: 30px; border-radius: 5px;">
+            <h3 style="color: #3b82f6; margin: 0 0 10px 0; font-size: 16px;">ℹ️ What This Means:</h3>
+            <ul style="color: #333; font-size: 14px; line-height: 1.8; margin: 10px 0; padding-left: 20px;">
+              <li>Your photo post has been permanently removed from our platform</li>
+              <li>All associated data including likes, comments, and saves have been deleted</li>
+              <li>This action cannot be undone</li>
+            </ul>
+          </div>
+
+          <div style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 20px; margin-bottom: 30px; border-radius: 5px;">
+            <h3 style="color: #10b981; margin: 0 0 10px 0; font-size: 16px;">💡 Next Steps:</h3>
+            <ul style="color: #333; font-size: 14px; line-height: 1.8; margin: 10px 0; padding-left: 20px;">
+              <li>If you believe this was done in error, please contact our support team</li>
+              <li>You can upload new photos if you wish to continue sharing your travel memories</li>
+              <li>Please review our community guidelines before posting new content</li>
+            </ul>
+          </div>
+
+          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <p style="color: #666; font-size: 14px; margin: 0;">
+              If you have any questions or concerns, please don't hesitate to contact us.
+            </p>
+            <p style="color: #666; font-size: 14px; margin: 10px 0 0 0;">
+              Best regards,<br>
+              <strong>The Holidaysri Team</strong>
+            </p>
+          </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+          <p>© ${new Date().getFullYear()} Holidaysri.com. All rights reserved.</p>
+        </div>
+      </div>
+    `
+  };
+
+  await transporter.sendMail(mailOptions);
+};
+
 module.exports = {
   generateOTP,
   sendEmailVerificationOTP,
@@ -3041,5 +3142,6 @@ module.exports = {
   sendTourPackageApprovalConfirmation,
   sendDonationFundPaidConfirmation,
   sendContactFormEmail,
-  sendAdvertisementDeletionNotification
+  sendAdvertisementDeletionNotification,
+  sendPhotoPostDeletionNotification
 };
