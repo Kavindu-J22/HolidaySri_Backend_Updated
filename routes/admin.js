@@ -2985,12 +2985,11 @@ router.get('/photo-earnings', verifyAdminToken, async (req, res) => {
 
     // Get photo earnings with pagination
     const photoEarnings = await PhotoEarned.find(query)
-      .populate('userId', 'name email')
-      .populate('buyerUserId', 'name email')
       .populate('postId', 'image caption location')
       .sort(sortOptions)
       .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .skip((page - 1) * limit)
+      .lean();
 
     const total = await PhotoEarned.countDocuments(query);
 
