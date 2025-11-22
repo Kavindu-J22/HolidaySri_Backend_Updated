@@ -2933,4 +2933,153 @@ router.delete('/holiday-memories/:photoId/comments/:commentId', verifyAdminToken
   }
 });
 
+// Get all photo earnings with search and filter
+router.get('/photo-earnings', verifyAdminToken, async (req, res) => {
+  try {
+    const PhotoEarned = require('../models/PhotoEarned');
+    const HSCConfig = require('../models/HSCConfig');
+    const {
+      page = 1,
+      limit = 20,
+      search = '',
+      status = 'all',
+      sortBy = 'downloadedAt',
+      sortOrder = 'desc',
+      startDate = '',
+      endDate = ''
+    } = req.query;
+
+    // Build query
+    const query = {};
+
+    // Status filter
+    if (status !== 'all') {
+      query.status = status;
+    }
+
+    // Date range filter
+    if (startDate || endDate) {
+      query.downloadedAt = {};
+      if (startDate) {
+        query.downloadedAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        query.downloadedAt.$lte = new Date(endDate);
+      }
+    }
+
+    // Search filter (userEmail, userName, buyerEmail, buyerName, transactionId)
+    if (search) {
+      query.$or = [
+        { userEmail: { $regex: search, $options: 'i' } },
+        { userName: { $regex: search, $options: 'i' } },
+        { buyerEmail: { $regex: search, $options: 'i' } },
+        { buyerName: { $regex: search, $options: 'i' } },
+        { transactionId: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Sort options
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    // Get photo earnings with pagination
+    const photoEarnings = await PhotoEarned.find(query)
+      .populate('userId', 'name email')
+      .populate('buyerUserId', 'name email')
+      .populate('postId', 'image caption location')
+      .sort(sortOptions)
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await PhotoEarned.countDocuments(query);
+
+    // Get statistics - calculate totals
+    const stats = await PhotoEarned.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalPaidByBuyer: { $sum: '$hscPaidByBuyer' },
+          totalEarnAmount: { $sum: '$hscEarnAmount' }
+        }
+      }
+    ]);
+
+    // Calculate overall totals
+    const overallStats = await PhotoEarned.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: null,
+          totalPaidByBuyer: { $sum: '$hscPaidByBuyer' },
+          totalEarnAmount: { $sum: '$hscEarnAmount' },
+          totalCount: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const formattedStats = {
+      pending: { count: 0, totalPaidByBuyer: 0, totalEarnAmount: 0 },
+      completed: { count: 0, totalPaidByBuyer: 0, totalEarnAmount: 0 },
+      cancelled: { count: 0, totalPaidByBuyer: 0, totalEarnAmount: 0 },
+      total: {
+        count: 0,
+        totalPaidByBuyer: 0,
+        totalEarnAmount: 0,
+        companyProfit: 0,
+        companyProfitLKR: 0
+      }
+    };
+
+    stats.forEach(stat => {
+      if (formattedStats[stat._id]) {
+        formattedStats[stat._id] = {
+          count: stat.count,
+          totalPaidByBuyer: stat.totalPaidByBuyer,
+          totalEarnAmount: stat.totalEarnAmount
+        };
+      }
+    });
+
+    if (overallStats.length > 0) {
+      const overall = overallStats[0];
+      formattedStats.total = {
+        count: overall.totalCount,
+        totalPaidByBuyer: overall.totalPaidByBuyer,
+        totalEarnAmount: overall.totalEarnAmount,
+        companyProfit: overall.totalPaidByBuyer - overall.totalEarnAmount
+      };
+
+      // Get current HSC value for LKR conversion
+      const hscConfig = await HSCConfig.findOne().sort({ createdAt: -1 });
+      const hscValue = hscConfig ? hscConfig.hscValue : 100;
+      formattedStats.total.companyProfitLKR = formattedStats.total.companyProfit * hscValue;
+      formattedStats.total.hscValue = hscValue;
+      formattedStats.total.currency = hscConfig ? hscConfig.currency : 'LKR';
+    }
+
+    res.json({
+      success: true,
+      photoEarnings,
+      stats: formattedStats,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get photo earnings error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
