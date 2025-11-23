@@ -3171,6 +3171,70 @@ router.get('/database-backup/status', verifyAdminToken, async (req, res) => {
 });
 
 /**
+ * Get all backups with details
+ */
+router.get('/database-backup/all', verifyAdminToken, async (req, res) => {
+  try {
+    const BACKUP_DIR = path.join(__dirname, '../backups');
+
+    // Check if backup directory exists
+    if (!fs.existsSync(BACKUP_DIR)) {
+      return res.json({
+        success: true,
+        backups: []
+      });
+    }
+
+    // Get all backup files
+    const files = fs.readdirSync(BACKUP_DIR)
+      .filter(file => file.startsWith('backup_') && file.endsWith('.json.gz'))
+      .map(file => {
+        const filePath = path.join(BACKUP_DIR, file);
+        const stats = fs.statSync(filePath);
+
+        // Extract database name and timestamp from filename
+        // Format: backup_dbname_YYYY-MM-DD_HH-MM-SS.json.gz
+        const match = file.match(/backup_(.+?)_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.json\.gz/);
+        const database = match ? match[1] : 'unknown';
+        const timestampStr = match ? match[2] : '';
+
+        // Parse timestamp
+        let timestamp = stats.mtime.getTime();
+        if (timestampStr) {
+          const [datePart, timePart] = timestampStr.split('_');
+          const [year, month, day] = datePart.split('-');
+          const [hour, minute, second] = timePart.split('-');
+          timestamp = new Date(year, month - 1, day, hour, minute, second).getTime();
+        }
+
+        return {
+          fileName: file,
+          path: filePath,
+          database: database,
+          timestamp: timestamp,
+          size: stats.size,
+          compressedSize: (stats.size / (1024 * 1024)).toFixed(2) + ' MB'
+        };
+      })
+      .sort((a, b) => b.timestamp - a.timestamp); // Sort by newest first
+
+    res.json({
+      success: true,
+      backups: files,
+      total: files.length
+    });
+
+  } catch (error) {
+    console.error('[ADMIN] Error fetching all backups:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch backups',
+      error: error.message
+    });
+  }
+});
+
+/**
  * Trigger manual backup
  */
 router.post('/database-backup/trigger', verifyAdminToken, async (req, res) => {
@@ -3331,6 +3395,140 @@ router.post('/database-backup/restore', verifyAdminToken, async (req, res) => {
       message: 'Database restored successfully',
       restore: {
         fileName: lastBackup.name,
+        backupDate: backup.metadata.timestamp,
+        collections: restoredCollections,
+        documents: restoredDocuments,
+        duration: `${duration}ms`,
+        restoredBy: req.admin.username,
+        restoredAt: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('[ADMIN] Restore error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error restoring database',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Restore from a specific backup file
+ * WARNING: This will delete all existing data and restore from the specified backup
+ */
+router.post('/database-backup/restore-specific', verifyAdminToken, async (req, res) => {
+  try {
+    const { confirmRestore, fileName } = req.body;
+
+    if (!confirmRestore) {
+      return res.status(400).json({
+        success: false,
+        message: 'Restore confirmation required'
+      });
+    }
+
+    if (!fileName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Backup file name is required'
+      });
+    }
+
+    console.log('[ADMIN] Database restore triggered by:', req.admin.username);
+    console.log('[ADMIN] Restoring from specific backup:', fileName);
+    console.log('[ADMIN] ⚠️  WARNING: This will delete all existing data!');
+
+    const BACKUP_DIR = path.join(__dirname, '../backups');
+    const backupPath = path.join(BACKUP_DIR, fileName);
+
+    // Verify file exists
+    if (!fs.existsSync(backupPath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Backup file not found'
+      });
+    }
+
+    // Read and decompress backup
+    const zlib = require('zlib');
+    const { promisify } = require('util');
+    const gunzip = promisify(zlib.gunzip);
+
+    const compressedData = fs.readFileSync(backupPath);
+    const jsonData = await gunzip(compressedData);
+
+    // Parse backup data
+    const backup = JSON.parse(jsonData.toString());
+
+    // Convert string IDs to ObjectIds
+    const { ObjectId } = require('mongodb');
+    const convertStringIdsToObjectIds = (obj) => {
+      if (obj === null || obj === undefined) return obj;
+      if (Array.isArray(obj)) return obj.map(item => convertStringIdsToObjectIds(item));
+      if (typeof obj === 'object') {
+        const result = {};
+        for (const [key, value] of Object.entries(obj)) {
+          if ((key === '_id' || key.endsWith('Id')) && typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value)) {
+            result[key] = new ObjectId(value);
+          } else {
+            result[key] = convertStringIdsToObjectIds(value);
+          }
+        }
+        return result;
+      }
+      return obj;
+    };
+
+    const backupWithObjectIds = convertStringIdsToObjectIds(backup);
+
+    // Debug: Verify ObjectId conversion
+    if (backupWithObjectIds.data.users && backupWithObjectIds.data.users[0]) {
+      const firstUser = backupWithObjectIds.data.users[0];
+      console.log('[ADMIN] DEBUG - First user _id type:', typeof firstUser._id);
+      console.log('[ADMIN] DEBUG - First user _id instanceof ObjectId:', firstUser._id instanceof ObjectId);
+      console.log('[ADMIN] DEBUG - First user _id value:', firstUser._id);
+    }
+
+    console.log('[ADMIN] Backup metadata:', backupWithObjectIds.metadata);
+
+    let restoredCollections = 0;
+    let restoredDocuments = 0;
+    const startTime = Date.now();
+
+    // Restore each collection
+    for (const [collectionName, documents] of Object.entries(backupWithObjectIds.data)) {
+      try {
+        const collection = mongoose.connection.db.collection(collectionName);
+
+        if (documents.length > 0) {
+          // Delete existing documents
+          await collection.deleteMany({});
+
+          // Insert backup documents with proper ObjectIds
+          await collection.insertMany(documents);
+
+          restoredCollections++;
+          restoredDocuments += documents.length;
+
+          console.log(`[ADMIN] ✓ Restored ${documents.length} documents to ${collectionName}`);
+        }
+      } catch (error) {
+        console.error(`[ADMIN] ✗ Error restoring ${collectionName}:`, error.message);
+      }
+    }
+
+    const duration = Date.now() - startTime;
+
+    console.log('[ADMIN] ✅ Restore completed successfully!');
+    console.log(`[ADMIN] Collections: ${restoredCollections}, Documents: ${restoredDocuments}`);
+
+    res.json({
+      success: true,
+      message: 'Database restored successfully',
+      restore: {
+        fileName: fileName,
         backupDate: backup.metadata.timestamp,
         collections: restoredCollections,
         documents: restoredDocuments,
