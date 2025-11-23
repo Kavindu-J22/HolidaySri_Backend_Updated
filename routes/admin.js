@@ -311,7 +311,7 @@ router.get('/users/:userId', verifyAdminToken, async (req, res) => {
 router.put('/users/:userId/status', verifyAdminToken, async (req, res) => {
   try {
     const { isActive } = req.body;
-    
+
     if (typeof isActive !== 'boolean') {
       return res.status(400).json({ message: 'Invalid status value' });
     }
@@ -333,6 +333,54 @@ router.put('/users/:userId/status', verifyAdminToken, async (req, res) => {
 
   } catch (error) {
     console.error('Update user status error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update user verification status
+router.put('/users/:userId/verification', verifyAdminToken, async (req, res) => {
+  try {
+    const { verificationStatus, verificationNotes } = req.body;
+
+    if (!verificationStatus || !['pending', 'verified', 'rejected'].includes(verificationStatus)) {
+      return res.status(400).json({ message: 'Invalid verification status' });
+    }
+
+    const updateData = {
+      verificationStatus,
+      verificationNotes: verificationNotes || ''
+    };
+
+    // Set isVerified and verificationCompletedAt based on status
+    if (verificationStatus === 'verified') {
+      updateData.isVerified = true;
+      updateData.verificationCompletedAt = new Date();
+    } else if (verificationStatus === 'rejected') {
+      updateData.isVerified = false;
+      updateData.verificationCompletedAt = new Date();
+    } else {
+      // pending status
+      updateData.isVerified = false;
+      updateData.verificationCompletedAt = null;
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.params.userId,
+      updateData,
+      { new: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      message: `User verification status updated to ${verificationStatus} successfully`,
+      user
+    });
+
+  } catch (error) {
+    console.error('Update user verification error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
