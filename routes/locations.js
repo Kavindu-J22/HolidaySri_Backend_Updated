@@ -43,9 +43,12 @@ router.get('/', async (req, res) => {
     // Build query
     let query = { isActive: true };
 
-    // Search by name or description
+    // Search by name or description (using regex for partial matching)
     if (search) {
-      query.$text = { $search: search };
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
     }
 
     // Filter by location type
@@ -83,11 +86,6 @@ router.get('/', async (req, res) => {
       sortObj.distanceFromColombo = sortOrder === 'asc' ? 1 : -1;
     } else {
       sortObj.createdAt = sortOrder === 'asc' ? 1 : -1;
-    }
-
-    // Add text score for search queries
-    if (search) {
-      sortObj.score = { $meta: 'textScore' };
     }
 
     // Calculate pagination
