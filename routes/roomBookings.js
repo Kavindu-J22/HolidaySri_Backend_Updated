@@ -142,7 +142,7 @@ router.post('/', verifyToken, async (req, res) => {
         usedPromoCodeOwnerId: agent.userId, // Use agent's userId, not agent's _id
         item: `Room Booking - ${hotelName} (${roomName})`,
         itemType: 'Room Booking',
-        status: 'pending' // Will be approved when hotel owner approves booking
+        status: 'processed' // Will be pending when hotel owner approves booking
       });
       await earning.save();
       earningsRecordId = earning._id;
@@ -398,7 +398,7 @@ router.put('/:bookingId/approve', verifyToken, async (req, res) => {
     // If there's an earnings record, mark it as processed
     if (booking.earningsRecordId) {
       await Earning.findByIdAndUpdate(booking.earningsRecordId, {
-        status: 'processed',
+        status: 'pending',
         processedAt: new Date()
       });
     }
