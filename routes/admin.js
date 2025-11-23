@@ -1,6 +1,8 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+const fs = require('fs');
+const path = require('path');
 const User = require('../models/User');
 const Agent = require('../models/Agent');
 const { HSCConfig, HSCTransaction, HSCPackage } = require('../models/HSC');
@@ -17,6 +19,7 @@ const RoomBooking = require('../models/RoomBooking');
 const { verifyAdmin, verifyAdminToken } = require('../middleware/auth');
 const { checkExpiredMemberships, checkExpiringMemberships } = require('../jobs/membershipExpiration');
 const { sendTokenGiftEmail } = require('../utils/emailService');
+const { performNodeJSBackup } = require('../utils/databaseBackupNodeJS');
 
 const router = express.Router();
 
@@ -3076,6 +3079,241 @@ router.get('/photo-earnings', verifyAdminToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// ============================================
+// DATABASE BACKUP MANAGEMENT
+// ============================================
+
+/**
+ * Get last backup status and details
+ */
+router.get('/database-backup/status', verifyAdminToken, async (req, res) => {
+  try {
+    const BACKUP_DIR = path.join(__dirname, '../backups');
+
+    // Check if backup directory exists
+    if (!fs.existsSync(BACKUP_DIR)) {
+      return res.json({
+        success: true,
+        hasBackup: false,
+        message: 'No backups found. Backups will be created automatically at 2:00 AM daily.'
+      });
+    }
+
+    // Get all backup files
+    const files = fs.readdirSync(BACKUP_DIR)
+      .filter(file => file.startsWith('backup_') && file.endsWith('.json.gz'))
+      .map(file => ({
+        name: file,
+        path: path.join(BACKUP_DIR, file),
+        time: fs.statSync(path.join(BACKUP_DIR, file)).mtime,
+        size: fs.statSync(path.join(BACKUP_DIR, file)).size
+      }))
+      .sort((a, b) => b.time - a.time);
+
+    if (files.length === 0) {
+      return res.json({
+        success: true,
+        hasBackup: false,
+        message: 'No backups found. Backups will be created automatically at 2:00 AM daily.'
+      });
+    }
+
+    // Get the most recent backup
+    const lastBackup = files[0];
+
+    // Parse backup filename to extract details
+    // Format: backup_holidaysri_2025-11-23_17-00-10.json.gz
+    const filenameParts = lastBackup.name.replace('.json.gz', '').split('_');
+    const database = filenameParts[1];
+    const date = filenameParts[2];
+    const time = filenameParts[3];
+
+    // Calculate file sizes
+    const compressedSize = (lastBackup.size / (1024 * 1024)).toFixed(2);
+
+    res.json({
+      success: true,
+      hasBackup: true,
+      backup: {
+        fileName: lastBackup.name,
+        database: database,
+        timestamp: lastBackup.time,
+        date: date,
+        time: time.replace(/-/g, ':'),
+        compressedSize: `${compressedSize} MB`,
+        compressedSizeBytes: lastBackup.size,
+        totalBackups: files.length,
+        backupLocation: 'backend/backups/',
+        backupMethod: 'Node.js (Render-compatible)',
+        schedule: 'Daily at 2:00 AM (Asia/Colombo)',
+        retention: 'Last 30 backups'
+      },
+      allBackups: files.map(file => ({
+        fileName: file.name,
+        timestamp: file.time,
+        size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+      }))
+    });
+
+  } catch (error) {
+    console.error('Get backup status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving backup status',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Trigger manual backup
+ */
+router.post('/database-backup/trigger', verifyAdminToken, async (req, res) => {
+  try {
+    console.log('[ADMIN] Manual backup triggered by:', req.admin.username);
+
+    const result = await performNodeJSBackup();
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: 'Backup completed successfully',
+        backup: {
+          fileName: result.fileName,
+          originalSize: `${result.originalSize} MB`,
+          compressedSize: `${result.fileSize} MB`,
+          compressionRatio: `${result.compressionRatio}%`,
+          collections: result.collections,
+          documents: result.documents,
+          duration: `${result.duration}ms`
+        }
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Backup failed',
+        error: result.error
+      });
+    }
+
+  } catch (error) {
+    console.error('Manual backup error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error triggering backup',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Restore from last backup
+ * WARNING: This will delete all existing data and restore from backup
+ */
+router.post('/database-backup/restore', verifyAdminToken, async (req, res) => {
+  try {
+    const { confirmRestore } = req.body;
+
+    if (!confirmRestore) {
+      return res.status(400).json({
+        success: false,
+        message: 'Restore confirmation required'
+      });
+    }
+
+    console.log('[ADMIN] Database restore triggered by:', req.admin.username);
+    console.log('[ADMIN] ⚠️  WARNING: This will delete all existing data!');
+
+    const BACKUP_DIR = path.join(__dirname, '../backups');
+
+    // Get the most recent backup
+    const files = fs.readdirSync(BACKUP_DIR)
+      .filter(file => file.startsWith('backup_') && file.endsWith('.json.gz'))
+      .map(file => ({
+        name: file,
+        path: path.join(BACKUP_DIR, file),
+        time: fs.statSync(path.join(BACKUP_DIR, file)).mtime
+      }))
+      .sort((a, b) => b.time - a.time);
+
+    if (files.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No backup files found'
+      });
+    }
+
+    const lastBackup = files[0];
+    const backupPath = lastBackup.path;
+
+    console.log('[ADMIN] Restoring from:', lastBackup.name);
+
+    // Read and decompress backup
+    const zlib = require('zlib');
+    const { promisify } = require('util');
+    const gunzip = promisify(zlib.gunzip);
+
+    const compressedData = fs.readFileSync(backupPath);
+    const jsonData = await gunzip(compressedData);
+    const backup = JSON.parse(jsonData.toString());
+
+    console.log('[ADMIN] Backup metadata:', backup.metadata);
+
+    let restoredCollections = 0;
+    let restoredDocuments = 0;
+    const startTime = Date.now();
+
+    // Restore each collection
+    for (const [collectionName, documents] of Object.entries(backup.data)) {
+      try {
+        const collection = mongoose.connection.db.collection(collectionName);
+
+        if (documents.length > 0) {
+          // Delete existing documents
+          await collection.deleteMany({});
+
+          // Insert backup documents
+          await collection.insertMany(documents);
+
+          restoredCollections++;
+          restoredDocuments += documents.length;
+
+          console.log(`[ADMIN] ✓ Restored ${documents.length} documents to ${collectionName}`);
+        }
+      } catch (error) {
+        console.error(`[ADMIN] ✗ Error restoring ${collectionName}:`, error.message);
+      }
+    }
+
+    const duration = Date.now() - startTime;
+
+    console.log('[ADMIN] ✅ Restore completed successfully!');
+    console.log(`[ADMIN] Collections: ${restoredCollections}, Documents: ${restoredDocuments}`);
+
+    res.json({
+      success: true,
+      message: 'Database restored successfully',
+      restore: {
+        fileName: lastBackup.name,
+        backupDate: backup.metadata.timestamp,
+        collections: restoredCollections,
+        documents: restoredDocuments,
+        duration: `${duration}ms`,
+        restoredBy: req.admin.username,
+        restoredAt: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('[ADMIN] Restore error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error restoring database',
       error: error.message
     });
   }
