@@ -3260,16 +3260,47 @@ router.post('/database-backup/restore', verifyAdminToken, async (req, res) => {
 
     const compressedData = fs.readFileSync(backupPath);
     const jsonData = await gunzip(compressedData);
+
+    // Parse backup data
     const backup = JSON.parse(jsonData.toString());
 
-    console.log('[ADMIN] Backup metadata:', backup.metadata);
+    // Convert string IDs to ObjectIds
+    const { ObjectId } = require('mongodb');
+    const convertStringIdsToObjectIds = (obj) => {
+      if (obj === null || obj === undefined) return obj;
+      if (Array.isArray(obj)) return obj.map(item => convertStringIdsToObjectIds(item));
+      if (typeof obj === 'object') {
+        const result = {};
+        for (const [key, value] of Object.entries(obj)) {
+          if ((key === '_id' || key.endsWith('Id')) && typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value)) {
+            result[key] = new ObjectId(value);
+          } else {
+            result[key] = convertStringIdsToObjectIds(value);
+          }
+        }
+        return result;
+      }
+      return obj;
+    };
+
+    const backupWithObjectIds = convertStringIdsToObjectIds(backup);
+
+    // Debug: Verify ObjectId conversion
+    if (backupWithObjectIds.data.users && backupWithObjectIds.data.users[0]) {
+      const firstUser = backupWithObjectIds.data.users[0];
+      console.log('[ADMIN] DEBUG - First user _id type:', typeof firstUser._id);
+      console.log('[ADMIN] DEBUG - First user _id instanceof ObjectId:', firstUser._id instanceof ObjectId);
+      console.log('[ADMIN] DEBUG - First user _id value:', firstUser._id);
+    }
+
+    console.log('[ADMIN] Backup metadata:', backupWithObjectIds.metadata);
 
     let restoredCollections = 0;
     let restoredDocuments = 0;
     const startTime = Date.now();
 
     // Restore each collection
-    for (const [collectionName, documents] of Object.entries(backup.data)) {
+    for (const [collectionName, documents] of Object.entries(backupWithObjectIds.data)) {
       try {
         const collection = mongoose.connection.db.collection(collectionName);
 
@@ -3277,7 +3308,7 @@ router.post('/database-backup/restore', verifyAdminToken, async (req, res) => {
           // Delete existing documents
           await collection.deleteMany({});
 
-          // Insert backup documents
+          // Insert backup documents with proper ObjectIds
           await collection.insertMany(documents);
 
           restoredCollections++;

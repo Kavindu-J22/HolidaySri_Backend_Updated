@@ -129,8 +129,9 @@ const performNodeJSBackup = async () => {
     console.log(`[BACKUP] Total documents exported: ${totalDocuments}`);
 
     // Convert to JSON
+    console.log('[BACKUP] Converting to JSON format...');
     const jsonData = JSON.stringify(backup, null, 2);
-    
+
     // Compress with gzip
     console.log('[BACKUP] Compressing backup...');
     const compressedData = await gzip(jsonData);

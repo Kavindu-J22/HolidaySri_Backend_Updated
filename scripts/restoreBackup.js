@@ -4,8 +4,41 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 const { promisify } = require('util');
+const { ObjectId } = require('mongodb');
 
 const gunzip = promisify(zlib.gunzip);
+
+/**
+ * Convert string IDs back to ObjectIds recursively
+ * This fixes the issue where MongoDB exports ObjectIds as strings
+ */
+const convertStringIdsToObjectIds = (obj) => {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+
+  // Handle Array
+  if (Array.isArray(obj)) {
+    return obj.map(item => convertStringIdsToObjectIds(item));
+  }
+
+  // Handle Object
+  if (typeof obj === 'object') {
+    const result = {};
+    for (const [key, value] of Object.entries(obj)) {
+      // Convert _id fields and fields ending with 'Id' that are valid ObjectId strings
+      if ((key === '_id' || key.endsWith('Id')) && typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value)) {
+        result[key] = new ObjectId(value);
+      } else {
+        result[key] = convertStringIdsToObjectIds(value);
+      }
+    }
+    return result;
+  }
+
+  // Primitive types
+  return obj;
+};
 
 // Load environment variables
 dotenv.config();
@@ -60,26 +93,29 @@ const restoreBackup = async (backupFileName) => {
 
     console.log(`Reading backup file: ${backupFileName}`);
     const compressedData = fs.readFileSync(backupPath);
-    
+
     console.log('Decompressing backup...');
     const jsonData = await gunzip(compressedData);
-    
+
     console.log('Parsing backup data...');
     const backup = JSON.parse(jsonData.toString());
+
+    console.log('Converting string IDs to ObjectIds...');
+    const backupWithObjectIds = convertStringIdsToObjectIds(backup);
 
     console.log('\n========================================');
     console.log('BACKUP INFORMATION');
     console.log('========================================');
-    console.log(`Database: ${backup.metadata.database}`);
-    console.log(`Backup Date: ${backup.metadata.timestamp}`);
-    console.log(`Collections: ${backup.metadata.collections}`);
-    console.log(`Backup Type: ${backup.metadata.backupType}`);
+    console.log(`Database: ${backupWithObjectIds.metadata.database}`);
+    console.log(`Backup Date: ${backupWithObjectIds.metadata.timestamp}`);
+    console.log(`Collections: ${backupWithObjectIds.metadata.collections}`);
+    console.log(`Backup Type: ${backupWithObjectIds.metadata.backupType}`);
     console.log('========================================\n');
 
     // Confirm restore
     console.log('⚠️  WARNING: This will DELETE all existing data and restore from backup!');
     console.log('Press Ctrl+C to cancel, or wait 5 seconds to continue...\n');
-    
+
     await new Promise(resolve => setTimeout(resolve, 5000));
 
     console.log('Starting restore...\n');
@@ -88,20 +124,20 @@ const restoreBackup = async (backupFileName) => {
     let restoredDocuments = 0;
 
     // Restore each collection
-    for (const [collectionName, documents] of Object.entries(backup.data)) {
+    for (const [collectionName, documents] of Object.entries(backupWithObjectIds.data)) {
       try {
         const collection = mongoose.connection.db.collection(collectionName);
-        
+
         if (documents.length > 0) {
           // Delete existing documents
           await collection.deleteMany({});
-          
-          // Insert backup documents
+
+          // Insert backup documents with proper ObjectIds
           await collection.insertMany(documents);
-          
+
           restoredCollections++;
           restoredDocuments += documents.length;
-          
+
           console.log(`✓ Restored ${documents.length} documents to ${collectionName}`);
         } else {
           console.log(`- Skipped ${collectionName} (empty)`);
