@@ -362,7 +362,7 @@ router.post('/agent-verification', verifyToken, async (req, res) => {
         isVerified: true,
         verificationStatus: 'verified',
         verificationCompletedAt: new Date(),
-        verificationNotes: 'Auto-verified for demo purposes'
+        verificationNotes: 'Auto-verified for immediate Verification purposes'
       });
     }
 
@@ -443,7 +443,7 @@ router.post('/user-verification', verifyToken, async (req, res) => {
         isVerified: true,
         verificationStatus: 'verified',
         verificationCompletedAt: new Date(),
-        verificationNotes: 'Auto-verified for demo purposes'
+        verificationNotes: 'Auto-verified for immediate Verification purposes'
       });
     }
 
