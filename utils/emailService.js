@@ -3111,6 +3111,130 @@ const sendPhotoPostDeletionNotification = async (email, name, caption, location,
   await transporter.sendMail(mailOptions);
 };
 
+// Send verification rejection notification email
+const sendVerificationRejectionNotification = async (email, name, reason) => {
+  const transporter = createTransporter();
+
+  const formattedDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri.com',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: '⚠️ Verification Status Update - Action Required | Holidaysri',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <div style="background: linear-gradient(135deg, #ef4444, #dc2626); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">⚠️ Verification Update</h1>
+              <p style="color: white; margin: 10px 0 0 0; font-size: 16px;">Your verification documents require attention</p>
+            </div>
+          </div>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Dear ${name},
+          </p>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            We have reviewed your verification documents submitted to Holidaysri.com. Unfortunately, we are unable to approve your verification at this time.
+          </p>
+
+          <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 20px; margin: 30px 0; border-radius: 5px;">
+            <h3 style="color: #dc2626; margin: 0 0 10px 0; font-size: 16px;">
+              📋 Reason for Rejection:
+            </h3>
+            <p style="color: #991b1b; margin: 0; line-height: 1.6;">
+              ${reason || 'The submitted documents do not meet our verification requirements. Please ensure all documents are clear, valid, and match your account information.'}
+            </p>
+          </div>
+
+          <div style="background-color: #f0f9ff; padding: 20px; border-radius: 8px; margin: 30px 0;">
+            <h3 style="color: #1e40af; margin: 0 0 15px 0;">📝 What This Means:</h3>
+            <ul style="color: #555; line-height: 1.8; margin: 0; padding-left: 20px;">
+              <li>Your verification documents have been removed from our system</li>
+              <li>Your account verification status has been reset to "Pending"</li>
+              <li>You can resubmit new verification documents at any time</li>
+              <li>Certain features may be limited until verification is complete</li>
+            </ul>
+          </div>
+
+          <div style="background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin: 30px 0;">
+            <h3 style="color: #15803d; margin: 0 0 15px 0;">✅ Next Steps:</h3>
+            <ol style="color: #555; line-height: 1.8; margin: 0; padding-left: 20px;">
+              <li>Review the reason for rejection carefully</li>
+              <li>Prepare clear, valid identification documents (NIC or Passport)</li>
+              <li>Ensure all documents are:
+                <ul style="margin-top: 8px;">
+                  <li>Clear and readable</li>
+                  <li>Not expired</li>
+                  <li>Match your account information</li>
+                  <li>Show all corners and edges</li>
+                </ul>
+              </li>
+              <li>Log in to your account and resubmit your documents</li>
+            </ol>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="https://www.holidaysri.com/profile" style="background-color: #2563eb; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold; font-size: 16px;">
+              Resubmit Verification Documents
+            </a>
+          </div>
+
+          <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; margin: 30px 0; border-radius: 5px;">
+            <p style="color: #92400e; margin: 0; font-size: 14px;">
+              <strong>💡 Tip:</strong> Make sure to upload high-quality images in good lighting. Both front and back of your NIC should be clearly visible, or a clear photo of your passport information page.
+            </p>
+          </div>
+
+          <div style="border-top: 2px solid #e5e7eb; padding-top: 20px; margin-top: 30px;">
+            <h3 style="color: #333; margin: 0 0 15px 0; font-size: 16px;">Need Help?</h3>
+            <p style="color: #555; line-height: 1.6; margin-bottom: 15px;">
+              If you have questions about the verification process or need assistance, our support team is here to help:
+            </p>
+            <p style="color: #555; margin: 5px 0;">
+              📧 Email: <a href="mailto:support@holidaysri.com" style="color: #2563eb; text-decoration: none;">support@holidaysri.com</a>
+            </p>
+            <p style="color: #555; margin: 5px 0;">
+              🌐 Website: <a href="https://www.holidaysri.com/contact" style="color: #2563eb; text-decoration: none;">Contact Us</a>
+            </p>
+          </div>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © ${new Date().getFullYear()} Holidaysri.com. All rights reserved.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
+              This is an automated message regarding your verification status.
+            </p>
+            <p style="color: #999; font-size: 11px; margin: 10px 0 0 0;">
+              Notification sent on ${formattedDate}
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Verification rejection email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   generateOTP,
   sendEmailVerificationOTP,
@@ -3143,5 +3267,6 @@ module.exports = {
   sendDonationFundPaidConfirmation,
   sendContactFormEmail,
   sendAdvertisementDeletionNotification,
-  sendPhotoPostDeletionNotification
+  sendPhotoPostDeletionNotification,
+  sendVerificationRejectionNotification
 };

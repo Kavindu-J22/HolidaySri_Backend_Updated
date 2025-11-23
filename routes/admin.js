@@ -346,6 +346,13 @@ router.put('/users/:userId/verification', verifyAdminToken, async (req, res) => 
       return res.status(400).json({ message: 'Invalid verification status' });
     }
 
+    // Get user details before update for email notification
+    const user = await User.findById(req.params.userId).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
     const updateData = {
       verificationStatus,
       verificationNotes: verificationNotes || ''
@@ -358,25 +365,42 @@ router.put('/users/:userId/verification', verifyAdminToken, async (req, res) => 
     } else if (verificationStatus === 'rejected') {
       updateData.isVerified = false;
       updateData.verificationCompletedAt = new Date();
+
+      // Clear verification documents when rejected
+      updateData.verificationDocuments = {
+        nicFront: null,
+        nicBack: null,
+        passport: null
+      };
+
+      // Send rejection email notification
+      const { sendVerificationRejectionNotification } = require('../utils/emailService');
+      try {
+        await sendVerificationRejectionNotification(
+          user.email,
+          user.name,
+          verificationNotes || 'The submitted documents do not meet our verification requirements.'
+        );
+        console.log(`✅ Verification rejection email sent to ${user.email}`);
+      } catch (emailError) {
+        console.error('Error sending verification rejection email:', emailError);
+        // Continue with update even if email fails
+      }
     } else {
       // pending status
       updateData.isVerified = false;
       updateData.verificationCompletedAt = null;
     }
 
-    const user = await User.findByIdAndUpdate(
+    const updatedUser = await User.findByIdAndUpdate(
       req.params.userId,
       updateData,
       { new: true }
     ).select('-password');
 
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
     res.json({
-      message: `User verification status updated to ${verificationStatus} successfully`,
-      user
+      message: `User verification status updated to ${verificationStatus} successfully${verificationStatus === 'rejected' ? ' and user notified via email' : ''}`,
+      user: updatedUser
     });
 
   } catch (error) {
