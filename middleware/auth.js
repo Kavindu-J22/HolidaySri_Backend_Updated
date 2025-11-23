@@ -5,16 +5,28 @@ const User = require('../models/User');
 const verifyToken = async (req, res, next) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    
+
     if (!token) {
       return res.status(401).json({ message: 'Access denied. No token provided.' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Validate ObjectId format before querying
+    if (!decoded.userId || !decoded.userId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(401).json({
+        message: 'Invalid token format. Please login again.',
+        requiresLogin: true
+      });
+    }
+
     const user = await User.findById(decoded.userId).select('-password');
-    
+
     if (!user) {
-      return res.status(401).json({ message: 'Invalid token. User not found.' });
+      return res.status(401).json({
+        message: 'Invalid token. User not found. Please login again.',
+        requiresLogin: true
+      });
     }
 
     if (!user.isActive) {
@@ -30,6 +42,13 @@ const verifyToken = async (req, res, next) => {
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ message: 'Token expired.' });
     }
+    if (error.name === 'DocumentNotFoundError' || error.name === 'CastError' || error.name === 'BSONError') {
+      return res.status(401).json({
+        message: 'Session expired. Please login again.',
+        requiresLogin: true
+      });
+    }
+    console.error('Auth middleware error:', error);
     res.status(500).json({ message: 'Server error during authentication.' });
   }
 };
