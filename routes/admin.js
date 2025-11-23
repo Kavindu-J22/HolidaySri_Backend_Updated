@@ -3192,20 +3192,14 @@ router.get('/database-backup/all', verifyAdminToken, async (req, res) => {
         const filePath = path.join(BACKUP_DIR, file);
         const stats = fs.statSync(filePath);
 
-        // Extract database name and timestamp from filename
+        // Extract database name from filename
         // Format: backup_dbname_YYYY-MM-DD_HH-MM-SS.json.gz
         const match = file.match(/backup_(.+?)_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.json\.gz/);
         const database = match ? match[1] : 'unknown';
-        const timestampStr = match ? match[2] : '';
 
-        // Parse timestamp
-        let timestamp = stats.mtime.getTime();
-        if (timestampStr) {
-          const [datePart, timePart] = timestampStr.split('_');
-          const [year, month, day] = datePart.split('-');
-          const [hour, minute, second] = timePart.split('-');
-          timestamp = new Date(year, month - 1, day, hour, minute, second).getTime();
-        }
+        // Use file modification time as timestamp (same as backup status endpoint)
+        // This ensures consistent timezone handling
+        const timestamp = stats.mtime;
 
         return {
           fileName: file,
