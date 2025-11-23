@@ -931,7 +931,7 @@ router.get('/featured', async (req, res) => {
 
     // Fetch advertisements with populated data first
     let advertisements = await Advertisement.find(query)
-      .populate('userId', 'name email isMember isPartner')
+      .populate('userId', 'name email isMember isPartner verificationStatus')
       .populate('publishedAdId');
 
     // Filter by premium only (members or partners)
