@@ -565,6 +565,7 @@ router.post('/:id/reviews', verifyToken, async (req, res) => {
     // Add review
     vehicleRentalsHire.reviews.push({
       userId: req.user._id,
+      userName: req.user.name || req.user.username || 'Anonymous',
       rating,
       reviewText,
       createdAt: new Date()

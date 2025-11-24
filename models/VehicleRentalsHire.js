@@ -137,7 +137,34 @@ const vehicleRentalsHireSchema = new mongoose.Schema({
   reportCount: {
     type: Number,
     default: 0
-  }
+  },
+  // Reviews and ratings
+  reviews: [{
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    userName: {
+      type: String,
+      required: true
+    },
+    rating: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 5
+    },
+    reviewText: {
+      type: String,
+      trim: true,
+      maxlength: 1000
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }]
 }, {
   timestamps: true
 });
