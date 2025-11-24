@@ -109,6 +109,40 @@ const cafesRestaurantsSchema = new mongoose.Schema({
     default: null,
     description: 'Google Maps link'
   },
+  menuItems: [{
+    image: {
+      url: {
+        type: String,
+        required: true
+      },
+      publicId: {
+        type: String,
+        required: true
+      }
+    },
+    itemName: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 100
+    },
+    category: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 50
+    },
+    price: {
+      type: Number,
+      required: true,
+      min: 0,
+      description: 'Price in LKR'
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   isActive: {
     type: Boolean,
     default: true

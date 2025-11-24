@@ -561,5 +561,247 @@ router.post('/:id/reviews', verifyToken, async (req, res) => {
   }
 });
 
+// POST /api/cafes-restaurants/:id/menu-items - Add menu item (max 10 free items)
+router.post('/:id/menu-items', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { image, itemName, category, price } = req.body;
+
+    // Validate required fields
+    if (!image || !image.url || !image.publicId || !itemName || !category || price === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'All fields are required: image (url, publicId), itemName, category, price'
+      });
+    }
+
+    // Validate price
+    if (price < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Price must be a positive number'
+      });
+    }
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid cafe/restaurant ID'
+      });
+    }
+
+    const cafesRestaurant = await CafesRestaurants.findById(id);
+
+    if (!cafesRestaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cafe/Restaurant not found'
+      });
+    }
+
+    // Verify ownership
+    if (cafesRestaurant.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to add menu items to this cafe/restaurant'
+      });
+    }
+
+    // Check if already has 10 items
+    if (cafesRestaurant.menuItems && cafesRestaurant.menuItems.length >= 10) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have reached the maximum limit of 10 free menu items'
+      });
+    }
+
+    // Add menu item
+    const menuItem = {
+      image: {
+        url: image.url,
+        publicId: image.publicId
+      },
+      itemName: itemName.trim(),
+      category: category.trim(),
+      price: parseFloat(price),
+      createdAt: new Date()
+    };
+
+    if (!cafesRestaurant.menuItems) {
+      cafesRestaurant.menuItems = [];
+    }
+
+    cafesRestaurant.menuItems.push(menuItem);
+    await cafesRestaurant.save();
+
+    res.json({
+      success: true,
+      message: 'Menu item added successfully',
+      data: {
+        menuItem,
+        remainingSlots: 10 - cafesRestaurant.menuItems.length
+      }
+    });
+  } catch (error) {
+    console.error('Error adding menu item:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error adding menu item',
+      error: error.message
+    });
+  }
+});
+
+// PUT /api/cafes-restaurants/:id/menu-items/:itemId - Update menu item
+router.put('/:id/menu-items/:itemId', verifyToken, async (req, res) => {
+  try {
+    const { id, itemId } = req.params;
+    const { image, itemName, category, price } = req.body;
+
+    // Validate required fields
+    if (!image || !image.url || !image.publicId || !itemName || !category || price === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'All fields are required: image (url, publicId), itemName, category, price'
+      });
+    }
+
+    // Validate price
+    if (price < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Price must be a positive number'
+      });
+    }
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid cafe/restaurant ID'
+      });
+    }
+
+    const cafesRestaurant = await CafesRestaurants.findById(id);
+
+    if (!cafesRestaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cafe/Restaurant not found'
+      });
+    }
+
+    // Verify ownership
+    if (cafesRestaurant.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to update menu items for this cafe/restaurant'
+      });
+    }
+
+    // Find and update the menu item
+    const menuItemIndex = cafesRestaurant.menuItems.findIndex(
+      item => item._id.toString() === itemId
+    );
+
+    if (menuItemIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Menu item not found'
+      });
+    }
+
+    // Update the menu item
+    cafesRestaurant.menuItems[menuItemIndex] = {
+      ...cafesRestaurant.menuItems[menuItemIndex].toObject(),
+      image: {
+        url: image.url,
+        publicId: image.publicId
+      },
+      itemName: itemName.trim(),
+      category: category.trim(),
+      price: parseFloat(price)
+    };
+
+    await cafesRestaurant.save();
+
+    res.json({
+      success: true,
+      message: 'Menu item updated successfully',
+      data: {
+        menuItem: cafesRestaurant.menuItems[menuItemIndex]
+      }
+    });
+  } catch (error) {
+    console.error('Error updating menu item:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating menu item',
+      error: error.message
+    });
+  }
+});
+
+// DELETE /api/cafes-restaurants/:id/menu-items/:itemId - Delete menu item
+router.delete('/:id/menu-items/:itemId', verifyToken, async (req, res) => {
+  try {
+    const { id, itemId } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid cafe/restaurant ID'
+      });
+    }
+
+    const cafesRestaurant = await CafesRestaurants.findById(id);
+
+    if (!cafesRestaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cafe/Restaurant not found'
+      });
+    }
+
+    // Verify ownership
+    if (cafesRestaurant.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to delete menu items from this cafe/restaurant'
+      });
+    }
+
+    // Find the menu item
+    const menuItemIndex = cafesRestaurant.menuItems.findIndex(
+      item => item._id.toString() === itemId
+    );
+
+    if (menuItemIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Menu item not found'
+      });
+    }
+
+    // Remove the menu item
+    cafesRestaurant.menuItems.splice(menuItemIndex, 1);
+    await cafesRestaurant.save();
+
+    res.json({
+      success: true,
+      message: 'Menu item deleted successfully',
+      data: {
+        remainingSlots: 10 - cafesRestaurant.menuItems.length
+      }
+    });
+  } catch (error) {
+    console.error('Error deleting menu item:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting menu item',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
 
