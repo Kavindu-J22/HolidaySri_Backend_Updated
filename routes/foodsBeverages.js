@@ -27,6 +27,7 @@ router.post('/publish', verifyToken, async (req, res) => {
       name,
       description,
       category,
+      businessName,
       type,
       province,
       city,
@@ -108,6 +109,7 @@ router.post('/publish', verifyToken, async (req, res) => {
       name,
       description,
       category,
+      businessName: businessName || '',
       type,
       location: {
         province,
@@ -322,6 +324,7 @@ router.put('/:id', verifyToken, async (req, res) => {
       name,
       description,
       category,
+      businessName,
       type,
       province,
       city,
@@ -370,6 +373,7 @@ router.put('/:id', verifyToken, async (req, res) => {
     if (name) foodsBeverages.name = name;
     if (description) foodsBeverages.description = description;
     if (category) foodsBeverages.category = category;
+    if (businessName !== undefined) foodsBeverages.businessName = businessName;
     if (type && Array.isArray(type)) foodsBeverages.type = type;
     if (province && city) {
       foodsBeverages.location.province = province;
