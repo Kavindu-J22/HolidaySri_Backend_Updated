@@ -803,5 +803,77 @@ router.delete('/:id/menu-items/:itemId', verifyToken, async (req, res) => {
   }
 });
 
+// GET /api/cafes-restaurants/menu-items/browse - Get all menu items from active cafes/restaurants
+router.get('/menu-items/browse', async (req, res) => {
+  try {
+    const { search, page = 1, limit = 12 } = req.query;
+    const skip = (page - 1) * limit;
+
+    // Find all active cafes/restaurants with published ads
+    const activeAds = await Advertisement.find({ status: 'Published' }).select('_id');
+    const activeAdIds = activeAds.map(ad => ad._id);
+
+    // Build query to find cafes with menu items and active ads
+    const query = {
+      publishedAdId: { $in: activeAdIds },
+      menuItems: { $exists: true, $ne: [] }
+    };
+
+    // Get all matching cafes/restaurants
+    const cafesRestaurants = await CafesRestaurants.find(query)
+      .select('name contact menuItems')
+      .lean();
+
+    // Flatten menu items and add restaurant info
+    let allMenuItems = [];
+    cafesRestaurants.forEach(cafe => {
+      cafe.menuItems.forEach(item => {
+        allMenuItems.push({
+          ...item,
+          restaurantId: cafe._id,
+          restaurantName: cafe.name,
+          restaurantContact: cafe.contact
+        });
+      });
+    });
+
+    // Apply search filter if provided
+    if (search && search.trim()) {
+      const searchLower = search.toLowerCase().trim();
+      allMenuItems = allMenuItems.filter(item =>
+        item.restaurantName.toLowerCase().includes(searchLower) ||
+        item.itemName.toLowerCase().includes(searchLower) ||
+        item.category.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Shuffle items randomly
+    allMenuItems = allMenuItems.sort(() => Math.random() - 0.5);
+
+    // Calculate pagination
+    const total = allMenuItems.length;
+    const pages = Math.ceil(total / limit);
+    const paginatedItems = allMenuItems.slice(skip, skip + parseInt(limit));
+
+    res.json({
+      success: true,
+      data: paginatedItems,
+      pagination: {
+        total,
+        pages,
+        page: parseInt(page),
+        limit: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching menu items:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching menu items',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
 
