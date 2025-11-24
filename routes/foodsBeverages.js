@@ -213,7 +213,7 @@ router.get('/provinces', (req, res) => {
 // GET /api/foods-beverages/browse - Get all active foods & beverages with filters
 router.get('/browse', async (req, res) => {
   try {
-    const { category, province, city, productType, page = 1, limit = 12 } = req.query;
+    const { search, category, province, city, productType, page = 1, limit = 12 } = req.query;
     const skip = (page - 1) * limit;
 
     // Build filter query
@@ -228,6 +228,15 @@ router.get('/browse', async (req, res) => {
     const expiredIds = expiredAds.map(ad => ad.publishedAdId);
     if (expiredIds.length > 0) {
       filter._id = { $nin: expiredIds };
+    }
+
+    // Search filter (name, description, or businessName)
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { businessName: { $regex: search, $options: 'i' } }
+      ];
     }
 
     if (category) {
