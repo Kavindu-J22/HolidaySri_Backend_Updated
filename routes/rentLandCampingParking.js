@@ -394,9 +394,13 @@ router.put('/:id', verifyToken, async (req, res) => {
     if (description) updateData.description = description;
     if (category) updateData.category = category;
     if (images && images.length > 0 && images.length <= 4) updateData.images = images;
+
+    // Update location fields using dot notation to preserve existing values
     if (province && city) {
-      updateData.location = { province, city };
+      updateData['location.province'] = province;
+      updateData['location.city'] = city;
     }
+
     if (nearby) updateData.nearby = nearby;
     if (activities) updateData.activities = activities;
     if (includes) updateData.includes = includes;
@@ -411,7 +415,7 @@ router.put('/:id', verifyToken, async (req, res) => {
 
     const updatedListing = await RentLandCampingParking.findByIdAndUpdate(
       id,
-      updateData,
+      { $set: updateData },
       { new: true, runValidators: true }
     );
 

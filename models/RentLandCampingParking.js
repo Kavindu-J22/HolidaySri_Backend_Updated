@@ -67,7 +67,10 @@ const rentLandCampingParkingSchema = new mongoose.Schema({
       required: true,
       validate: {
         validator: function(v) {
-          return provincesAndDistricts[this.location.province]?.includes(v);
+          // Get province from the document (works for both save and update)
+          const province = this.location?.province || this.get?.('location.province') || this._update?.$set?.['location.province'];
+          if (!province) return true; // Skip validation if province is not available
+          return provincesAndDistricts[province]?.includes(v);
         },
         message: 'City must be valid for the selected province'
       }
