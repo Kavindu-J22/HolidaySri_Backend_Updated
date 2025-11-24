@@ -467,10 +467,10 @@ router.put('/:id', verifyToken, async (req, res) => {
 });
 
 // POST /api/cafes-restaurants/:id/reviews - Add review
-router.post('/:id/reviews', async (req, res) => {
+router.post('/:id/reviews', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId, userName, rating, reviewText } = req.body;
+    const { rating, reviewText } = req.body;
 
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({
@@ -495,10 +495,22 @@ router.post('/:id/reviews', async (req, res) => {
       });
     }
 
+    // Check if user already reviewed
+    const existingReview = cafesRestaurant.reviews.find(
+      r => r.userId.toString() === req.user._id.toString()
+    );
+
+    if (existingReview) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already reviewed this cafe/restaurant'
+      });
+    }
+
     // Add review
     const review = {
-      userId,
-      userName,
+      userId: req.user._id,
+      userName: req.user.name || 'Anonymous',
       rating: parseInt(rating),
       reviewText: reviewText || '',
       createdAt: new Date()
