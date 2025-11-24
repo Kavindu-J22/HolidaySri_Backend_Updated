@@ -30,9 +30,37 @@ const foodsBeveragesSchema = new mongoose.Schema({
     maxlength: 100,
     description: 'e.g., Bakery, Cafe, Juice Bar, etc.'
   },
+  businessName: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 150,
+    description: 'Shop or Owner\'s Name'
+  },
   type: [{
     type: String,
-    enum: ['Vegetarian', 'Vegan Options', 'Gluten-Free Options'],
+    enum: [
+      'Vegetarian',
+      'Vegan Options',
+      'Gluten-Free Options',
+      'Halal',
+      'Kosher',
+      'Organic',
+      'Sugar-Free',
+      'Dairy-Free',
+      'Nut-Free',
+      'Keto-Friendly',
+      'Paleo-Friendly',
+      'Low-Carb',
+      'High-Protein',
+      'Raw Food',
+      'Locally Sourced',
+      'Fair Trade',
+      'Non-GMO',
+      'Preservative-Free',
+      'Artisan',
+      'Homemade'
+    ],
     required: true
   }],
   location: {

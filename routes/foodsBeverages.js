@@ -211,7 +211,7 @@ router.get('/provinces', (req, res) => {
 // GET /api/foods-beverages/browse - Get all active foods & beverages with filters
 router.get('/browse', async (req, res) => {
   try {
-    const { category, province, city, page = 1, limit = 12 } = req.query;
+    const { category, province, city, productType, page = 1, limit = 12 } = req.query;
     const skip = (page - 1) * limit;
 
     // Build filter query
@@ -236,6 +236,9 @@ router.get('/browse', async (req, res) => {
     }
     if (city) {
       filter['location.city'] = city;
+    }
+    if (productType) {
+      filter.type = productType;
     }
 
     // Get total count
