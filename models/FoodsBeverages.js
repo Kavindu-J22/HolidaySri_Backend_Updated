@@ -32,9 +32,10 @@ const foodsBeveragesSchema = new mongoose.Schema({
   },
   businessName: {
     type: String,
-    required: true,
+    required: false,
     trim: true,
     maxlength: 150,
+    default: '',
     description: 'Shop or Owner\'s Name'
   },
   type: [{
