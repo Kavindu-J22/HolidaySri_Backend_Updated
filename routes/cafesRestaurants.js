@@ -202,7 +202,7 @@ router.get('/provinces', (req, res) => {
 // GET /api/cafes-restaurants/browse - Get all published cafes/restaurants with filters
 router.get('/browse', async (req, res) => {
   try {
-    const { categoryType, province, city, page = 1, limit = 12 } = req.query;
+    const { categoryType, province, city, search, page = 1, limit = 12 } = req.query;
     const diningOptions = req.query.diningOptions; // Can be array or single value
     const skip = (page - 1) * limit;
 
@@ -227,6 +227,14 @@ router.get('/browse', async (req, res) => {
     }
     if (city) {
       filter['location.city'] = city;
+    }
+
+    // Search by name or description
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
     }
 
     // Filter by dining options
