@@ -203,6 +203,7 @@ router.get('/provinces', (req, res) => {
 router.get('/browse', async (req, res) => {
   try {
     const { categoryType, province, city, page = 1, limit = 12 } = req.query;
+    const diningOptions = req.query.diningOptions; // Can be array or single value
     const skip = (page - 1) * limit;
 
     // Build filter query
@@ -226,6 +227,14 @@ router.get('/browse', async (req, res) => {
     }
     if (city) {
       filter['location.city'] = city;
+    }
+
+    // Filter by dining options
+    if (diningOptions) {
+      const optionsArray = Array.isArray(diningOptions) ? diningOptions : [diningOptions];
+      if (optionsArray.length > 0) {
+        filter.diningOptions = { $all: optionsArray };
+      }
     }
 
     // Get total count
