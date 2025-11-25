@@ -85,27 +85,73 @@ router.get('/', async (req, res) => {
       query.district = district;
     }
 
-    // Build sort object
-    let sort = {};
-    if (sortBy === 'rating') {
-      sort.averageRating = sortOrder === 'asc' ? 1 : -1;
-    } else if (sortBy === 'name') {
-      sort.name = sortOrder === 'asc' ? 1 : -1;
-    } else if (sortBy === 'distance') {
-      sort.distanceFromColombo = sortOrder === 'asc' ? 1 : -1;
+    // Handle Popular sorting with specific destinations first
+    let destinations;
+    if (sortBy === 'popular') {
+      // Popular destination IDs (Colombo, Galle, Kandy, Sigiriya)
+      const popularDestinationIds = [
+        '68aacf041ea608c22f027e3c', // Colombo
+        '68aac9e01ea608c22f027440', // Galle
+        '68aac7b61ea608c22f027202', // Kandy
+        '68aac6401ea608c22f026ff0'  // Sigiriya
+      ];
+
+      // Calculate pagination
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      // Fetch popular destinations first
+      const popularDestinations = await Destination.find({
+        ...query,
+        _id: { $in: popularDestinationIds }
+      }).select('-__v');
+
+      // Create a map to maintain the order of popular destinations
+      const popularMap = new Map();
+      popularDestinations.forEach(dest => {
+        popularMap.set(dest._id.toString(), dest);
+      });
+
+      // Order popular destinations according to the specified order
+      const orderedPopular = popularDestinationIds
+        .map(id => popularMap.get(id))
+        .filter(dest => dest !== undefined);
+
+      // Fetch other destinations (old to latest - ascending by createdAt)
+      const otherDestinations = await Destination.find({
+        ...query,
+        _id: { $nin: popularDestinationIds }
+      })
+        .sort({ createdAt: 1 }) // Old to latest
+        .select('-__v');
+
+      // Combine: popular first, then others
+      const allDestinations = [...orderedPopular, ...otherDestinations];
+
+      // Apply pagination to the combined results
+      destinations = allDestinations.slice(skip, skip + parseInt(limit));
     } else {
-      sort.createdAt = sortOrder === 'asc' ? 1 : -1;
+      // Build sort object for other sort options
+      let sort = {};
+      if (sortBy === 'rating') {
+        sort.averageRating = sortOrder === 'asc' ? 1 : -1;
+      } else if (sortBy === 'name') {
+        sort.name = sortOrder === 'asc' ? 1 : -1;
+      } else if (sortBy === 'distance') {
+        sort.distanceFromColombo = sortOrder === 'asc' ? 1 : -1;
+      } else {
+        sort.createdAt = sortOrder === 'asc' ? 1 : -1;
+      }
+
+      // Calculate pagination
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      // Execute query
+      destinations = await Destination.find(query)
+        .sort(sort)
+        .skip(skip)
+        .limit(parseInt(limit))
+        .select('-__v');
     }
-
-    // Calculate pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    // Execute query
-    const destinations = await Destination.find(query)
-      .sort(sort)
-      .skip(skip)
-      .limit(parseInt(limit))
-      .select('-__v');
 
     // Get total count for pagination
     const total = await Destination.countDocuments(query);
