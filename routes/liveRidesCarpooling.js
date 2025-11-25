@@ -3,6 +3,8 @@ const router = express.Router();
 const LiveRidesCarpooling = require('../models/LiveRidesCarpooling');
 const Advertisement = require('../models/Advertisement');
 const User = require('../models/User');
+const VehicleRentalsHire = require('../models/VehicleRentalsHire');
+const ProfessionalDrivers = require('../models/ProfessionalDrivers');
 const { verifyToken, verifyEmailVerified } = require('../middleware/auth');
 const moment = require('moment-timezone');
 
@@ -570,6 +572,150 @@ router.post('/:id/review', verifyToken, verifyEmailVerified, async (req, res) =>
     res.status(500).json({
       success: false,
       message: 'Failed to add review',
+      error: error.message
+    });
+  }
+});
+
+// Get V & D Rides (Vehicle Rentals & Professional Drivers Live Rides)
+router.get('/v-and-d-rides', async (req, res) => {
+  try {
+    const { fromLocation, toLocation } = req.query;
+
+    // Build filter for live rides
+    const liveRideFilter = {};
+    if (fromLocation) {
+      liveRideFilter['liveRides.from'] = { $regex: fromLocation, $options: 'i' };
+    }
+    if (toLocation) {
+      liveRideFilter['liveRides.to'] = { $regex: toLocation, $options: 'i' };
+    }
+
+    // Fetch Vehicle Rentals Hire with live rides
+    const vehicleRentals = await VehicleRentalsHire.find({
+      isActive: true,
+      'liveRides.0': { $exists: true }, // Has at least one live ride
+      ...liveRideFilter
+    })
+      .populate('userId', 'name email contactNumber countryCode')
+      .populate('publishedAdId')
+      .lean();
+
+    // Fetch Professional Drivers with live rides
+    const professionalDrivers = await ProfessionalDrivers.find({
+      isActive: true,
+      'liveRides.0': { $exists: true }, // Has at least one live ride
+      ...liveRideFilter
+    })
+      .populate('userId', 'name email contactNumber countryCode')
+      .populate('publishedAdId')
+      .lean();
+
+    // Filter out records where advertisement is expired
+    const activeVehicleRentals = vehicleRentals.filter(vehicle => {
+      if (!vehicle.publishedAdId) return false;
+      return vehicle.publishedAdId.status !== 'expired';
+    });
+
+    const activeProfessionalDrivers = professionalDrivers.filter(driver => {
+      if (!driver.publishedAdId) return false;
+      return driver.publishedAdId.status !== 'expired';
+    });
+
+    // Transform and combine the results
+    const allRides = [];
+
+    // Process Vehicle Rentals
+    activeVehicleRentals.forEach(vehicle => {
+      vehicle.liveRides.forEach(ride => {
+        // Apply filters to individual rides
+        if (fromLocation && !ride.from.toLowerCase().includes(fromLocation.toLowerCase())) {
+          return;
+        }
+        if (toLocation && !ride.to.toLowerCase().includes(toLocation.toLowerCase())) {
+          return;
+        }
+
+        allRides.push({
+          _id: `vehicle-${vehicle._id}-${ride._id}`,
+          rideId: ride._id,
+          sourceType: 'vehicle',
+          sourceId: vehicle._id,
+          sourceName: vehicle.name,
+          image: vehicle.images && vehicle.images.length > 0 ? vehicle.images[0].url : null,
+          from: ride.from,
+          to: ride.to,
+          date: ride.date,
+          time: ride.time,
+          description: ride.description,
+          maxPassengerCount: ride.maxPassengerCount,
+          availablePassengerCount: ride.availablePassengerCount,
+          pricePerSeat: ride.pricePerSeat,
+          status: ride.status,
+          approximateTimeToRide: ride.approximateTimeToRide,
+          createdAt: ride.createdAt,
+          ownerName: vehicle.userId?.name || 'Unknown',
+          ownerContact: vehicle.userId ? `${vehicle.userId.countryCode}${vehicle.userId.contactNumber}` : null,
+          province: vehicle.province,
+          city: vehicle.city,
+          vehicleCategory: vehicle.vehicleCategory,
+          serviceCategory: vehicle.serviceCategory
+        });
+      });
+    });
+
+    // Process Professional Drivers
+    activeProfessionalDrivers.forEach(driver => {
+      driver.liveRides.forEach(ride => {
+        // Apply filters to individual rides
+        if (fromLocation && !ride.from.toLowerCase().includes(fromLocation.toLowerCase())) {
+          return;
+        }
+        if (toLocation && !ride.to.toLowerCase().includes(toLocation.toLowerCase())) {
+          return;
+        }
+
+        allRides.push({
+          _id: `driver-${driver._id}-${ride._id}`,
+          rideId: ride._id,
+          sourceType: 'driver',
+          sourceId: driver._id,
+          sourceName: driver.name,
+          image: driver.avatar?.url || null,
+          from: ride.from,
+          to: ride.to,
+          date: ride.date,
+          time: ride.time,
+          description: ride.description,
+          maxPassengerCount: ride.maxPassengerCount,
+          availablePassengerCount: ride.availablePassengerCount,
+          pricePerSeat: ride.pricePerSeat,
+          status: ride.status,
+          approximateTimeToRide: ride.approximateTimeToRide,
+          createdAt: ride.createdAt,
+          ownerName: driver.userId?.name || 'Unknown',
+          ownerContact: driver.userId ? `${driver.userId.countryCode}${driver.userId.contactNumber}` : null,
+          province: driver.province,
+          city: driver.city,
+          specialization: driver.specialization,
+          experience: driver.experience
+        });
+      });
+    });
+
+    // Shuffle rides randomly
+    const shuffledRides = allRides.sort(() => Math.random() - 0.5);
+
+    res.status(200).json({
+      success: true,
+      data: shuffledRides,
+      count: shuffledRides.length
+    });
+  } catch (error) {
+    console.error('Error fetching V & D rides:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch V & D rides',
       error: error.message
     });
   }
