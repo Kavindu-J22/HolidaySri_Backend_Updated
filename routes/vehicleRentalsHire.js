@@ -598,5 +598,216 @@ router.post('/:id/reviews', verifyToken, async (req, res) => {
   }
 });
 
+// POST /api/vehicle-rentals-hire/:id/live-rides - Add a live ride
+router.post('/:id/live-rides', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      from,
+      to,
+      date,
+      time,
+      description,
+      maxPassengerCount,
+      availablePassengerCount,
+      pricePerSeat,
+      status,
+      approximateTimeToRide
+    } = req.body;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid vehicle rentals hire ID'
+      });
+    }
+
+    // Validate required fields
+    if (!from || !to || !date || !time || !maxPassengerCount ||
+        availablePassengerCount === undefined || pricePerSeat === undefined ||
+        !status || !approximateTimeToRide) {
+      return res.status(400).json({
+        success: false,
+        message: 'All required fields must be provided'
+      });
+    }
+
+    const vehicleRentalsHire = await VehicleRentalsHire.findById(id);
+
+    if (!vehicleRentalsHire) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vehicle rentals hire not found'
+      });
+    }
+
+    // Check if user owns this listing
+    if (vehicleRentalsHire.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to add live rides to this listing'
+      });
+    }
+
+    // Create new live ride
+    const newLiveRide = {
+      from,
+      to,
+      date: new Date(date),
+      time,
+      description: description || '',
+      maxPassengerCount: parseInt(maxPassengerCount),
+      availablePassengerCount: parseInt(availablePassengerCount),
+      pricePerSeat: parseFloat(pricePerSeat),
+      status,
+      approximateTimeToRide,
+      createdAt: new Date()
+    };
+
+    vehicleRentalsHire.liveRides.push(newLiveRide);
+    await vehicleRentalsHire.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Live ride added successfully',
+      data: vehicleRentalsHire.liveRides[vehicleRentalsHire.liveRides.length - 1]
+    });
+  } catch (error) {
+    console.error('Error adding live ride:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add live ride',
+      error: error.message
+    });
+  }
+});
+
+// PUT /api/vehicle-rentals-hire/:id/live-rides/:rideId - Update a live ride
+router.put('/:id/live-rides/:rideId', verifyToken, async (req, res) => {
+  try {
+    const { id, rideId } = req.params;
+    const {
+      from,
+      to,
+      date,
+      time,
+      description,
+      maxPassengerCount,
+      availablePassengerCount,
+      pricePerSeat,
+      status,
+      approximateTimeToRide
+    } = req.body;
+
+    if (!mongoose.isValidObjectId(id) || !mongoose.isValidObjectId(rideId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid ID'
+      });
+    }
+
+    const vehicleRentalsHire = await VehicleRentalsHire.findById(id);
+
+    if (!vehicleRentalsHire) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vehicle rentals hire not found'
+      });
+    }
+
+    // Check if user owns this listing
+    if (vehicleRentalsHire.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to edit live rides on this listing'
+      });
+    }
+
+    // Find the live ride
+    const liveRide = vehicleRentalsHire.liveRides.id(rideId);
+
+    if (!liveRide) {
+      return res.status(404).json({
+        success: false,
+        message: 'Live ride not found'
+      });
+    }
+
+    // Update live ride fields
+    if (from) liveRide.from = from;
+    if (to) liveRide.to = to;
+    if (date) liveRide.date = new Date(date);
+    if (time) liveRide.time = time;
+    if (description !== undefined) liveRide.description = description;
+    if (maxPassengerCount) liveRide.maxPassengerCount = parseInt(maxPassengerCount);
+    if (availablePassengerCount !== undefined) liveRide.availablePassengerCount = parseInt(availablePassengerCount);
+    if (pricePerSeat !== undefined) liveRide.pricePerSeat = parseFloat(pricePerSeat);
+    if (status) liveRide.status = status;
+    if (approximateTimeToRide) liveRide.approximateTimeToRide = approximateTimeToRide;
+
+    await vehicleRentalsHire.save();
+
+    res.json({
+      success: true,
+      message: 'Live ride updated successfully',
+      data: liveRide
+    });
+  } catch (error) {
+    console.error('Error updating live ride:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update live ride',
+      error: error.message
+    });
+  }
+});
+
+// DELETE /api/vehicle-rentals-hire/:id/live-rides/:rideId - Delete a live ride
+router.delete('/:id/live-rides/:rideId', verifyToken, async (req, res) => {
+  try {
+    const { id, rideId } = req.params;
+
+    if (!mongoose.isValidObjectId(id) || !mongoose.isValidObjectId(rideId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid ID'
+      });
+    }
+
+    const vehicleRentalsHire = await VehicleRentalsHire.findById(id);
+
+    if (!vehicleRentalsHire) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vehicle rentals hire not found'
+      });
+    }
+
+    // Check if user owns this listing
+    if (vehicleRentalsHire.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to delete live rides from this listing'
+      });
+    }
+
+    // Remove the live ride
+    vehicleRentalsHire.liveRides.pull(rideId);
+    await vehicleRentalsHire.save();
+
+    res.json({
+      success: true,
+      message: 'Live ride deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting live ride:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete live ride',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
 

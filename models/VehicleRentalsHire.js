@@ -164,6 +164,66 @@ const vehicleRentalsHireSchema = new mongoose.Schema({
       type: Date,
       default: Date.now
     }
+  }],
+  // Live Rides (Carpooling)
+  liveRides: [{
+    from: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 200
+    },
+    to: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 200
+    },
+    date: {
+      type: Date,
+      required: true
+    },
+    time: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    description: {
+      type: String,
+      trim: true,
+      maxlength: 500
+    },
+    maxPassengerCount: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 50
+    },
+    availablePassengerCount: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    pricePerSeat: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    status: {
+      type: String,
+      required: true,
+      enum: ['Upcoming', 'Starting Soon', 'Ongoing', 'Over Soon', 'Over'],
+      default: 'Upcoming'
+    },
+    approximateTimeToRide: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
   }]
 }, {
   timestamps: true
