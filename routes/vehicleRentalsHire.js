@@ -225,7 +225,7 @@ router.get('/provinces', (req, res) => {
 // GET /api/vehicle-rentals-hire/browse - Get all published vehicle rentals hire (with filters)
 router.get('/browse', async (req, res) => {
   try {
-    const { vehicleCategory, serviceCategory, province, city, search } = req.query;
+    const { vehicleCategory, serviceCategory, province, city, search, driverStatus, driverGender } = req.query;
 
     // Build filter query
     const filter = { isActive: true };
@@ -234,6 +234,8 @@ router.get('/browse', async (req, res) => {
     if (serviceCategory) filter.serviceCategory = serviceCategory;
     if (province) filter.province = province;
     if (city) filter.city = city;
+    if (driverStatus) filter.driverStatus = driverStatus;
+    if (driverGender) filter.driverGender = driverGender;
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -243,7 +245,7 @@ router.get('/browse', async (req, res) => {
 
     // Get all matching vehicle rentals hire
     let results = await VehicleRentalsHire.find(filter)
-      .select('_id name vehicleCategory serviceCategory images province city pricePerKm averageRating totalReviews')
+      .select('_id name vehicleCategory serviceCategory images province city pricePerKm averageRating totalReviews driverStatus driverGender capacity')
       .lean();
 
     // Filter out expired advertisements
