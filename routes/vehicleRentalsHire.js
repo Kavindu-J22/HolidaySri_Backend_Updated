@@ -227,7 +227,7 @@ router.get('/provinces', (req, res) => {
 // GET /api/vehicle-rentals-hire/browse - Get all published vehicle rentals hire (with filters)
 router.get('/browse', async (req, res) => {
   try {
-    const { vehicleCategory, serviceCategory, province, city, search, driverStatus, driverGender } = req.query;
+    const { vehicleCategory, serviceCategory, province, city, search, vehicleStatus, driverStatus, driverGender } = req.query;
 
     // Build filter query
     const filter = { isActive: true };
@@ -236,6 +236,7 @@ router.get('/browse', async (req, res) => {
     if (serviceCategory) filter.serviceCategory = serviceCategory;
     if (province) filter.province = province;
     if (city) filter.city = city;
+    if (vehicleStatus) filter.vehicleStatus = vehicleStatus;
     if (driverStatus) filter.driverStatus = driverStatus;
     if (driverGender) filter.driverGender = driverGender;
     if (search) {
