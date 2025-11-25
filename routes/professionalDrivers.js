@@ -477,5 +477,199 @@ router.get('/:id/reviews', async (req, res) => {
   }
 });
 
+// POST /api/professional-drivers/:id/live-rides - Add a live ride
+router.post('/:id/live-rides', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      from,
+      to,
+      date,
+      time,
+      description,
+      maxPassengerCount,
+      availablePassengerCount,
+      pricePerSeat,
+      status,
+      approximateTimeToRide
+    } = req.body;
+
+    // Validate required fields
+    if (!from || !to || !date || !time || !maxPassengerCount ||
+        availablePassengerCount === undefined || !pricePerSeat ||
+        !status || !approximateTimeToRide) {
+      return res.status(400).json({
+        success: false,
+        message: 'All required fields must be provided'
+      });
+    }
+
+    // Validate ObjectId
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid profile ID'
+      });
+    }
+
+    // Find profile and verify ownership
+    const profile = await ProfessionalDrivers.findById(id);
+
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Profile not found'
+      });
+    }
+
+    if (profile.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to add live rides to this profile'
+      });
+    }
+
+    // Create new live ride
+    const newLiveRide = {
+      from,
+      to,
+      date,
+      time,
+      description,
+      maxPassengerCount,
+      availablePassengerCount,
+      pricePerSeat,
+      status,
+      approximateTimeToRide
+    };
+
+    profile.liveRides.push(newLiveRide);
+    await profile.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Live ride added successfully',
+      data: profile.liveRides[profile.liveRides.length - 1]
+    });
+  } catch (error) {
+    console.error('Error adding live ride:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add live ride'
+    });
+  }
+});
+
+// PUT /api/professional-drivers/:id/live-rides/:rideId - Update a live ride
+router.put('/:id/live-rides/:rideId', verifyToken, async (req, res) => {
+  try {
+    const { id, rideId } = req.params;
+    const updateData = req.body;
+
+    // Validate ObjectIds
+    if (!mongoose.isValidObjectId(id) || !mongoose.isValidObjectId(rideId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid ID'
+      });
+    }
+
+    // Find profile and verify ownership
+    const profile = await ProfessionalDrivers.findById(id);
+
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Profile not found'
+      });
+    }
+
+    if (profile.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to update live rides for this profile'
+      });
+    }
+
+    // Find and update the live ride
+    const liveRide = profile.liveRides.id(rideId);
+
+    if (!liveRide) {
+      return res.status(404).json({
+        success: false,
+        message: 'Live ride not found'
+      });
+    }
+
+    // Update fields
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] !== undefined) {
+        liveRide[key] = updateData[key];
+      }
+    });
+
+    await profile.save();
+
+    res.json({
+      success: true,
+      message: 'Live ride updated successfully',
+      data: liveRide
+    });
+  } catch (error) {
+    console.error('Error updating live ride:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update live ride'
+    });
+  }
+});
+
+// DELETE /api/professional-drivers/:id/live-rides/:rideId - Delete a live ride
+router.delete('/:id/live-rides/:rideId', verifyToken, async (req, res) => {
+  try {
+    const { id, rideId } = req.params;
+
+    // Validate ObjectIds
+    if (!mongoose.isValidObjectId(id) || !mongoose.isValidObjectId(rideId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid ID'
+      });
+    }
+
+    // Find profile and verify ownership
+    const profile = await ProfessionalDrivers.findById(id);
+
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Profile not found'
+      });
+    }
+
+    if (profile.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to delete live rides from this profile'
+      });
+    }
+
+    // Remove the live ride
+    profile.liveRides.pull(rideId);
+    await profile.save();
+
+    res.json({
+      success: true,
+      message: 'Live ride deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting live ride:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete live ride'
+    });
+  }
+});
+
 module.exports = router;
 
