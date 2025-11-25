@@ -33,6 +33,7 @@ router.post('/publish', verifyToken, async (req, res) => {
       contact,
       pricePerKm,
       features,
+      vehicleStatus,
       driverStatus,
       driverGender,
       capacity,
@@ -42,9 +43,9 @@ router.post('/publish', verifyToken, async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!advertisementId || !name || !vehicleCategory || !serviceCategory || 
-        !province || !city || !contact || !images || images.length === 0 || 
-        pricePerKm === undefined || !driverStatus || !driverGender || 
+    if (!advertisementId || !name || !vehicleCategory || !serviceCategory ||
+        !province || !city || !contact || !images || images.length === 0 ||
+        pricePerKm === undefined || !vehicleStatus || !driverStatus || !driverGender ||
         !capacity || !description) {
       return res.status(400).json({
         success: false,
@@ -135,6 +136,7 @@ router.post('/publish', verifyToken, async (req, res) => {
       contact,
       pricePerKm,
       features: features || [],
+      vehicleStatus,
       driverStatus,
       driverGender,
       capacity,
@@ -245,7 +247,7 @@ router.get('/browse', async (req, res) => {
 
     // Get all matching vehicle rentals hire
     let results = await VehicleRentalsHire.find(filter)
-      .select('_id name vehicleCategory serviceCategory images province city pricePerKm averageRating totalReviews driverStatus driverGender capacity')
+      .select('_id name vehicleCategory serviceCategory images province city pricePerKm averageRating totalReviews vehicleStatus driverStatus driverGender capacity')
       .lean();
 
     // Filter out expired advertisements
@@ -395,6 +397,7 @@ router.put('/:id', verifyToken, async (req, res) => {
       contact,
       pricePerKm,
       features,
+      vehicleStatus,
       driverStatus,
       driverGender,
       capacity,
@@ -413,7 +416,7 @@ router.put('/:id', verifyToken, async (req, res) => {
     // Validate required fields
     if (!name || !vehicleCategory || !serviceCategory || !province || !city ||
         !contact || !images || images.length === 0 || pricePerKm === undefined ||
-        !driverStatus || !driverGender || !capacity || !description) {
+        !vehicleStatus || !driverStatus || !driverGender || !capacity || !description) {
       return res.status(400).json({
         success: false,
         message: 'All required fields must be provided'
@@ -490,6 +493,7 @@ router.put('/:id', verifyToken, async (req, res) => {
     vehicleRentalsHire.contact = contact;
     vehicleRentalsHire.pricePerKm = pricePerKm;
     vehicleRentalsHire.features = features || [];
+    vehicleRentalsHire.vehicleStatus = vehicleStatus;
     vehicleRentalsHire.driverStatus = driverStatus;
     vehicleRentalsHire.driverGender = driverGender;
     vehicleRentalsHire.capacity = capacity;

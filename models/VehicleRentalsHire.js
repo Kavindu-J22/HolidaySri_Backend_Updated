@@ -72,6 +72,12 @@ const vehicleRentalsHireSchema = new mongoose.Schema({
     trim: true,
     description: 'e.g., City Tours, Cheap, Local Guide, AC, WiFi, etc.'
   }],
+  vehicleStatus: {
+    type: String,
+    required: true,
+    enum: ['Available', 'Unavailable'],
+    description: 'Vehicle availability status'
+  },
   driverStatus: {
     type: String,
     required: true,
