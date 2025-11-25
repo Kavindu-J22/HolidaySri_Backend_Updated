@@ -392,7 +392,9 @@ router.put('/:id', verifyToken, async (req, res) => {
       facebook,
       website,
       weekdayAvailability,
-      weekendAvailability
+      weekendAvailability,
+      avatar,
+      packages
     } = req.body;
 
     // Validate input
@@ -403,24 +405,44 @@ router.put('/:id', verifyToken, async (req, res) => {
       });
     }
 
+    // Prepare update object
+    const updateData = {
+      name,
+      specialization,
+      category,
+      description,
+      experience: parseInt(experience),
+      city,
+      province,
+      contact,
+      available: available !== false,
+      facebook: facebook || null,
+      website: website || null,
+      weekdayAvailability: weekdayAvailability || '',
+      weekendAvailability: weekendAvailability || ''
+    };
+
+    // Update avatar if provided
+    if (avatar && avatar.url && avatar.publicId) {
+      updateData.avatar = {
+        url: avatar.url,
+        publicId: avatar.publicId
+      };
+    }
+
+    // Update packages if provided
+    if (packages && packages.url && packages.publicId) {
+      updateData.packages = {
+        url: packages.url,
+        publicId: packages.publicId,
+        fileName: packages.fileName || null
+      };
+    }
+
     // Find and update profile
     const profile = await EventPlannersCoordinators.findByIdAndUpdate(
       id,
-      {
-        name,
-        specialization,
-        category,
-        description,
-        experience: parseInt(experience),
-        city,
-        province,
-        contact,
-        available: available !== false,
-        facebook: facebook || null,
-        website: website || null,
-        weekdayAvailability: weekdayAvailability || '',
-        weekendAvailability: weekendAvailability || ''
-      },
+      updateData,
       { new: true, runValidators: true }
     ).populate('userId', 'name email');
 
