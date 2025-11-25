@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const Destination = require('../models/Destination');
 const Review = require('../models/Review');
 const Favorite = require('../models/Favorite');
@@ -90,11 +91,14 @@ router.get('/', async (req, res) => {
     if (sortBy === 'popular') {
       // Popular destination IDs (Colombo, Galle, Kandy, Sigiriya)
       const popularDestinationIds = [
-        '68aacf041ea608c22f027e3c', // Colombo
+        '68aaca921ea608c22f0274d8', // Colombo
         '68aac9e01ea608c22f027440', // Galle
-        '68aac7b61ea608c22f027202', // Kandy
+        '68aac8b51ea608c22f02731e', // Kandy
         '68aac6401ea608c22f026ff0'  // Sigiriya
       ];
+
+      // Convert string IDs to ObjectIds
+      const popularObjectIds = popularDestinationIds.map(id => new mongoose.Types.ObjectId(id));
 
       // Calculate pagination
       const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -102,7 +106,7 @@ router.get('/', async (req, res) => {
       // Fetch popular destinations first
       const popularDestinations = await Destination.find({
         ...query,
-        _id: { $in: popularDestinationIds }
+        _id: { $in: popularObjectIds }
       }).select('-__v');
 
       // Create a map to maintain the order of popular destinations
@@ -119,7 +123,7 @@ router.get('/', async (req, res) => {
       // Fetch other destinations (old to latest - ascending by createdAt)
       const otherDestinations = await Destination.find({
         ...query,
-        _id: { $nin: popularDestinationIds }
+        _id: { $nin: popularObjectIds }
       })
         .sort({ createdAt: 1 }) // Old to latest
         .select('-__v');
