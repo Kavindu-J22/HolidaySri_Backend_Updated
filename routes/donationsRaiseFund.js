@@ -244,11 +244,23 @@ router.get('/', async (req, res) => {
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
+    // Remove duplicates based on _id (in case of database inconsistencies)
+    const uniqueCampaigns = [];
+    const seenIds = new Set();
+
+    for (const campaign of campaigns) {
+      const id = campaign._id.toString();
+      if (!seenIds.has(id)) {
+        seenIds.add(id);
+        uniqueCampaigns.push(campaign);
+      }
+    }
+
     const total = await DonationsRaiseFund.countDocuments(query);
 
     res.json({
       success: true,
-      data: campaigns,
+      data: uniqueCampaigns,
       totalPages: Math.ceil(total / limit),
       currentPage: parseInt(page),
       total

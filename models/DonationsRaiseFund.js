@@ -231,7 +231,7 @@ const donationsRaiseFundSchema = new mongoose.Schema({
 
 // Indexes for better query performance
 donationsRaiseFundSchema.index({ userId: 1 });
-donationsRaiseFundSchema.index({ publishedAdId: 1 });
+donationsRaiseFundSchema.index({ publishedAdId: 1 }, { unique: true }); // Ensure unique publishedAdId
 donationsRaiseFundSchema.index({ category: 1 });
 donationsRaiseFundSchema.index({ province: 1, city: 1 });
 donationsRaiseFundSchema.index({ isActive: 1 });
