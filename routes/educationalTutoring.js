@@ -517,15 +517,17 @@ router.post('/:id/reviews', verifyToken, async (req, res) => {
 
     if (existingReview) {
       // Update existing review
+      existingReview.userName = req.user.name || 'Anonymous';
       existingReview.rating = rating;
-      existingReview.review = review.trim();
+      existingReview.reviewText = review.trim();
       existingReview.createdAt = new Date();
     } else {
       // Add new review
       profile.reviews.push({
         userId: req.user._id,
+        userName: req.user.name || 'Anonymous',
         rating,
-        review: review.trim(),
+        reviewText: review.trim(),
         createdAt: new Date()
       });
     }
