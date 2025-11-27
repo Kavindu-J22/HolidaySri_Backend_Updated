@@ -577,7 +577,7 @@ router.put('/:id', verifyToken, verifyEmailVerified, async (req, res) => {
     }
 
     // Check if user owns this live ride
-    if (liveRide.userId.toString() !== req.user.userId) {
+    if (liveRide.userId.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: 'You are not authorized to edit this live ride'
@@ -677,7 +677,7 @@ router.post('/:id/review', verifyToken, verifyEmailVerified, async (req, res) =>
 
     // Check if user already reviewed
     const existingReview = liveRide.reviews.find(
-      review => review.userId.toString() === req.user.userId
+      review => review.userId.toString() === req.user._id.toString()
     );
 
     if (existingReview) {
@@ -687,22 +687,11 @@ router.post('/:id/review', verifyToken, verifyEmailVerified, async (req, res) =>
       });
     }
 
-    // Get user details
-    const User = require('../models/User');
-    const user = await User.findById(req.user.userId);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    // Add review
+    // Add review (req.user already contains the full user object from verifyToken middleware)
     liveRide.reviews.push({
-      userId: req.user.userId,
-      userName: user.name,
-      userProfileImage: user.profileImage || '',
+      userId: req.user._id,
+      userName: req.user.name,
+      userProfileImage: req.user.profileImage || '',
       rating: parseInt(rating),
       comment: comment.trim()
     });
