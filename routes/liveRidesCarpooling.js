@@ -691,6 +691,13 @@ router.post('/:id/review', verifyToken, verifyEmailVerified, async (req, res) =>
     const User = require('../models/User');
     const user = await User.findById(req.user.userId);
 
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
     // Add review
     liveRide.reviews.push({
       userId: req.user.userId,
