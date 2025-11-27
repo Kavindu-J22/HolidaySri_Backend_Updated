@@ -27,7 +27,30 @@ const hotelsAccommodationsSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['Hotels', 'Apartments', 'Resorts']
+    enum: [
+      'Hotels',
+      'Apartments',
+      'Resorts',
+      'Villas',
+      'Guest Houses',
+      'Homestays',
+      'Boutique Hotels',
+      'Hostels',
+      'Lodges',
+      'Bungalows',
+      'Eco Lodges',
+      'Beach Hotels',
+      'City Hotels',
+      'Bed & Breakfast',
+      'Cottages',
+      'Chalets',
+      'Farmstays',
+      'Treehouse',
+      'Floating Hotels',
+      'Heritage Hotels',
+      'Motels',
+      'Service Apartments'
+    ]
   },
   description: {
     type: String,
