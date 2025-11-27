@@ -2457,6 +2457,37 @@ router.get('/payment-activities/:id', verifyAdminToken, async (req, res) => {
   }
 });
 
+// Delete all payment activities
+router.delete('/payment-activities/all/records', verifyAdminToken, async (req, res) => {
+  try {
+    const { confirmation } = req.body;
+
+    // Verify confirmation text
+    if (confirmation !== 'Confirm') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid confirmation. Please type "Confirm" to delete all records.'
+      });
+    }
+
+    // Delete all payment activities
+    const result = await PaymentActivity.deleteMany({});
+
+    res.json({
+      success: true,
+      message: `Successfully deleted ${result.deletedCount} payment activity records.`,
+      deletedCount: result.deletedCount
+    });
+
+  } catch (error) {
+    console.error('Delete all payment activities error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while deleting payment activities'
+    });
+  }
+});
+
 // Get all room bookings with filters and search
 router.get('/room-bookings', verifyAdminToken, async (req, res) => {
   try {
