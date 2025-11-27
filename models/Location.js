@@ -89,13 +89,7 @@ const locationSchema = new mongoose.Schema({
   }],
   mapUrl: {
     type: String,
-    required: true,
-    validate: {
-      validator: function(v) {
-        return /^https:\/\/(www\.)?google\.com\/maps/.test(v) || /^https:\/\/maps\.google\.com/.test(v) || /^https:\/\/goo\.gl\/maps/.test(v);
-      },
-      message: 'Please provide a valid Google Maps URL'
-    }
+    required: true
   },
   distanceFromColombo: {
     type: Number,
