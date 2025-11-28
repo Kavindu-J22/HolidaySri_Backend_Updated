@@ -276,6 +276,10 @@ router.get('/:id', async (req, res) => {
       });
     }
 
+    // Increment view count
+    expertDoctor.viewCount = (expertDoctor.viewCount || 0) + 1;
+    await expertDoctor.save();
+
     res.status(200).json({
       success: true,
       data: expertDoctor
