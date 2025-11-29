@@ -532,11 +532,11 @@ router.post('/:id/reviews', verifyToken, async (req, res) => {
       });
     }
 
-    await profile.save();
-
     // Calculate average rating
     const avgRating = profile.reviews.reduce((sum, r) => sum + r.rating, 0) / profile.reviews.length;
-    profile.overallRating = avgRating;
+    profile.averageRating = parseFloat(avgRating.toFixed(1));
+    profile.totalReviews = profile.reviews.length;
+
     await profile.save();
 
     res.json({
