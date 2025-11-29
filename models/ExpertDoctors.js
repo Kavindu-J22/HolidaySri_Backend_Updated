@@ -133,12 +133,25 @@ const expertDoctorsSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
     },
+    userName: {
+      type: String,
+      trim: true
+    },
+    userEmail: {
+      type: String,
+      trim: true
+    },
     rating: {
       type: Number,
       min: 1,
       max: 5
     },
-    comment: String,
+    reviewText: {
+      type: String,
+      trim: true,
+      maxlength: 1000
+    },
+    comment: String, // Keep for backward compatibility
     createdAt: {
       type: Date,
       default: Date.now
