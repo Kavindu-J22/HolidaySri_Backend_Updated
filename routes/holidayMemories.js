@@ -72,6 +72,7 @@ router.get('/browse', async (req, res) => {
       province,
       tag,
       search,
+      otherCountry,
       page = 1,
       limit = 12,
       sortBy = 'random' // random, recent, popular, mostDownloaded
@@ -83,6 +84,7 @@ router.get('/browse', async (req, res) => {
     // Apply filters
     if (city) filter['location.city'] = city;
     if (province) filter['location.province'] = province;
+    if (otherCountry === 'true') filter['location.isOtherCountry'] = true;
     if (tag) filter.tags = tag;
     if (search) {
       filter.$or = [
