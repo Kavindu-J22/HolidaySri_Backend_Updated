@@ -189,19 +189,42 @@ router.post('/purchase-package', verifyToken, verifyEmailVerified, async (req, r
 
     // Update user's HSC balance
     user.hscBalance += package.hscAmount;
+
+    // Add bonus HSG and HSD if available in the package
+    const bonusHsgAmount = package.bonusHsgAmount || 0;
+    const bonusHsdAmount = package.bonusHsdAmount || 0;
+
+    if (bonusHsgAmount > 0) {
+      user.hsgBalance = (user.hsgBalance || 0) + bonusHsgAmount;
+    }
+    if (bonusHsdAmount > 0) {
+      user.hsdBalance = (user.hsdBalance || 0) + bonusHsdAmount;
+    }
+
     await user.save();
+
+    // Build description including bonus tokens
+    let description = `Purchased ${package.name} package (${package.hscAmount} HSC)`;
+    if (bonusHsgAmount > 0 || bonusHsdAmount > 0) {
+      const bonusParts = [];
+      if (bonusHsgAmount > 0) bonusParts.push(`${bonusHsgAmount} HSG`);
+      if (bonusHsdAmount > 0) bonusParts.push(`${bonusHsdAmount} HSD`);
+      description += ` + Bonus: ${bonusParts.join(', ')}`;
+    }
 
     // Create HSC transaction record
     const transaction = new HSCTransaction({
       userId: req.user._id,
       type: 'purchase',
       amount: package.hscAmount,
-      description: `Purchased ${package.name} package (${package.hscAmount} HSC)`,
+      description: description,
       paymentMethod,
       paymentDetails: {
         transactionId: paymentDetails?.transactionId || `PKG_${Date.now()}`,
         paymentStatus: 'completed',
         packageId: package._id,
+        bonusHsgAmount: bonusHsgAmount,
+        bonusHsdAmount: bonusHsdAmount,
         ...paymentDetails
       },
       balanceBefore,
@@ -235,7 +258,7 @@ router.post('/purchase-package', verifyToken, verifyEmailVerified, async (req, r
       amountLKR: package.price,
       hscAmount: package.hscAmount,
       hscValue: hscValue,
-      description: `Package Purchase - ${package.name} (${package.hscAmount} HSC)`,
+      description: description,
       category: 'Package Purchase',
       gatewayTransactionId: paymentDetails?.transactionId || `PKG_${Date.now()}`,
       gatewayStatus: 'completed',
@@ -244,7 +267,9 @@ router.post('/purchase-package', verifyToken, verifyEmailVerified, async (req, r
         itemName: package.name,
         itemId: package._id,
         quantity: package.hscAmount,
-        packageType: package.name
+        packageType: package.name,
+        bonusHsgAmount: bonusHsgAmount,
+        bonusHsdAmount: bonusHsdAmount
       },
       balanceBefore: {
         hsc: balanceBefore,
@@ -268,8 +293,14 @@ router.post('/purchase-package', verifyToken, verifyEmailVerified, async (req, r
         id: transaction._id,
         package: package.name,
         hscAmount: package.hscAmount,
+        bonusHsgAmount: bonusHsgAmount,
+        bonusHsdAmount: bonusHsdAmount,
         price: package.price,
-        newBalance: user.hscBalance,
+        newBalance: {
+          hsc: user.hscBalance,
+          hsg: user.hsgBalance || 0,
+          hsd: user.hsdBalance || 0
+        },
         transactionId: paymentDetails?.transactionId || transaction.transactionId,
         paymentActivityId: paymentActivity._id,
         moneyTransactionId: moneyTransaction._id

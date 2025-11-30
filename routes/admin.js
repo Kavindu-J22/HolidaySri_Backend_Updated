@@ -424,7 +424,7 @@ router.get('/hsc-packages', verifyAdminToken, async (req, res) => {
 // Create HSC package
 router.post('/hsc-packages', verifyAdminToken, async (req, res) => {
   try {
-    const { name, hscAmount, discount = 0, description, features } = req.body;
+    const { name, hscAmount, discount = 0, description, features, bonusHsgAmount = 0, bonusHsdAmount = 0 } = req.body;
 
     if (!name || !hscAmount) {
       return res.status(400).json({ message: 'Name and HSC amount are required' });
@@ -444,6 +444,8 @@ router.post('/hsc-packages', verifyAdminToken, async (req, res) => {
       hscAmount,
       price: finalPrice,
       discount,
+      bonusHsgAmount: bonusHsgAmount || 0,
+      bonusHsdAmount: bonusHsdAmount || 0,
       description,
       features: features || []
     });
@@ -464,7 +466,7 @@ router.post('/hsc-packages', verifyAdminToken, async (req, res) => {
 // Update HSC package
 router.put('/hsc-packages/:packageId', verifyAdminToken, async (req, res) => {
   try {
-    const { name, hscAmount, discount, description, features, isActive } = req.body;
+    const { name, hscAmount, discount, description, features, isActive, bonusHsgAmount, bonusHsdAmount } = req.body;
 
     const updateData = {};
     if (name) updateData.name = name;
@@ -499,6 +501,8 @@ router.put('/hsc-packages/:packageId', verifyAdminToken, async (req, res) => {
     if (description !== undefined) updateData.description = description;
     if (features) updateData.features = features;
     if (typeof isActive === 'boolean') updateData.isActive = isActive;
+    if (bonusHsgAmount !== undefined) updateData.bonusHsgAmount = bonusHsgAmount;
+    if (bonusHsdAmount !== undefined) updateData.bonusHsdAmount = bonusHsdAmount;
 
     const package = await HSCPackage.findByIdAndUpdate(
       req.params.packageId,
