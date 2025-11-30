@@ -25,6 +25,11 @@ router.post('/upload', verifyToken, verifyEmailVerified, async (req, res) => {
       return res.status(400).json({ message: 'Image, caption, and location name are required' });
     }
 
+    // Validate country when isOtherCountry is true
+    if (location.isOtherCountry && !location.country) {
+      return res.status(400).json({ message: 'Country is required when posting from other country' });
+    }
+
     // Validate tags (max 5)
     if (tags && tags.length > 5) {
       return res.status(400).json({ message: 'Maximum 5 tags allowed' });
