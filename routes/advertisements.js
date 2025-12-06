@@ -10,6 +10,9 @@ const { PromoCodeConfig, HSCConfig } = require('../models/HSC');
 const { verifyToken, verifyEmailVerified } = require('../middleware/auth');
 const { sendAdvertisementPurchaseEmail, sendAdvertisementRenewalEmail } = require('../utils/emailService');
 
+// Import HotelsAccommodations model to ensure it's registered for refPath populate
+require('../models/HotelsAccommodations');
+
 // Helper function to format category names
 const formatCategoryName = (category) => {
   return category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
