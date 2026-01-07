@@ -3651,6 +3651,189 @@ const sendEventProposalRejectedNotification = async (email, name, requestDetails
   }
 };
 
+// Send donation publication approval email
+const sendDonationPublicationApprovalEmail = async (email, name, donationTitle, donationId) => {
+  const transporter = createTransporter();
+
+  const formattedDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+
+  const donationUrl = `https://www.holidaysri.com/donations-raise-fund/${donationId}`;
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri.com',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: '🎉 Congratulations! Your Donation Campaign Has Been Approved',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background: linear-gradient(135deg, #10b981 0%, #34d399 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Campaign Approved!</h1>
+        </div>
+
+        <div style="background-color: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Dear ${name},
+          </p>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Great news! Your donation campaign has been reviewed and <strong style="color: #10b981;">approved</strong> by our admin team.
+          </p>
+
+          <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #10b981;">
+            <h3 style="color: #059669; margin: 0 0 10px 0; font-size: 18px;">📋 Campaign Details</h3>
+            <p style="color: #065f46; margin: 5px 0; font-size: 16px;"><strong>Title:</strong> ${donationTitle}</p>
+            <p style="color: #065f46; margin: 5px 0; font-size: 14px;"><strong>Status:</strong> <span style="color: #10b981; font-weight: bold;">✅ Approved & Published</span></p>
+            <p style="color: #065f46; margin: 5px 0; font-size: 14px;"><strong>Approved on:</strong> ${formattedDate}</p>
+          </div>
+
+          <div style="background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin: 25px 0;">
+            <h3 style="color: #059669; margin: 0 0 15px 0; font-size: 16px;">✨ What's Next?</h3>
+            <ul style="color: #065f46; line-height: 1.8; margin: 0; padding-left: 20px;">
+              <li>Your campaign is now <strong>live and visible</strong> to all users on Holidaysri.com</li>
+              <li>Users can now view and donate to your campaign</li>
+              <li>You can track donations and progress in your dashboard</li>
+              <li>Keep promoting your campaign to reach your fundraising goal</li>
+            </ul>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${donationUrl}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);">
+              View Your Campaign
+            </a>
+          </div>
+
+          <div style="background-color: #fef3c7; padding: 15px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #f59e0b;">
+            <p style="color: #92400e; margin: 0; font-size: 14px;">
+              <strong>💡 Tip:</strong> Share your campaign on social media and with your network to maximize donations and reach your goal faster!
+            </p>
+          </div>
+
+          <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 25px 0 0 0;">
+            Thank you for using Holidaysri.com to make a positive impact. We wish you great success with your fundraising campaign!
+          </p>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © ${new Date().getFullYear()} Holidaysri.com. All rights reserved.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
+              This is an automated message regarding your campaign approval.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Donation publication approval email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Send donation publication rejection email
+const sendDonationPublicationRejectionEmail = async (email, name, donationTitle, rejectionReason) => {
+  const transporter = createTransporter();
+
+  const formattedDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri.com',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: 'Donation Campaign Review Update - Holidaysri.com',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">📋 Campaign Review Update</h1>
+        </div>
+
+        <div style="background-color: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Dear ${name},
+          </p>
+
+          <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+            Thank you for submitting your donation campaign to Holidaysri.com. After careful review, we regret to inform you that your campaign could not be approved at this time.
+          </p>
+
+          <div style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #ef4444;">
+            <h3 style="color: #dc2626; margin: 0 0 10px 0; font-size: 18px;">📋 Campaign Details</h3>
+            <p style="color: #991b1b; margin: 5px 0; font-size: 16px;"><strong>Title:</strong> ${donationTitle}</p>
+            <p style="color: #991b1b; margin: 5px 0; font-size: 14px;"><strong>Status:</strong> <span style="color: #ef4444; font-weight: bold;">❌ Not Approved</span></p>
+            <p style="color: #991b1b; margin: 5px 0; font-size: 14px;"><strong>Reviewed on:</strong> ${formattedDate}</p>
+          </div>
+
+          ${rejectionReason ? `
+          <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #f59e0b;">
+            <h3 style="color: #92400e; margin: 0 0 10px 0; font-size: 16px;">📝 Admin Note</h3>
+            <p style="color: #78350f; margin: 0; line-height: 1.6;">${rejectionReason}</p>
+          </div>
+          ` : ''}
+
+          <div style="background-color: #eff6ff; padding: 20px; border-radius: 8px; margin: 25px 0;">
+            <h3 style="color: #1e40af; margin: 0 0 15px 0; font-size: 16px;">🔄 What You Can Do</h3>
+            <ul style="color: #1e3a8a; line-height: 1.8; margin: 0; padding-left: 20px;">
+              <li>Review the admin note carefully</li>
+              <li>Edit your campaign to address the concerns</li>
+              <li>Ensure all information is accurate and complete</li>
+              <li>Resubmit your campaign for review</li>
+            </ul>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="https://www.holidaysri.com/profile" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);">
+              Edit Your Campaign
+            </a>
+          </div>
+
+          <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 25px 0 0 0;">
+            We appreciate your understanding and look forward to reviewing your updated campaign. If you have any questions, please don't hesitate to contact our support team.
+          </p>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © ${new Date().getFullYear()} Holidaysri.com. All rights reserved.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
+              This is an automated message regarding your campaign review.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Donation publication rejection email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   generateOTP,
   sendEmailVerificationOTP,
@@ -3690,5 +3873,7 @@ module.exports = {
   sendProposalRejectedNotification,
   sendEventProposalReceivedNotification,
   sendEventProposalAcceptedNotification,
-  sendEventProposalRejectedNotification
+  sendEventProposalRejectedNotification,
+  sendDonationPublicationApprovalEmail,
+  sendDonationPublicationRejectionEmail
 };

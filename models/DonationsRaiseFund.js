@@ -216,6 +216,23 @@ const donationsRaiseFundSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  // Admin Approval Status
+  adminApprove: {
+    type: String,
+    enum: ['Pending', 'Approved', 'Rejected'],
+    default: 'Pending'
+  },
+  adminNote: {
+    type: String,
+    default: ''
+  },
+  adminProcessedAt: {
+    type: Date
+  },
+  adminProcessedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   // Status
   isActive: {
     type: Boolean,

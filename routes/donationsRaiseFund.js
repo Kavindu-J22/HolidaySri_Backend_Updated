@@ -5,7 +5,7 @@ const Advertisement = require('../models/Advertisement');
 const PaidDonationFund = require('../models/PaidDonationFund');
 const User = require('../models/User');
 const { verifyToken, verifyEmailVerified, verifyAdmin, verifyAdminToken } = require('../middleware/auth');
-const { sendDonationFundPaidConfirmation } = require('../utils/emailService');
+const { sendDonationFundPaidConfirmation, sendDonationPublicationApprovalEmail, sendDonationPublicationRejectionEmail } = require('../utils/emailService');
 const moment = require('moment-timezone');
 const { HSCConfig } = require('../models/HSC');
 
@@ -370,6 +370,12 @@ router.put('/:id', verifyToken, verifyEmailVerified, async (req, res) => {
     if (contact) campaign.contact = contact;
     if (requestedAmountLKR) campaign.requestedAmountLKR = requestedAmountLKR;
     if (requestedAmountHSC) campaign.requestedAmountHSC = requestedAmountHSC;
+
+    // Reset adminApprove to Pending when user edits the campaign
+    campaign.adminApprove = 'Pending';
+    campaign.adminNote = '';
+    campaign.adminProcessedAt = null;
+    campaign.adminProcessedBy = null;
 
     await campaign.save();
 
@@ -830,6 +836,95 @@ router.get('/admin/paid-funds', verifyAdminToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch paid funds'
+    });
+  }
+});
+
+// GET /api/donations-raise-fund/admin/publication-requests - Get all donation publication requests (admin only)
+router.get('/admin/publication-requests', verifyAdminToken, async (req, res) => {
+  try {
+    const campaigns = await DonationsRaiseFund.find()
+      .populate('userId', 'name email profileImage')
+      .populate('publishedAdId', 'userId status expiresAt')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: campaigns
+    });
+
+  } catch (error) {
+    console.error('Error fetching publication requests:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch publication requests'
+    });
+  }
+});
+
+// PUT /api/donations-raise-fund/admin/publication-requests/:id - Approve/Reject publication request (admin only)
+router.put('/admin/publication-requests/:id', verifyAdminToken, async (req, res) => {
+  try {
+    const { status, adminNote } = req.body;
+
+    if (!['Approved', 'Rejected'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be "Approved" or "Rejected"'
+      });
+    }
+
+    const campaign = await DonationsRaiseFund.findById(req.params.id)
+      .populate('userId', 'name email');
+
+    if (!campaign) {
+      return res.status(404).json({
+        success: false,
+        message: 'Campaign not found'
+      });
+    }
+
+    // Update publication status
+    campaign.adminApprove = status;
+    campaign.adminNote = adminNote || '';
+    campaign.adminProcessedAt = new Date();
+    campaign.adminProcessedBy = req.admin._id; // Admin ID from token
+
+    await campaign.save();
+
+    // Send email notification
+    try {
+      if (status === 'Approved') {
+        await sendDonationPublicationApprovalEmail(
+          campaign.userId.email,
+          campaign.userId.name,
+          campaign.title,
+          campaign._id
+        );
+      } else if (status === 'Rejected') {
+        await sendDonationPublicationRejectionEmail(
+          campaign.userId.email,
+          campaign.userId.name,
+          campaign.title,
+          adminNote
+        );
+      }
+    } catch (emailError) {
+      console.error('Email sending error:', emailError);
+      // Don't fail the request if email fails
+    }
+
+    res.json({
+      success: true,
+      message: `Campaign ${status.toLowerCase()} successfully`,
+      data: campaign
+    });
+
+  } catch (error) {
+    console.error('Error processing publication request:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process publication request'
     });
   }
 });
