@@ -69,6 +69,11 @@ const tourGuiderSchema = new mongoose.Schema({
     default: [],
     description: 'Array of facilities provided (e.g., transportation, meals, accommodation)'
   },
+  languagesSpoken: {
+    type: [String],
+    default: [],
+    description: 'Languages the tour guide can speak (e.g., English, Sinhala, Tamil)'
+  },
   certificate: {
     name: {
       type: String,

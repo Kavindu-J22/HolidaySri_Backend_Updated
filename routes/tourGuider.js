@@ -36,6 +36,7 @@ router.post('/publish', verifyToken, async (req, res) => {
       experience,
       email,
       facilitiesProvided,
+      languagesSpoken,
       certificate,
       contact,
       isAvailable,
@@ -157,6 +158,7 @@ router.post('/publish', verifyToken, async (req, res) => {
       experience,
       email,
       facilitiesProvided: facilitiesProvided || [],
+      languagesSpoken: languagesSpoken || [],
       certificate,
       contact,
       isAvailable,
@@ -405,7 +407,7 @@ router.put('/:id', verifyToken, async (req, res) => {
     // Update allowed fields
     const allowedFields = [
       'name', 'gender', 'age', 'city', 'province', 'description',
-      'experience', 'email', 'contact', 'facilitiesProvided',
+      'experience', 'email', 'contact', 'facilitiesProvided', 'languagesSpoken',
       'isAvailable', 'availableFrom', 'facebook', 'website', 'avatar', 'certificate'
     ];
 
