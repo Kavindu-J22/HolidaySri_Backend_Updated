@@ -209,7 +209,7 @@ router.post('/publish', verifyToken, async (req, res) => {
         reason,
         specialNeeds: specialNeeds || []
       };
-      profileData.HSTC = 720;
+      profileData.HSTC = 240;
     }
 
     // Create caregiver/care needer profile

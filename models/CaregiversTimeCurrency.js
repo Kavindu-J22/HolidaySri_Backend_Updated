@@ -117,7 +117,7 @@ const caregiversTimeCurrencySchema = new mongoose.Schema({
   HSTC: {
     type: Number,
     required: true,
-    description: 'HolidaySri Time Currency - 36 for Care Giver, 720 for Care Needer'
+    description: 'HolidaySri Time Currency - 36 for Care Giver, 240 for Care Needer'
   },
   // Care Giver specific fields
   careGiverDetails: {
@@ -212,9 +212,9 @@ caregiversTimeCurrencySchema.pre('save', function(next) {
       experience: undefined,
       services: []
     };
-    // Set HSTC to 720 for Care Needer ONLY on new documents (not on updates)
+    // Set HSTC to 240 for Care Needer ONLY on new documents (not on updates)
     if (this.isNew) {
-      this.HSTC = 720;
+      this.HSTC = 240;
     }
   }
 
