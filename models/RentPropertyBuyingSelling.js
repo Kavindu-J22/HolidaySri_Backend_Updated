@@ -29,7 +29,7 @@ const rentPropertyBuyingSellingSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['House', 'Apartment', 'Land', 'Commercial', 'Office', 'Shop', 'Warehouse', 'Other'],
+    enum: ['House', 'Apartment', 'Land', 'Commercial', 'Office', 'Shop', 'Warehouse', 'Car', 'Van', 'Three-Wheeler', 'Bike', 'Other Vehicles', 'Other'],
     description: 'Property category'
   },
   condition: {
