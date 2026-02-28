@@ -11,7 +11,9 @@ const {
   sendTourPackageApprovalConfirmation,
   sendProposalReceivedNotification,
   sendProposalAcceptedNotification,
-  sendProposalRejectedNotification
+  sendProposalRejectedNotification,
+  sendProposalAwaitingConfirmationToPartner,
+  sendProposalPartnerRejectedToUser
 } = require('../utils/emailService');
 
 // Submit customize tour package request
@@ -610,7 +612,7 @@ router.get('/request/:id/proposals', verifyToken, verifyEmailVerified, async (re
   }
 });
 
-// Accept a proposal (Client)
+// Accept a proposal (Client) - sets to awaiting-confirmation, partner must confirm
 router.put('/request/:requestId/proposal/:proposalId/accept', verifyToken, verifyEmailVerified, async (req, res) => {
   try {
     const request = await CustomizeTourPackage.findOne({
@@ -631,11 +633,83 @@ router.put('/request/:requestId/proposal/:proposalId/accept', verifyToken, verif
       return res.status(400).json({ message: 'This proposal has already been processed' });
     }
 
-    // Update proposal statuses
+    // Check if another proposal is already awaiting confirmation
+    const alreadyAwaiting = request.proposals.find(p => p.status === 'awaiting-confirmation');
+    if (alreadyAwaiting) {
+      return res.status(400).json({ message: 'Another proposal is already awaiting partner confirmation. Please wait for the partner to respond.' });
+    }
+
+    // Set proposal to awaiting-confirmation (partner must confirm)
+    proposal.status = 'awaiting-confirmation';
+    // Request status stays as 'show-partners' until partner confirms
+
+    await request.save();
+
+    // Notify the partner to confirm or reject
+    try {
+      const partner = await User.findById(proposal.partnerId);
+      if (partner) {
+        await sendProposalAwaitingConfirmationToPartner(
+          partner.email,
+          partner.name,
+          {
+            numberOfTravelers: request.numberOfTravelers,
+            duration: request.duration,
+            startDate: request.startDate,
+            accommodation: request.accommodation
+          }
+        );
+      }
+    } catch (emailError) {
+      console.error('Error sending awaiting confirmation email to partner:', emailError);
+    }
+
+    res.json({
+      success: true,
+      message: 'Proposal selection sent to partner for confirmation. You will be notified once the partner responds.',
+      data: request
+    });
+
+  } catch (error) {
+    console.error('Accept proposal error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Confirm a proposal (Partner) - partner confirms after client accepted
+router.put('/partner/request/:requestId/proposal/:proposalId/confirm', verifyToken, verifyEmailVerified, async (req, res) => {
+  try {
+    // Check if user is a partner
+    const user = await User.findById(req.user._id);
+    if (!user.isPartner || !user.partnerExpirationDate || new Date(user.partnerExpirationDate) < new Date()) {
+      return res.status(403).json({ message: 'Access denied. Active commercial partnership required.' });
+    }
+
+    const request = await CustomizeTourPackage.findById(req.params.requestId);
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+
+    const proposal = request.proposals.id(req.params.proposalId);
+    if (!proposal) {
+      return res.status(404).json({ message: 'Proposal not found' });
+    }
+
+    // Verify this proposal belongs to this partner
+    if (proposal.partnerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You can only confirm your own proposals.' });
+    }
+
+    if (proposal.status !== 'awaiting-confirmation') {
+      return res.status(400).json({ message: 'This proposal is not awaiting your confirmation.' });
+    }
+
+    // Confirm: accept this proposal, reject all others
     request.proposals.forEach(p => {
       if (p._id.toString() === req.params.proposalId) {
         p.status = 'accepted';
-      } else if (p.status === 'pending') {
+        p.confirmedAt = new Date();
+      } else if (p.status === 'pending' || p.status === 'awaiting-confirmation') {
         p.status = 'rejected';
       }
     });
@@ -644,24 +718,18 @@ router.put('/request/:requestId/proposal/:proposalId/accept', verifyToken, verif
     request.acceptedAt = new Date();
     request.status = 'proposal-accepted';
 
-    // Get accepted partner details and update admin note
-    const acceptedPartner = await User.findById(proposal.partnerId);
-    if (acceptedPartner) {
-      const partnerNote = `\n\n[Proposal Accepted]\nAccepted Partner: ${acceptedPartner.name}\nPartner Email: ${acceptedPartner.email}\nPartner Contact: ${acceptedPartner.contactNumber}\nAccepted At: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}`;
-      request.adminNote = (request.adminNote || '') + partnerNote;
-    }
+    const partnerNote = `\n\n[Proposal Confirmed]\nConfirmed Partner: ${user.name}\nPartner Email: ${user.email}\nConfirmed At: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}`;
+    request.adminNote = (request.adminNote || '') + partnerNote;
 
     await request.save();
 
     // Send emails to all partners
     const emailPromises = [];
-
     for (const p of request.proposals) {
       const partner = await User.findById(p.partnerId);
       if (!partner) continue;
 
       if (p.status === 'accepted') {
-        // Send acceptance email with client details
         emailPromises.push(
           sendProposalAcceptedNotification(
             partner.email,
@@ -681,7 +749,6 @@ router.put('/request/:requestId/proposal/:proposalId/accept', verifyToken, verif
           )
         );
       } else if (p.status === 'rejected') {
-        // Send rejection email
         emailPromises.push(
           sendProposalRejectedNotification(
             partner.email,
@@ -700,12 +767,83 @@ router.put('/request/:requestId/proposal/:proposalId/accept', verifyToken, verif
 
     res.json({
       success: true,
-      message: 'Proposal accepted successfully. Notifications sent to all partners.',
+      message: 'Proposal confirmed successfully. Client contact details sent to your email.',
       data: request
     });
 
   } catch (error) {
-    console.error('Accept proposal error:', error);
+    console.error('Partner confirm proposal error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Reject confirmation (Partner) - partner rejects after client accepted
+router.put('/partner/request/:requestId/proposal/:proposalId/reject-confirmation', verifyToken, verifyEmailVerified, async (req, res) => {
+  try {
+    // Check if user is a partner
+    const user = await User.findById(req.user._id);
+    if (!user.isPartner || !user.partnerExpirationDate || new Date(user.partnerExpirationDate) < new Date()) {
+      return res.status(403).json({ message: 'Access denied. Active commercial partnership required.' });
+    }
+
+    const request = await CustomizeTourPackage.findById(req.params.requestId);
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+
+    const proposal = request.proposals.id(req.params.proposalId);
+    if (!proposal) {
+      return res.status(404).json({ message: 'Proposal not found' });
+    }
+
+    // Verify this proposal belongs to this partner
+    if (proposal.partnerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You can only reject your own proposals.' });
+    }
+
+    if (proposal.status !== 'awaiting-confirmation') {
+      return res.status(400).json({ message: 'This proposal is not awaiting your confirmation.' });
+    }
+
+    // Set to partner-rejected; request stays show-partners; other proposals stay pending
+    proposal.status = 'partner-rejected';
+    proposal.partnerRejectedAt = new Date();
+
+    await request.save();
+
+    // Count remaining pending proposals
+    const remainingPending = request.proposals.filter(p =>
+      p._id.toString() !== req.params.proposalId && p.status === 'pending'
+    ).length;
+
+    // Notify the user (client)
+    try {
+      const client = await User.findById(request.userId);
+      const clientEmail = client?.email || request.email;
+      const clientName = client?.name || request.fullName;
+      await sendProposalPartnerRejectedToUser(
+        clientEmail,
+        clientName,
+        {
+          numberOfTravelers: request.numberOfTravelers,
+          duration: request.duration,
+          startDate: request.startDate
+        },
+        remainingPending
+      );
+    } catch (emailError) {
+      console.error('Error sending partner rejected email to user:', emailError);
+    }
+
+    res.json({
+      success: true,
+      message: 'You have rejected the confirmation. The client has been notified and can select another proposal.',
+      data: request,
+      remainingProposals: remainingPending
+    });
+
+  } catch (error) {
+    console.error('Partner reject confirmation error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

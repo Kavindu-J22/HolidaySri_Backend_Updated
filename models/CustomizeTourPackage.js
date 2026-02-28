@@ -112,12 +112,18 @@ const customizeTourPackageSchema = new mongoose.Schema({
     },
     status: {
       type: String,
-      enum: ['pending', 'accepted', 'rejected'],
+      enum: ['pending', 'awaiting-confirmation', 'accepted', 'rejected', 'partner-rejected'],
       default: 'pending'
     },
     submittedAt: {
       type: Date,
       default: Date.now
+    },
+    confirmedAt: {
+      type: Date
+    },
+    partnerRejectedAt: {
+      type: Date
     }
   }],
 

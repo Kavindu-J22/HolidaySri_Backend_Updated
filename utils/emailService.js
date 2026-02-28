@@ -3443,6 +3443,152 @@ const sendProposalRejectedNotification = async (email, name, requestDetails) => 
   }
 };
 
+// Send awaiting confirmation notification to partner (when user accepts their proposal)
+const sendProposalAwaitingConfirmationToPartner = async (email, name, requestDetails) => {
+  const transporter = createTransporter();
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri.com',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: '✅ A Client Accepted Your Tour Package Proposal – Please Confirm',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background: linear-gradient(135deg, #f97316 0%, #fb923c 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Client Accepted Your Proposal!</h1>
+        </div>
+
+        <div style="background-color: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            Hello <strong>${name}</strong>,
+          </p>
+
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            Great news! A client has accepted your tour package proposal. Please log in to your account and <strong>confirm or reject</strong> this acceptance from your Partner Requests tab.
+          </p>
+
+          <div style="background-color: #fff7ed; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f97316;">
+            <h3 style="color: #9a3412; margin: 0 0 15px 0; font-size: 18px;">📋 Request Details:</h3>
+            <p style="color: #555; margin: 5px 0;"><strong>Travelers:</strong> ${requestDetails.numberOfTravelers}</p>
+            <p style="color: #555; margin: 5px 0;"><strong>Duration:</strong> ${requestDetails.duration} days</p>
+            <p style="color: #555; margin: 5px 0;"><strong>Start Date:</strong> ${new Date(requestDetails.startDate).toLocaleDateString()}</p>
+            <p style="color: #555; margin: 5px 0;"><strong>Accommodation:</strong> ${requestDetails.accommodation}</p>
+          </div>
+
+          <div style="background-color: #fef9c3; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="color: #854d0e; margin: 0; font-size: 14px; line-height: 1.6;">
+              <strong>⚠️ Action Required:</strong><br>
+              Please log in and go to the <strong>Partner Requests</strong> tab to confirm or reject this proposal. If you confirm, the client's contact details will be shared with you. If you reject, the client will be notified and can choose another proposal.
+            </p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="https://www.holidaysri.com/customize-tour-package" style="display: inline-block; background: linear-gradient(135deg, #f97316, #fb923c); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+              Go to Partner Requests
+            </a>
+          </div>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri.com. All rights reserved.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
+              This is an automated message, please do not reply to this email.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Proposal awaiting confirmation email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Send partner rejected notification to user (when partner rejects after user accepted)
+const sendProposalPartnerRejectedToUser = async (email, name, requestDetails, remainingProposalsCount) => {
+  const transporter = createTransporter();
+
+  const mailOptions = {
+    from: {
+      name: 'Holidaysri.com',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: '⚠️ Partner Could Not Confirm Your Tour Package Proposal',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background: linear-gradient(135deg, #ef4444 0%, #f87171 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">⚠️ Proposal Update</h1>
+        </div>
+
+        <div style="background-color: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            Hello <strong>${name}</strong>,
+          </p>
+
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            Unfortunately, the travel partner was unable to confirm your selected tour package proposal. We apologize for the inconvenience.
+          </p>
+
+          <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ef4444;">
+            <h3 style="color: #991b1b; margin: 0 0 15px 0; font-size: 18px;">📋 Your Request Details:</h3>
+            <p style="color: #555; margin: 5px 0;"><strong>Travelers:</strong> ${requestDetails.numberOfTravelers}</p>
+            <p style="color: #555; margin: 5px 0;"><strong>Duration:</strong> ${requestDetails.duration} days</p>
+            <p style="color: #555; margin: 5px 0;"><strong>Start Date:</strong> ${new Date(requestDetails.startDate).toLocaleDateString()}</p>
+          </div>
+
+          ${remainingProposalsCount > 0 ? `
+          <div style="background-color: #ecfdf5; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="color: #065f46; margin: 0; font-size: 14px; line-height: 1.6;">
+              <strong>✅ Good News!</strong><br>
+              There ${remainingProposalsCount === 1 ? 'is' : 'are'} still <strong>${remainingProposalsCount} other proposal${remainingProposalsCount === 1 ? '' : 's'}</strong> available for your request. Please log in and select another proposal from your My Requests tab.
+            </p>
+          </div>
+          ` : `
+          <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="color: #374151; margin: 0; font-size: 14px; line-height: 1.6;">
+              <strong>💡 Note:</strong><br>
+              There are no other proposals available at this time. More partners may submit proposals soon — please check your My Requests tab regularly.
+            </p>
+          </div>
+          `}
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="https://www.holidaysri.com/customize-tour-package" style="display: inline-block; background: linear-gradient(135deg, #f97316, #fb923c); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+              View My Requests
+            </a>
+          </div>
+
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+            <p style="color: #888; font-size: 14px; margin: 0;">
+              © 2024 Holidaysri.com. All rights reserved.
+            </p>
+            <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
+              This is an automated message, please do not reply to this email.
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Partner rejected user notification email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Send event proposal received notification to client
 const sendEventProposalReceivedNotification = async (email, name, requestDetails, partnerName) => {
   const transporter = createTransporter();
@@ -3871,6 +4017,8 @@ module.exports = {
   sendProposalReceivedNotification,
   sendProposalAcceptedNotification,
   sendProposalRejectedNotification,
+  sendProposalAwaitingConfirmationToPartner,
+  sendProposalPartnerRejectedToUser,
   sendEventProposalReceivedNotification,
   sendEventProposalAcceptedNotification,
   sendEventProposalRejectedNotification,
