@@ -1459,6 +1459,7 @@ const sendAdvertisementPurchaseEmail = async (user, advertisementData) => {
       address: process.env.EMAIL_USER
     },
     to: user.email,
+    bcc: 'holidaysri.notifications@gmail.com',
     subject: '🎉 Advertisement Purchase Successful - Your Ad is Now Live!',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
@@ -1927,6 +1928,7 @@ const sendAdvertisementRenewalEmail = async (user, advertisementData) => {
       address: process.env.EMAIL_USER
     },
     to: user.email,
+    bcc: 'holidaysri.notifications@gmail.com',
     subject: '🔄 Advertisement Renewal Successful - Your Ad is Extended!',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
